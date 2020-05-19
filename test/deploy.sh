@@ -176,4 +176,4 @@ done < $config
 
 sleep $DURATION
 
-cleanup_and_result
+#cleanup_and_result
