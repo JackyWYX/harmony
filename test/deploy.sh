@@ -62,7 +62,7 @@ function debug_staking() {
             --rpc_endpoint_src="http://localhost:9500/" --rpc_endpoint_dst="http://localhost:9501/" --ignore_regression_test
 }
 
-trap cleanup_and_result SIGINT SIGTERM
+#trap cleanup_and_result SIGINT SIGTERM
 
 function usage {
    local ME=$(basename $0)
