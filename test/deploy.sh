@@ -169,7 +169,7 @@ while IFS='' read -r line || [[ -n "$line" ]]; do
   case "${mode}" in explorer*) args=("${args[@]}" -node_type=explorer -shard_id=0);; esac
   case "${mode}" in
   client) ;;
-  *) echo "here"; $DRYRUN "${ROOT}/bin/harmony" "${args[@]}" "${extra_args[@]}" 2>&1 | tee -a "${LOG_FILE}" &;;
+  *) echo "${args[@]}"; $DRYRUN "${ROOT}/bin/harmony" "${args[@]}" "${extra_args[@]}" 2>&1 | tee -a "${LOG_FILE}" &;;
   esac
   i=$((i+1))
 done < $config
