@@ -760,7 +760,7 @@ func main() {
 			fmt.Sprintf("/ip4/%s/tcp/%s/p2p/%s", *ip, *port, myHost.GetID().Pretty()),
 		).
 		Msg(startMsg)
-
+	fmt.Println(7)
 	go currentNode.SupportSyncing()
 	currentNode.ServiceManagerSetup()
 	currentNode.RunServices()
@@ -770,7 +770,7 @@ func main() {
 			Err(err).
 			Msg("StartRPC failed")
 	}
-
+	fmt.Println(8)
 	if err := currentNode.Start(); err != nil {
 		fmt.Println("could not begin network message handling for node", err.Error())
 		os.Exit(-1)

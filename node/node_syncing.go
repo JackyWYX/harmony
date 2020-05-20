@@ -204,6 +204,7 @@ func (node *Node) DoBeaconSyncing() {
 func (node *Node) DoSyncing(bc *core.BlockChain, worker *worker.Worker, willJoinConsensus bool) {
 	ticker := time.NewTicker(time.Duration(SyncFrequency) * time.Second)
 	// TODO ek – infinite loop; add shutdown/cleanup logic
+	fmt.Println("do syncing")
 	for {
 		select {
 		case <-ticker.C:
@@ -220,6 +221,7 @@ func (node *Node) doSync(bc *core.BlockChain, worker *worker.Worker, willJoinCon
 		node.stateSync = syncing.CreateStateSync(node.SelfPeer.IP, node.SelfPeer.Port, node.GetSyncID())
 		utils.Logger().Debug().Msg("[SYNC] initialized state sync")
 	}
+	fmt.Println("do Sync in")
 	if node.stateSync.GetActivePeerNumber() < MinConnectedPeers {
 		shardID := bc.ShardID()
 		peers, err := node.SyncingPeerProvider.SyncingPeers(shardID)
@@ -239,6 +241,7 @@ func (node *Node) doSync(bc *core.BlockChain, worker *worker.Worker, willJoinCon
 		}
 		utils.Logger().Debug().Int("len", node.stateSync.GetActivePeerNumber()).Msg("[SYNC] Get Active Peers")
 	}
+	fmt.Println("active peers", node.stateSync.GetActivePeerNumber())
 	// TODO: treat fake maximum height
 	if node.stateSync.IsOutOfSync(bc) {
 		node.stateMutex.Lock()
