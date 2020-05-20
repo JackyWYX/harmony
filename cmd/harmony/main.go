@@ -139,6 +139,7 @@ func initSetup() {
 	utils.SetLogVerbosity(log.Lvl(*verbosity))
 	fmt.Println(fmt.Sprintf("%v/validator-%v-%v.log", *logFolder, *ip, *port))
 	utils.AddLogFile(fmt.Sprintf("%v/validator-%v-%v.log", *logFolder, *ip, *port), *logMaxSize)
+	utils.AddLogHandler(log.StdoutHandler)
 
 	if *onlyLogTps {
 		matchFilterHandler := log.MatchFilterHandler("msg", "TPS Report", utils.GetLogInstance().GetHandler())
