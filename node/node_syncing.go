@@ -194,6 +194,7 @@ func (node *Node) DoBeaconSyncing() {
 				continue
 			}
 		}
+		fmt.Println("entering beacon syncloop")
 		node.beaconSync.SyncLoop(node.Beaconchain(), node.BeaconWorker, true, nil)
 		time.Sleep(time.Duration(SyncFrequency) * time.Second)
 	}

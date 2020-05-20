@@ -630,7 +630,7 @@ func main() {
 	if *versionFlag {
 		printVersion()
 	}
-
+	fmt.Println("1111")
 	switch *networkType {
 	case nodeconfig.Mainnet:
 		shard.Schedule = shardingconfig.MainnetSchedule
@@ -666,6 +666,7 @@ func main() {
 
 	initSetup()
 
+	fmt.Println("2")
 	if *nodeType == "validator" {
 		var err error
 		if *stakingFlag {
@@ -693,7 +694,7 @@ func main() {
 			initialAccount.ShardID = uint32(*shardID)
 		}
 	}
-
+	fmt.Println("3")
 	nodeConfig, err := createGlobalConfig()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "ERROR cannot configure node: %s\n", err)
@@ -715,7 +716,7 @@ func main() {
 			}
 		}
 	}()
-
+	fmt.Println("4")
 	if nodeConfig.ShardID != shard.BeaconChainShardID &&
 		currentNode.NodeConfig.Role() != nodeconfig.ExplorerNode {
 		utils.Logger().Info().
@@ -723,7 +724,7 @@ func main() {
 			Uint32("shardID", nodeConfig.ShardID).Msg("SupportBeaconSyncing")
 		currentNode.SupportBeaconSyncing()
 	}
-
+	fmt.Println("5")
 	if uint64(*doRevertBefore) != 0 && uint64(*revertTo) != 0 {
 		chain := currentNode.Blockchain()
 		if *revertBeacon {
@@ -747,7 +748,7 @@ func main() {
 	if *nodeType == "explorer" {
 		startMsg = "==== New Explorer Node ===="
 	}
-
+	fmt.Println("6")
 	utils.Logger().Info().
 		Str("BLSPubKey", nodeConfig.ConsensusPubKey.SerializeToHexStr()).
 		Uint32("ShardID", nodeConfig.ShardID).
