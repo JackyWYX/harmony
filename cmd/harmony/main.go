@@ -137,7 +137,7 @@ func initSetup() {
 	// Configure log parameters
 	utils.SetLogContext(*port, *ip)
 	utils.SetLogVerbosity(log.Lvl(*verbosity))
-	utils.AddLogFile("/home/ec2-user/hmy/log.txt", *logMaxSize)
+	utils.AddLogFile(fmt.Sprintf("%v/validator-%v-%v.log", *logFolder, *ip, *port), *logMaxSize)
 
 	if *onlyLogTps {
 		matchFilterHandler := log.MatchFilterHandler("msg", "TPS Report", utils.GetLogInstance().GetHandler())
