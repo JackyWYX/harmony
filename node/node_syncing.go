@@ -109,6 +109,7 @@ func NewDNSSyncingPeerProvider(zone, port string) *DNSSyncingPeerProvider {
 // SyncingPeers resolves DNS name into peers and returns them.
 func (p *DNSSyncingPeerProvider) SyncingPeers(shardID uint32) (peers []p2p.Peer, err error) {
 	dns := fmt.Sprintf("s%d.%s", shardID, p.zone)
+	fmt.Println(dns)
 	addrs, err := p.lookupHost(dns)
 	if err != nil {
 		return nil, errors.Wrapf(err,
@@ -226,6 +227,7 @@ func (node *Node) doSync(bc *core.BlockChain, worker *worker.Worker, willJoinCon
 		shardID := bc.ShardID()
 		peers, err := node.SyncingPeerProvider.SyncingPeers(shardID)
 		if err != nil {
+
 			utils.Logger().Warn().
 				Err(err).
 				Uint32("shard_id", shardID).

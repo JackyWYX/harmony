@@ -110,6 +110,7 @@ func main() {
 	// Logging setup
 	utils.SetLogContext(*port, *ip)
 	utils.SetLogVerbosity(log.Lvl(*verbosity))
+	fmt.Println("log folder", *logFolder)
 	utils.AddLogFile(fmt.Sprintf("%v/bootnode-%v-%v.log", *logFolder, *ip, *port), *logMaxSize)
 
 	privKey, _, err := utils.LoadKeyFromFile(*keyFile)
