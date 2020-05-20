@@ -137,6 +137,7 @@ func initSetup() {
 	// Configure log parameters
 	utils.SetLogContext(*port, *ip)
 	utils.SetLogVerbosity(log.Lvl(*verbosity))
+	fmt.Println(fmt.Sprintf("%v/validator-%v-%v.log", *logFolder, *ip, *port))
 	utils.AddLogFile(fmt.Sprintf("%v/validator-%v-%v.log", *logFolder, *ip, *port), *logMaxSize)
 
 	if *onlyLogTps {

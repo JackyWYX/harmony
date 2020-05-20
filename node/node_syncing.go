@@ -112,7 +112,6 @@ func (p *DNSSyncingPeerProvider) SyncingPeers(shardID uint32) (peers []p2p.Peer,
 	fmt.Println(dns)
 	addrs, err := p.lookupHost(dns)
 	if err != nil {
-		fmt.Println("dns not found", dns, err)
 		return nil, errors.Wrapf(err,
 			"[SYNC] cannot find peers using DNS name %#v", dns)
 	}
