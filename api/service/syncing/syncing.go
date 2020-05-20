@@ -765,6 +765,7 @@ func (ss *StateSync) IsOutOfSync(bc *core.BlockChain) bool {
 
 // SyncLoop will keep syncing with peers until catches up
 func (ss *StateSync) SyncLoop(bc *core.BlockChain, worker *worker.Worker, isBeacon bool, consensus *consensus.Consensus) {
+	fmt.Println("start sync loop")
 	if !isBeacon {
 		ss.RegisterNodeInfo()
 	}
@@ -789,12 +790,15 @@ func (ss *StateSync) SyncLoop(bc *core.BlockChain, worker *worker.Worker, isBeac
 		if size > SyncLoopBatchSize {
 			size = SyncLoopBatchSize
 		}
+		fmt.Println("before process state sync")
 		err := ss.ProcessStateSync(startHash[:], size, bc, worker)
+
 		if err != nil {
 			utils.Logger().Error().Err(err).
 				Msgf("[SYNC] ProcessStateSync failed (isBeacon: %t, ShardID: %d, otherHeight: %d, currentHeight: %d)",
 					isBeacon, bc.ShardID(), otherHeight, currentHeight)
 		}
+		fmt.Println("after process state sync")
 		ss.purgeOldBlocksFromCache()
 		if consensus != nil {
 			consensus.SetMode(consensus.UpdateConsensusInformation())
