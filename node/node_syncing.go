@@ -193,6 +193,7 @@ func (node *Node) DoBeaconSyncing() {
 					Msg("cannot retrieve beacon syncing peers")
 				continue
 			}
+			fmt.Println("create beacon syncing")
 			if err := node.beaconSync.CreateSyncConfig(peers, true); err != nil {
 				utils.Logger().Warn().Err(err).Msg("cannot create beacon sync config")
 				continue
@@ -233,6 +234,7 @@ func (node *Node) doSync(bc *core.BlockChain, worker *worker.Worker, willJoinCon
 				Msg("cannot retrieve syncing peers")
 			return
 		}
+		fmt.Println("create shard syncing")
 		if err := node.stateSync.CreateSyncConfig(peers, false); err != nil {
 			utils.Logger().Warn().
 				Err(err).
