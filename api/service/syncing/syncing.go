@@ -87,6 +87,7 @@ func (sc *SyncConfig) AddPeer(peer *SyncPeerConfig) {
 func (sc *SyncConfig) ForEachPeer(f func(peer *SyncPeerConfig) (brk bool)) {
 	sc.mtx.RLock()
 	defer sc.mtx.RUnlock()
+	fmt.Println("During sync processingtotal number of peers:", len(sc.peers))
 	for _, peer := range sc.peers {
 		if f(peer) {
 			break
@@ -246,7 +247,9 @@ func (ss *StateSync) CreateSyncConfig(peers []p2p.Peer, isBeacon bool) error {
 
 	// limit the number of dns peers to connect
 	randSeed := time.Now().UnixNano()
+	fmt.Println("before limit number size:", len(peers))
 	peers = limitNumPeers(peers, randSeed)
+	fmt.Println("after limit number size:", len(peers))
 
 	var wg sync.WaitGroup
 	for _, peer := range peers {
