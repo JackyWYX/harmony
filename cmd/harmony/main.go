@@ -743,6 +743,16 @@ func main() {
 		}
 	}
 
+	testBN := new(big.Int).Sub(currentNode.Blockchain().CurrentBlock().Number(), big.NewInt(50))
+	fmt.Println("bench testing on block ", testBN)
+	root := currentNode.Blockchain().GetHeaderByNumber(testBN.Uint64()).Root()
+	sdb, err := currentNode.Blockchain().StateAt(root)
+	if err != nil {
+		fmt.Println("cannot open state", err)
+	}
+	sdb.BenchIter()
+	os.Exit(0)
+
 	startMsg := "==== New Harmony Node ===="
 	if *nodeType == "explorer" {
 		startMsg = "==== New Explorer Node ===="
