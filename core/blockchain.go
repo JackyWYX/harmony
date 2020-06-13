@@ -1213,11 +1213,24 @@ func (bc *BlockChain) InsertChain(chain types.Blocks, verifyHeaders bool) (int, 
 	return n, err
 }
 
+var (
+	insertElapsedTime time.Duration
+	numProcessed      int
+)
+
 // insertChain will execute the actual chain insertion and event aggregation. The
 // only reason this method exists as a separate one is to make locking cleaner
 // with deferred statements.
 func (bc *BlockChain) insertChain(chain types.Blocks, verifyHeaders bool) (int, []interface{}, []*types.Log, error) {
 	// Sanity check that we have something meaningful to import
+	insertStartTime := time.Now()
+	defer func() {
+		elapsed := time.Since(insertStartTime)
+		insertElapsedTime += elapsed
+		numProcessed += len(chain)
+		average := time.Duration(int64(insertElapsedTime) / int64(numProcessed))
+		fmt.Printf("average block processing time %v\n", average)
+	}()
 	if len(chain) == 0 {
 		return 0, nil, nil, nil
 	}
