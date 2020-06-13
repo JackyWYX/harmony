@@ -1229,7 +1229,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifyHeaders bool) (int, 
 		insertElapsedTime += elapsed
 		numProcessed += len(chain)
 		average := time.Duration(int64(insertElapsedTime) / int64(numProcessed))
-		fmt.Printf("average block processing time %v\n", average)
+		fmt.Printf("average block processing time %v - %v\n", average, numProcessed)
 	}()
 	if len(chain) == 0 {
 		return 0, nil, nil, nil
