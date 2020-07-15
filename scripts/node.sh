@@ -818,7 +818,6 @@ do
    *) ld_path_var=LD_LIBRARY_PATH;;
    esac
 
-   echo "${args[@]}" "${@}"
    env "${ld_path_var}=$(pwd)" ./harmony "${args[@]}" "${@}"
    msg "node process finished with status $?"
 
