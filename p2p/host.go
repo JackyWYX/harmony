@@ -141,6 +141,12 @@ func NewHost(self *Peer, key libp2p_crypto.PrivKey) (Host, error) {
 		Interface("PeerID", self.PeerID).
 		Str("PubKey", self.ConsensusPubKey.SerializeToHexStr()).
 		Msg("libp2p host ready")
+
+	//go func() {
+	//	for {
+	//		fmt.Println("p2p peers size: ", len(p2pHost.Peerstore().Peers()))
+	//	}
+	//}()
 	return h, nil
 }
 

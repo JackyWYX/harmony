@@ -3,6 +3,7 @@ package node
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"math/rand"
 	"time"
 
@@ -61,6 +62,7 @@ func (node *Node) processSkippedMsgTypeByteValue(
 // HandleMessage parses the message and dispatch the actions.
 func (node *Node) HandleMessage(content []byte, sender libp2p_peer.ID) {
 	// log in-coming metrics
+	fmt.Println("pubsub message received")
 	node.host.LogRecvMessage(content)
 	utils.Logger().Debug().
 		Int64("TotalIn", node.host.GetBandwidthTotals().TotalIn).
