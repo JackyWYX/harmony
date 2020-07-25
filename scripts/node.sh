@@ -794,9 +794,9 @@ do
          args+=(
             --shard_id="${shard_id}"
          )
-         if ${staking_mode}
+         if [ !${staking_mode} ]
          then
-            args+=(--staking="${staking_mode}")
+            args+=(--run.legacy)
          fi
          ;;
       esac
