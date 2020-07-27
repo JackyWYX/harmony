@@ -321,7 +321,7 @@ func (sc *SyncConfig) getHowManyMaxConsensus() (int, int) {
 	maxCount := 0
 	maxFirstID := -1
 	for i := range sc.peers {
-		if curFirstID == -1 || CompareSyncPeerConfigByblockHashes(sc.peers[curFirstID], sc.peers[i]) != 0 {
+		if curFirstID == -1 || CompareSyncPeerConfigByblockHashes(sc.peers[curFirstID], sc.peers[i]) < 0 {
 			curCount = 1
 			curFirstID = i
 		} else {
