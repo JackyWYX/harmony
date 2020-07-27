@@ -418,7 +418,9 @@ func (ss *StateSync) getConsensusHashes(startHash []byte, size uint32) {
 func (ss *StateSync) generateStateSyncTaskQueue(bc *core.BlockChain) {
 	ss.stateSyncTaskQueue = queue.New(0)
 	ss.syncConfig.ForEachPeer(func(configPeer *SyncPeerConfig) (brk bool) {
+		fmt.Println("assign tasks", len(configPeer.blockHashes))
 		for id, blockHash := range configPeer.blockHashes {
+			fmt.Println("put task", id, blockHash[:5])
 			if err := ss.stateSyncTaskQueue.Put(SyncBlockTask{index: id, blockHash: blockHash}); err != nil {
 				utils.Logger().Warn().
 					Err(err).
@@ -472,6 +474,7 @@ func (ss *StateSync) downloadBlocks(bc *core.BlockChain) {
 				err = rlp.DecodeBytes(payload[0], &blockObj)
 
 				if err != nil {
+					fmt.Println("get block errro")
 					count++
 					utils.Logger().Error().Err(err).Msg("[SYNC] downloadBlocks: failed to DecodeBytes from received new block")
 					if count > downloadBlocksRetryLimit {
@@ -486,6 +489,7 @@ func (ss *StateSync) downloadBlocks(bc *core.BlockChain) {
 					}
 					continue
 				}
+				fmt.Println("downloaded block", blockObj.Number())
 				ss.syncMux.Lock()
 				ss.commonBlocks[syncTask.index] = &blockObj
 				ss.syncMux.Unlock()

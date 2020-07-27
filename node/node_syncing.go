@@ -268,7 +268,7 @@ func (node *Node) doSync(bc *core.BlockChain, worker *worker.Worker, willJoinCon
 
 // SupportBeaconSyncing sync with beacon chain for archival node in beacon chan or non-beacon node
 func (node *Node) SupportBeaconSyncing() {
-	go node.DoBeaconSyncing()
+	//go node.DoBeaconSyncing()
 }
 
 // SupportSyncing keeps sleeping until it's doing consensus or it's a leader.
