@@ -398,6 +398,7 @@ func (ss *StateSync) getConsensusHashes(startHash []byte, size uint32) {
 					Msg("[SYNC] getConsensusHashes Nil Response")
 				return
 			}
+			fmt.Println("payload size", len(response.Payload), peerConfig.ip)
 			if len(response.Payload) > int(size+1) {
 				utils.Logger().Warn().
 					Uint32("requestSize", size).
