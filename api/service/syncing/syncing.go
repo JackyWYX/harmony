@@ -11,8 +11,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rs/zerolog/log"
-
 	"github.com/Workiva/go-datastructures/queue"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -638,7 +636,7 @@ func (ss *StateSync) UpdateBlockAndStatus(block *types.Block, bc *core.BlockChai
 func (ss *StateSync) generateNewState(bc *core.BlockChain, worker *worker.Worker) error {
 	// update blocks created before node start sync
 	parentHash := bc.CurrentBlock().Hash()
-	log.Error().Int64("current block height", bc.CurrentBlock().Number().Int64())
+	fmt.Println("current block height", bc.CurrentBlock().Number().Int64())
 
 	var err error
 	for {
@@ -646,12 +644,13 @@ func (ss *StateSync) generateNewState(bc *core.BlockChain, worker *worker.Worker
 		if block == nil {
 			break
 		}
-		log.Error().Msg("updating from first loop")
+		fmt.Println("updating from first loop")
 		err = ss.UpdateBlockAndStatus(block, bc, worker, false)
 		if err != nil {
+			fmt.Println(err)
 			break
 		}
-		log.Error().Msg("finished updating from first loop")
+		fmt.Println("finished updating from first loop")
 		parentHash = block.Hash()
 	}
 	ss.syncMux.Lock()
@@ -665,12 +664,13 @@ func (ss *StateSync) generateNewState(bc *core.BlockChain, worker *worker.Worker
 		if block == nil {
 			break
 		}
-		log.Error().Msg("updating from second loop")
+		fmt.Println("updating from second loop")
 		err = ss.UpdateBlockAndStatus(block, bc, worker, false)
 		if err != nil {
+			fmt.Println(err)
 			break
 		}
-		log.Error().Msg("finished updating from second loop")
+		fmt.Println("finished updating from second loop")
 
 		parentHash = block.Hash()
 	}
@@ -689,10 +689,13 @@ func (ss *StateSync) generateNewState(bc *core.BlockChain, worker *worker.Worker
 		if block == nil {
 			break
 		}
+		fmt.Println("update from third loop")
 		err = ss.UpdateBlockAndStatus(block, bc, worker, false)
 		if err != nil {
+			fmt.Println(err)
 			break
 		}
+		fmt.Println("finished update from third loop")
 		parentHash = block.Hash()
 	}
 
