@@ -704,7 +704,7 @@ func (ss *StateSync) generateNewState(bc *core.BlockChain, worker *worker.Worker
 
 // ProcessStateSync processes state sync from the blocks received but not yet processed so far
 func (ss *StateSync) ProcessStateSync(startHash []byte, size uint32, bc *core.BlockChain, worker *worker.Worker) error {
-	fmt.Println("start processing")
+	fmt.Println(bc.ShardID(), "start processing")
 	// Gets consensus hashes.
 	ss.getConsensusHashes(startHash, size)
 	ss.generateStateSyncTaskQueue(bc)
@@ -822,7 +822,7 @@ func (ss *StateSync) SyncLoop(bc *core.BlockChain, worker *worker.Worker, isBeac
 	defer ticker.Stop()
 	for range ticker.C {
 		otherHeight := ss.getMaxPeerHeight(isBeacon)
-		fmt.Println("other height", otherHeight)
+		fmt.Println(bc.ShardID(), "other height", otherHeight)
 		currentHeight := bc.CurrentBlock().NumberU64()
 		if currentHeight >= otherHeight {
 			utils.Logger().Info().
@@ -836,7 +836,7 @@ func (ss *StateSync) SyncLoop(bc *core.BlockChain, worker *worker.Worker, isBeac
 
 		startHash := bc.CurrentBlock().Hash()
 		size := uint32(otherHeight - currentHeight)
-		fmt.Println("size is ", size)
+		fmt.Println(bc.ShardID(), "size is ", size)
 		if size > SyncLoopBatchSize {
 			size = SyncLoopBatchSize
 		}
