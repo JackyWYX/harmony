@@ -374,6 +374,7 @@ func (sc *SyncConfig) GetBlockHashesConsensusAndCleanUp() {
 		return CompareSyncPeerConfigByblockHashes(sc.peers[i], sc.peers[j]) == -1
 	})
 	maxFirstID, maxCount := sc.getHowManyMaxConsensus()
+	fmt.Println("first id", maxFirstID, "size", len(sc.peers[maxFirstID].blockHashes))
 	utils.Logger().Info().
 		Int("maxFirstID", maxFirstID).
 		Int("maxCount", maxCount).
