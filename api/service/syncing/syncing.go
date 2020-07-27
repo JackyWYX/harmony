@@ -392,6 +392,7 @@ func (ss *StateSync) getConsensusHashes(startHash []byte, size uint32) {
 
 			response := peerConfig.client.GetBlockHashes(startHash, size, ss.selfip, ss.selfport)
 			if response == nil {
+				fmt.Println("get block hash response nil")
 				utils.Logger().Warn().
 					Str("peerIP", peerConfig.ip).
 					Str("peerPort", peerConfig.port).
@@ -400,6 +401,7 @@ func (ss *StateSync) getConsensusHashes(startHash []byte, size uint32) {
 			}
 			fmt.Println("payload size", len(response.Payload), peerConfig.ip)
 			if len(response.Payload) > int(size+1) {
+				fmt.Println("request size")
 				utils.Logger().Warn().
 					Uint32("requestSize", size).
 					Int("respondSize", len(response.Payload)).
