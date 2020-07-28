@@ -84,6 +84,8 @@ function add_env
 function setup_env
 {
    check_root
+   # TODO: add these parameters to user runbook as recommendations (shall not be
+   #       set in an application daemon)
    ### KERNEL TUNING ###
    # Increase size of file handles and inode cache
    sysctl -w fs.file-max=2097152
@@ -139,15 +141,7 @@ function setup_env
    sysctl -w net.ipv4.tcp_tw_reuse=1
    sysctl -w net.ipv4.tcp_fastopen=3
    sysctl -w net.ipv4.tcp_window_scaling=1
-   
-   add_env /etc/security/limits.conf "* soft     nproc          65535"
-   add_env /etc/security/limits.conf "* hard     nproc          65535"
-   add_env /etc/security/limits.conf "* soft     nofile         65535"
-   add_env /etc/security/limits.conf "* hard     nofile         65535"
-   add_env /etc/security/limits.conf "root soft     nproc          65535"
-   add_env /etc/security/limits.conf "root hard     nproc          65535"
-   add_env /etc/security/limits.conf "root soft     nofile         65535"
-   add_env /etc/security/limits.conf "root hard     nofile         65535"
+
    add_env /etc/pam.d/common-session "session required pam_limits.so"
 }
 

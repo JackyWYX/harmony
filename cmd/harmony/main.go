@@ -106,10 +106,19 @@ func prepareRootCmd(cmd *cobra.Command) {
 	// notes one line 66,67 of https://golang.org/src/net/net.go that say can make the decision at
 	// build time.
 	os.Setenv("GODEBUG", "netdns=go")
+	setULimit()
 	// Don't set higher than num of CPU. It will make go scheduler slower.
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	// Set up randomization seed.
 	rand.Seed(int64(time.Now().Nanosecond()))
+}
+
+func setULimit() {
+	rl := syscall.Rlimit{
+		Cur: 65535,
+		Max: 65535,
+	}
+	syscall.Setrlimit(syscall.RLIMIT_NOFILE, &rl)
 }
 
 func getHarmonyConfig(cmd *cobra.Command) (harmonyConfig, error) {
