@@ -50,7 +50,7 @@ func TestHarmonyFlags(t *testing.T) {
 					Port:    9000,
 					KeyFile: defaultConfig.P2P.KeyFile,
 				},
-				RPC: rpcConfig{
+				HTTP: httpConfig{
 					Enabled: true,
 					IP:      "8.8.8.8",
 					Port:    9000,
@@ -321,24 +321,24 @@ func TestP2PFlags(t *testing.T) {
 func TestRPCFlags(t *testing.T) {
 	tests := []struct {
 		args      []string
-		expConfig rpcConfig
+		expConfig httpConfig
 		expErr    error
 	}{
 		{
 			args:      []string{},
-			expConfig: defaultConfig.RPC,
+			expConfig: defaultConfig.HTTP,
 		},
 		{
 			args: []string{"--http=false"},
-			expConfig: rpcConfig{
+			expConfig: httpConfig{
 				Enabled: false,
-				IP:      defaultConfig.RPC.IP,
-				Port:    defaultConfig.RPC.Port,
+				IP:      defaultConfig.HTTP.IP,
+				Port:    defaultConfig.HTTP.Port,
 			},
 		},
 		{
 			args: []string{"--http.ip", "8.8.8.8", "--http.port", "9001"},
-			expConfig: rpcConfig{
+			expConfig: httpConfig{
 				Enabled: true,
 				IP:      "8.8.8.8",
 				Port:    9001,
@@ -346,7 +346,7 @@ func TestRPCFlags(t *testing.T) {
 		},
 		{
 			args: []string{"--ip", "8.8.8.8", "--port", "9001", "--public_rpc"},
-			expConfig: rpcConfig{
+			expConfig: httpConfig{
 				Enabled: true,
 				IP:      "8.8.8.8",
 				Port:    9001,
@@ -370,8 +370,8 @@ func TestRPCFlags(t *testing.T) {
 			continue
 		}
 
-		if !reflect.DeepEqual(hc.RPC, test.expConfig) {
-			t.Errorf("Test %v: unexpected config: \n\t%+v\n\t%+v", i, hc.RPC, test.expConfig)
+		if !reflect.DeepEqual(hc.HTTP, test.expConfig) {
+			t.Errorf("Test %v: unexpected config: \n\t%+v\n\t%+v", i, hc.HTTP, test.expConfig)
 		}
 		ts.tearDown()
 	}
