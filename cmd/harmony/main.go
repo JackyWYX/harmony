@@ -189,11 +189,11 @@ func setupNodeAndRun(hc harmonyConfig) {
 			bootNodes)
 	}
 	// TODO: seperate use of port rpc / p2p
-	nodeconfig.GetDefaultConfig().Port = strconv.Itoa(hc.RPC.Port)
-	nodeconfig.GetDefaultConfig().IP = hc.RPC.IP
+	defConfig := nodeconfig.GetDefaultConfig()
+	defConfig.Port = strconv.Itoa(hc.HTTP.Port)
+	defConfig.IP = hc.HTTP.IP
 
 	nodeconfig.SetShardingSchedule(shard.Schedule)
-	nodeconfig.SetPublicRPC(true)
 	nodeconfig.SetVersion(getHarmonyVersion())
 	nodeconfigSetShardSchedule(hc)
 
@@ -247,6 +247,13 @@ func setupNodeAndRun(hc harmonyConfig) {
 		}
 	}()
 
+	// Parse RPC config
+	nodeConfig.RPCServer = nodeconfig.RPCServerConfig{
+		HTTPIp:   hc.HTTP.IP,
+		HTTPPort: hc.HTTP.Port,
+		WSIp:     hc.WS.IP,
+		WSPort:   hc.WS.Port,
+	}
 	if nodeConfig.ShardID != shard.BeaconChainShardID {
 		utils.Logger().Info().
 			Uint32("shardID", currentNode.Blockchain().ShardID()).
@@ -286,7 +293,7 @@ func setupNodeAndRun(hc harmonyConfig) {
 		Str("ClientGroupID", nodeConfig.GetClientGroupID().String()).
 		Str("Role", currentNode.NodeConfig.Role().String()).
 		Str("multiaddress",
-			fmt.Sprintf("/ip4/%s/tcp/%d/p2p/%s", hc.RPC.IP, hc.P2P.Port, myHost.GetID().Pretty()),
+			fmt.Sprintf("/ip4/%s/tcp/%d/p2p/%s", hc.HTTP.IP, hc.P2P.Port, myHost.GetID().Pretty()),
 		).
 		Msg(startMsg)
 
@@ -296,7 +303,7 @@ func setupNodeAndRun(hc harmonyConfig) {
 	currentNode.ServiceManagerSetup()
 	currentNode.RunServices()
 
-	if err := currentNode.StartRPC(strconv.Itoa(hc.RPC.Port)); err != nil {
+	if err := currentNode.StartRPC(); err != nil {
 		utils.Logger().Warn().
 			Err(err).
 			Msg("StartRPC failed")
