@@ -136,3 +136,7 @@ const (
 	legacyBLSKmsTypeFile    = "file"
 	legacyBLSKmsTypeNone    = "none"
 )
+
+const (
+	localEndpoint = "127.0.0.1"
+)
