@@ -65,6 +65,7 @@ const (
 
 // NewHost ..
 func NewHost(self *Peer, key libp2p_crypto.PrivKey) (Host, error) {
+	fmt.Println("p2p port", self.Port)
 	listenAddr, err := ma.NewMultiaddr(fmt.Sprintf("/ip4/0.0.0.0/tcp/%s", self.Port))
 	if err != nil {
 		return nil, errors.Wrapf(err,
