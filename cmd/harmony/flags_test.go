@@ -53,12 +53,12 @@ func TestHarmonyFlags(t *testing.T) {
 				HTTP: httpConfig{
 					Enabled: true,
 					IP:      "8.8.8.8",
-					Port:    9000,
+					Port:    9500,
 				},
 				WS: wsConfig{
 					Enabled: true,
 					IP:      "8.8.8.8",
-					Port:    9000,
+					Port:    9800,
 				},
 				Consensus: consensusConfig{
 					DelayCommit: "0ms",
@@ -349,7 +349,7 @@ func TestRPCFlags(t *testing.T) {
 			expConfig: httpConfig{
 				Enabled: true,
 				IP:      "8.8.8.8",
-				Port:    9001,
+				Port:    9501,
 			},
 		},
 	}
@@ -408,7 +408,7 @@ func TestWSFlags(t *testing.T) {
 			expConfig: wsConfig{
 				Enabled: true,
 				IP:      "8.8.8.8",
-				Port:    9001,
+				Port:    9801,
 			},
 		},
 	}
