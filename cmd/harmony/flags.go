@@ -278,13 +278,10 @@ var (
 		Name:  "bootnodes",
 		Usage: "a list of bootnode multiaddress (delimited by ,)",
 	}
-	// TODO: separate dns.client from dns.host. Add --dns.host to determine whether start
-	//   dns host, --dns.port / --dns.ip for serving endpoint
 	dnsZoneFlag = cli.StringFlag{
 		Name:  "dns.zone",
 		Usage: "use customized peers from the zone for state syncing",
 	}
-	// TODO: 9500 as default
 	dnsPortFlag = cli.IntFlag{
 		Name:     "dns.port",
 		DefValue: nodeconfig.DefaultDNSPort,
@@ -1070,7 +1067,6 @@ var (
 
 // Note: this function need to be called before parse other flags
 func applyLegacyMiscFlags(cmd *cobra.Command, config *harmonyConfig) {
-	// TODO: move all port manipulation +500 -3000 logic here
 	if cli.IsFlagChanged(cmd, legacyPortFlag) {
 		legacyPort := cli.GetIntFlagValue(cmd, legacyPortFlag)
 		config.P2P.Port = legacyPort
