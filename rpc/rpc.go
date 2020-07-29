@@ -68,16 +68,18 @@ func StartServers(hmy *hmy.Harmony, apis []rpc.API, config nodeconfig.RPCServerC
 
 	if config.HTTPEnabled {
 		httpEndpoint = fmt.Sprintf("%v:%v", config.HTTPIp, config.HTTPPort)
-		if err := startHTTP(apis); err != nil {
-			return err
-		}
+		fmt.Println("listen http", httpEndpoint)
+		//if err := startHTTP(apis); err != nil {
+		//	return err
+		//}
 	}
 
 	if config.WSEnabled {
 		wsEndpoint = fmt.Sprintf("%v:%v", config.WSIp, config.WSPort)
-		if err := startWS(apis); err != nil {
-			return err
-		}
+		fmt.Println("listen ws", wsEndpoint)
+		//if err := startWS(apis); err != nil {
+		//	return err
+		//}
 	}
 
 	return nil
