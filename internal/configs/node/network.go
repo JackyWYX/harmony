@@ -101,6 +101,7 @@ func GetHTTPPortFromBase(basePort int) int {
 	return basePort + rpcHTTPPortOffset
 }
 
+// GetWSPortFromBase return the Websocket port from the base port
 func GetWSPortFromBase(basePort int) int {
 	return basePort + rpcWSPortOffSet
 }
