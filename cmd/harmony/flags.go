@@ -408,7 +408,7 @@ var (
 		Name:       "public_rpc",
 		Usage:      "Enable Public HTTP Access (default: false)",
 		DefValue:   defaultConfig.HTTP.Enabled,
-		Deprecated: "please use --http.ip to specify the ip address to listen",
+		Deprecated: "use --http.ip and --ws.ip to specify the ip address to listen. Use 127.0.0.1 to listen local requests.",
 	}
 )
 
@@ -429,6 +429,13 @@ func applyRPCFlags(cmd *cobra.Command, config *harmonyConfig) {
 		config.HTTP.Enabled = cli.GetBoolFlagValue(cmd, rpcEnabledFlag)
 	} else if isRPCSpecified {
 		config.HTTP.Enabled = true
+	}
+
+	if cli.IsFlagChanged(cmd, legacyPublicRPCFlag) {
+		if !cli.GetBoolFlagValue(cmd, legacyPublicRPCFlag) {
+			config.HTTP.IP = localEndpoint
+			config.WS.IP = localEndpoint
+		}
 	}
 }
 
