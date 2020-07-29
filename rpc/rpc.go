@@ -66,16 +66,20 @@ func (n Version) Namespace() string {
 func StartServers(hmy *hmy.Harmony, apis []rpc.API, config nodeconfig.RPCServerConfig) error {
 	apis = append(apis, getAPIs(hmy)...)
 
-	httpEndpoint = fmt.Sprintf("%v:%v", config.HTTPIp, config.HTTPPort)
-	fmt.Println("start listening http endpoint", httpEndpoint)
-	if err := startHTTP(apis); err != nil {
-		return err
+	if config.HTTPEnabled {
+		httpEndpoint = fmt.Sprintf("%v:%v", config.HTTPIp, config.HTTPPort)
+		if err := startHTTP(apis); err != nil {
+			return err
+		}
 	}
-	wsEndpoint = fmt.Sprintf("%v:%v", config.WSIp, config.WSPort)
-	fmt.Println("start listening ws endpoint", wsEndpoint)
-	if err := startWS(apis); err != nil {
-		return err
+
+	if config.WSEnabled {
+		wsEndpoint = fmt.Sprintf("%v:%v", config.WSIp, config.WSPort)
+		if err := startWS(apis); err != nil {
+			return err
+		}
 	}
+
 	return nil
 }
 

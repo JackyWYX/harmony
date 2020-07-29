@@ -245,10 +245,12 @@ func setupNodeAndRun(hc harmonyConfig) {
 
 	// Parse RPC config
 	nodeConfig.RPCServer = nodeconfig.RPCServerConfig{
-		HTTPIp:   hc.HTTP.IP,
-		HTTPPort: hc.HTTP.Port,
-		WSIp:     hc.WS.IP,
-		WSPort:   hc.WS.Port,
+		HTTPEnabled: hc.HTTP.Enabled,
+		HTTPIp:      hc.HTTP.IP,
+		HTTPPort:    hc.HTTP.Port,
+		WSEnabled:   hc.WS.Enabled,
+		WSIp:        hc.WS.IP,
+		WSPort:      hc.WS.Port,
 	}
 	if nodeConfig.ShardID != shard.BeaconChainShardID {
 		utils.Logger().Info().
