@@ -128,6 +128,7 @@ func (p *DNSSyncingPeerProvider) SyncingPeers(shardID uint32) (peers []p2p.Peer,
 		return nil, errors.Wrapf(err,
 			"[SYNC] cannot find peers using DNS name %#v", dns)
 	}
+	fmt.Println("syncing zone ", dns, p.port)
 	for _, addr := range addrs {
 		peers = append(peers, p2p.Peer{IP: addr, Port: p.port})
 	}
