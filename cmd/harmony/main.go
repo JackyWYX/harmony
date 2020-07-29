@@ -188,10 +188,6 @@ func setupNodeAndRun(hc harmonyConfig) {
 		utils.FatalErrMsg(err, "cannot parse bootnode list %#v",
 			bootNodes)
 	}
-	// TODO: seperate use of port rpc / p2p
-	defConfig := nodeconfig.GetDefaultConfig()
-	defConfig.Port = strconv.Itoa(hc.HTTP.Port)
-	defConfig.IP = hc.HTTP.IP
 
 	nodeconfig.SetShardingSchedule(shard.Schedule)
 	nodeconfig.SetVersion(getHarmonyVersion())
@@ -293,7 +289,7 @@ func setupNodeAndRun(hc harmonyConfig) {
 		Str("ClientGroupID", nodeConfig.GetClientGroupID().String()).
 		Str("Role", currentNode.NodeConfig.Role().String()).
 		Str("multiaddress",
-			fmt.Sprintf("/ip4/%s/tcp/%d/p2p/%s", hc.HTTP.IP, hc.P2P.Port, myHost.GetID().Pretty()),
+			fmt.Sprintf("/ip4/%s/tcp/%d/p2p/%s", hc.P2P.IP, hc.P2P.Port, myHost.GetID().Pretty()),
 		).
 		Msg(startMsg)
 
@@ -512,7 +508,7 @@ func setupConsensusAndNode(hc harmonyConfig, nodeConfig *nodeconfig.ConfigType) 
 	} else {
 		if hc.Network.NetworkType == nodeconfig.Localnet {
 			epochConfig := shard.Schedule.InstanceForEpoch(ethCommon.Big0)
-			selfPort := hc.Network.DNSPort
+			selfPort := hc.P2P.Port
 			currentNode.SyncingPeerProvider = node.NewLocalSyncingPeerProvider(
 				6000, uint16(selfPort), epochConfig.NumShards(), uint32(epochConfig.NumNodesPerShard()))
 		} else {
