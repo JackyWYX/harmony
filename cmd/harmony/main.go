@@ -455,8 +455,8 @@ func createGlobalConfig(hc harmonyConfig) (*nodeconfig.ConfigType, error) {
 
 	nodeConfig.DBDir = hc.General.DataDir
 
-	if hc.Legacy != nil && len(hc.Legacy.WebHookConfig) != 0 {
-		p := hc.Legacy.WebHookConfig
+	if hc.Legacy != nil && hc.Legacy.WebHookConfig != nil && len(*hc.Legacy.WebHookConfig) != 0 {
+		p := *hc.Legacy.WebHookConfig
 		config, err := webhooks.NewWebHooksFromPath(p)
 		if err != nil {
 			fmt.Fprintf(
@@ -507,7 +507,12 @@ func setupConsensusAndNode(hc harmonyConfig, nodeConfig *nodeconfig.ConfigType) 
 	chainDBFactory := &shardchain.LDBFactory{RootDir: nodeConfig.DBDir}
 
 	currentNode := node.New(myHost, currentConsensus, chainDBFactory, blacklist, hc.General.IsArchival)
-	currentNode.BroadcastInvalidTx = hc.TxPool.BroadcastInvalidTx
+
+	if hc.Legacy != nil && hc.Legacy.TPBroadcastInvalidTxn != nil {
+		currentNode.BroadcastInvalidTx = *hc.Legacy.TPBroadcastInvalidTxn
+	} else {
+		currentNode.BroadcastInvalidTx = defaultBroadcastInvalidTx
+	}
 
 	if hc.Network.LegacySyncing {
 		currentNode.SyncingPeerProvider = node.NewLegacySyncingPeerProvider(currentNode)

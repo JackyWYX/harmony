@@ -47,8 +47,7 @@ var defaultConfig = harmonyConfig{
 		KMSConfigFile:    "",
 	},
 	TxPool: txPoolConfig{
-		BlacklistFile:      "./.hmy/blacklist.txt",
-		BroadcastInvalidTx: true,
+		BlacklistFile: "./.hmy/blacklist.txt",
 	},
 	Pprof: pprofConfig{
 		Enabled:    false,
@@ -82,6 +81,10 @@ var defaultLogContext = logContext{
 var defaultConsensusConfig = consensusConfig{
 	MinPeers: 6,
 }
+
+const (
+	defaultBroadcastInvalidTx = true
+)
 
 func getDefaultHmyConfigCopy(nt nodeconfig.NetworkType) harmonyConfig {
 	config := defaultConfig

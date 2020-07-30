@@ -75,8 +75,7 @@ type blsConfig struct {
 }
 
 type txPoolConfig struct {
-	BlacklistFile      string
-	BroadcastInvalidTx bool
+	BlacklistFile string
 }
 
 type pprofConfig struct {
@@ -123,7 +122,8 @@ type revertConfig struct {
 }
 
 type legacyConfig struct {
-	WebHookConfig string
+	WebHookConfig         *string `toml:",omitempty"`
+	TPBroadcastInvalidTxn *bool   `toml:",omitempty"`
 }
 
 // TODO: use specific type wise validation instead of general string types assertion.

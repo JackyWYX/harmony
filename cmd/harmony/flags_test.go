@@ -11,6 +11,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var (
+	trueBool = true
+)
+
 func TestHarmonyFlags(t *testing.T) {
 	tests := []struct {
 		argStr    string
@@ -76,8 +80,7 @@ func TestHarmonyFlags(t *testing.T) {
 					KMSConfigFile:    "config.json",
 				},
 				TxPool: txPoolConfig{
-					BlacklistFile:      "./.hmy/blacklist.txt",
-					BroadcastInvalidTx: true,
+					BlacklistFile: "./.hmy/blacklist.txt",
 				},
 				Pprof: pprofConfig{
 					Enabled:    false,
@@ -92,6 +95,9 @@ func TestHarmonyFlags(t *testing.T) {
 						IP:   "8.8.8.8",
 						Port: 9000,
 					},
+				},
+				Legacy: &legacyConfig{
+					TPBroadcastInvalidTxn: &trueBool,
 				},
 			},
 		},
@@ -566,22 +572,19 @@ func TestTxPoolFlags(t *testing.T) {
 		{
 			args: []string{},
 			expConfig: txPoolConfig{
-				BlacklistFile:      defaultConfig.TxPool.BlacklistFile,
-				BroadcastInvalidTx: defaultConfig.TxPool.BroadcastInvalidTx,
+				BlacklistFile: defaultConfig.TxPool.BlacklistFile,
 			},
 		},
 		{
-			args: []string{"--txpool.blacklist", "blacklist.file", "--txpool.broadcast-invalid-tx"},
+			args: []string{"--txpool.blacklist", "blacklist.file"},
 			expConfig: txPoolConfig{
-				BlacklistFile:      "blacklist.file",
-				BroadcastInvalidTx: true,
+				BlacklistFile: "blacklist.file",
 			},
 		},
 		{
-			args: []string{"--blacklist", "blacklist.file", "--broadcast_invalid_tx"},
+			args: []string{"--blacklist", "blacklist.file"},
 			expConfig: txPoolConfig{
-				BlacklistFile:      "blacklist.file",
-				BroadcastInvalidTx: true,
+				BlacklistFile: "blacklist.file",
 			},
 		},
 	}

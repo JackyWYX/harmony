@@ -98,10 +98,7 @@ var (
 
 	txPoolFlags = []cli.Flag{
 		tpBlacklistFileFlag,
-		tpBroadcastInvalidTxFlag,
-
 		legacyTPBlacklistFileFlag,
-		legacyTPBroadcastInvalidTxFlag,
 	}
 
 	pprofFlags = []cli.Flag{
@@ -155,6 +152,7 @@ var (
 		legacyPortFlag,
 		legacyIPFlag,
 		legacyWebHookConfigFlag,
+		legacyTPBroadcastInvalidTxFlag,
 	}
 )
 
@@ -735,24 +733,11 @@ var (
 		Usage:    "file of blacklisted wallet addresses",
 		DefValue: defaultConfig.TxPool.BlacklistFile,
 	}
-	// TODO: mark hard code?
-	tpBroadcastInvalidTxFlag = cli.BoolFlag{
-		Name:     "txpool.broadcast-invalid-tx",
-		Usage:    "whether to broadcast invalid transactions",
-		DefValue: defaultConfig.TxPool.BroadcastInvalidTx,
-		Hidden:   true,
-	}
 	legacyTPBlacklistFileFlag = cli.StringFlag{
 		Name:       "blacklist",
 		Usage:      "Path to newline delimited file of blacklisted wallet addresses",
 		DefValue:   defaultConfig.TxPool.BlacklistFile,
 		Deprecated: "use --txpool.blacklist",
-	}
-	legacyTPBroadcastInvalidTxFlag = cli.BoolFlag{
-		Name:       "broadcast_invalid_tx",
-		Usage:      "broadcast invalid transactions to sync pool state",
-		DefValue:   defaultConfig.TxPool.BroadcastInvalidTx,
-		Deprecated: "use --txpool.broadcast-invalid-tx",
 	}
 )
 
@@ -761,12 +746,6 @@ func applyTxPoolFlags(cmd *cobra.Command, config *harmonyConfig) {
 		config.TxPool.BlacklistFile = cli.GetStringFlagValue(cmd, tpBlacklistFileFlag)
 	} else if cli.IsFlagChanged(cmd, legacyTPBlacklistFileFlag) {
 		config.TxPool.BlacklistFile = cli.GetStringFlagValue(cmd, legacyTPBlacklistFileFlag)
-	}
-
-	if cli.IsFlagChanged(cmd, tpBroadcastInvalidTxFlag) {
-		config.TxPool.BroadcastInvalidTx = cli.GetBoolFlagValue(cmd, tpBroadcastInvalidTxFlag)
-	} else if cli.IsFlagChanged(cmd, legacyTPBroadcastInvalidTxFlag) {
-		config.TxPool.BroadcastInvalidTx = cli.GetBoolFlagValue(cmd, legacyTPBroadcastInvalidTxFlag)
 	}
 }
 
@@ -1050,6 +1029,12 @@ var (
 		DefValue: "",
 		Hidden:   true,
 	}
+	legacyTPBroadcastInvalidTxFlag = cli.BoolFlag{
+		Name:       "broadcast_invalid_tx",
+		Usage:      "broadcast invalid transactions to sync pool state",
+		DefValue:   defaultBroadcastInvalidTx,
+		Deprecated: "use --txpool.broadcast-invalid-tx",
+	}
 )
 
 // Note: this function need to be called before parse other flags
@@ -1081,9 +1066,16 @@ func applyLegacyMiscFlags(cmd *cobra.Command, config *harmonyConfig) {
 		config.Log.Context = logCtx
 	}
 
-	if cli.IsFlagChanged(cmd, legacyWebHookConfigFlag) {
-		config.Legacy = &legacyConfig{
-			WebHookConfig: cli.GetStringFlagValue(cmd, legacyWebHookConfigFlag),
+	if cli.HasFlagsChanged(cmd, []cli.Flag{legacyWebHookConfigFlag, legacyTPBroadcastInvalidTxFlag}) {
+		config.Legacy = &legacyConfig{}
+		if cli.IsFlagChanged(cmd, legacyWebHookConfigFlag) {
+			val := cli.GetStringFlagValue(cmd, legacyWebHookConfigFlag)
+			config.Legacy.WebHookConfig = &val
+		}
+		if cli.IsFlagChanged(cmd, legacyTPBroadcastInvalidTxFlag) {
+			val := cli.GetBoolFlagValue(cmd, legacyTPBroadcastInvalidTxFlag)
+			config.Legacy.TPBroadcastInvalidTxn = &val
 		}
 	}
+
 }
