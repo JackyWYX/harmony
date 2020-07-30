@@ -82,7 +82,7 @@ var defaultLogContext = logContext{
 var defaultConsensusConfig = consensusConfig{
 	DelayCommit: "0ms",
 	BlockTime:   "5s",
-	MinPeers:    32,
+	MinPeers:    6,
 }
 
 func getDefaultHmyConfigCopy(nt nodeconfig.NetworkType) harmonyConfig {
