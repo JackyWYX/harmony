@@ -22,14 +22,14 @@ type harmonyConfig struct {
 	P2P       p2pConfig
 	HTTP      httpConfig
 	WS        wsConfig
-	Consensus consensusConfig
 	BLSKeys   blsConfig
 	TxPool    txPoolConfig
 	Pprof     pprofConfig
 	Log       logConfig
-	Devnet    *devnetConfig `toml:",omitempty"`
-	Revert    *revertConfig `toml:",omitempty"`
-	Legacy    *legacyConfig `toml:",omitempty"`
+	Consensus *consensusConfig `toml:",omitempty"`
+	Devnet    *devnetConfig    `toml:",omitempty"`
+	Revert    *revertConfig    `toml:",omitempty"`
+	Legacy    *legacyConfig    `toml:",omitempty"`
 }
 
 type networkConfig struct {

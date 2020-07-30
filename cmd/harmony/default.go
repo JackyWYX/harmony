@@ -46,11 +46,6 @@ var defaultConfig = harmonyConfig{
 		KMSConfigSrcType: kmsConfigTypeShared,
 		KMSConfigFile:    "",
 	},
-	Consensus: consensusConfig{
-		DelayCommit: "0ms",
-		BlockTime:   "8s",
-		MinPeers:    32,
-	},
 	TxPool: txPoolConfig{
 		BlacklistFile:      "./.hmy/blacklist.txt",
 		BroadcastInvalidTx: false,
@@ -84,6 +79,12 @@ var defaultLogContext = logContext{
 	Port: 9000,
 }
 
+var defaultConsensusConfig = consensusConfig{
+	DelayCommit: "0ms",
+	BlockTime:   "5s",
+	MinPeers:    32,
+}
+
 func getDefaultHmyConfigCopy(nt nodeconfig.NetworkType) harmonyConfig {
 	config := defaultConfig
 
@@ -107,6 +108,11 @@ func getDefaultRevertConfigCopy() revertConfig {
 
 func getDefaultLogContextCopy() logContext {
 	config := defaultLogContext
+	return config
+}
+
+func getDefaultConsensusConfigCopy() consensusConfig {
+	config := defaultConsensusConfig
 	return config
 }
 

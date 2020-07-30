@@ -486,13 +486,28 @@ func setupConsensusAndNode(hc harmonyConfig, nodeConfig *nodeconfig.ConfigType) 
 		_, _ = fmt.Fprintf(os.Stderr, "Error :%v \n", err)
 		os.Exit(1)
 	}
-	commitDelay, err := time.ParseDuration(hc.Consensus.DelayCommit)
+
+	// Parse consensus settings
+	var (
+		delayCommit string
+		minPeers    int
+	)
+
+	if hc.Consensus != nil {
+		delayCommit = hc.Consensus.DelayCommit
+		minPeers = hc.Consensus.MinPeers
+	} else {
+		delayCommit = defaultConsensusConfig.DelayCommit
+		minPeers = defaultConsensusConfig.MinPeers
+	}
+
+	commitDelay, err := time.ParseDuration(delayCommit)
 	if err != nil || commitDelay < 0 {
-		_, _ = fmt.Fprintf(os.Stderr, "ERROR invalid commit delay %#v", hc.Consensus.DelayCommit)
+		_, _ = fmt.Fprintf(os.Stderr, "ERROR invalid commit delay %#v", delayCommit)
 		os.Exit(1)
 	}
 	currentConsensus.SetCommitDelay(commitDelay)
-	currentConsensus.MinPeers = hc.Consensus.MinPeers
+	currentConsensus.MinPeers = minPeers
 
 	blacklist, err := setupBlacklist(hc)
 	if err != nil {
@@ -561,10 +576,15 @@ func setupConsensusAndNode(hc harmonyConfig, nodeConfig *nodeconfig.ConfigType) 
 	// update consensus information based on the blockchain
 	currentConsensus.SetMode(currentConsensus.UpdateConsensusInformation())
 	// Setup block period and block due time.
-	// TODO: move the error check to validation
-	currentConsensus.BlockPeriod, err = time.ParseDuration(hc.Consensus.BlockTime)
+	var blockTime string
+	if hc.Consensus != nil {
+		blockTime = hc.Consensus.BlockTime
+	} else {
+		blockTime = defaultConsensusConfig.BlockTime
+	}
+	currentConsensus.BlockPeriod, err = time.ParseDuration(blockTime)
 	if err != nil {
-		fmt.Printf("Unknown block period: %v\n", hc.Consensus.BlockTime)
+		fmt.Printf("Unknown block period: %v\n", blockTime)
 		os.Exit(128)
 	}
 	currentConsensus.NextBlockDue = time.Now()

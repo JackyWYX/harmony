@@ -60,9 +60,9 @@ func TestHarmonyFlags(t *testing.T) {
 					IP:      "8.8.8.8",
 					Port:    9800,
 				},
-				Consensus: consensusConfig{
+				Consensus: &consensusConfig{
 					DelayCommit: "0ms",
-					BlockTime:   "8s",
+					BlockTime:   "5s",
 					MinPeers:    6,
 				},
 				BLSKeys: blsConfig{
@@ -520,17 +520,17 @@ func TestBLSFlags(t *testing.T) {
 func TestConsensusFlags(t *testing.T) {
 	tests := []struct {
 		args      []string
-		expConfig consensusConfig
+		expConfig *consensusConfig
 		expErr    error
 	}{
 		{
 			args:      []string{},
-			expConfig: defaultConfig.Consensus,
+			expConfig: nil,
 		},
 		{
 			args: []string{"--consensus.block-time", "5s", "--consensus.delay-commit", "10ms",
 				"--consensus.min-peers", "10"},
-			expConfig: consensusConfig{
+			expConfig: &consensusConfig{
 				DelayCommit: "10ms",
 				BlockTime:   "5s",
 				MinPeers:    10,
@@ -538,7 +538,7 @@ func TestConsensusFlags(t *testing.T) {
 		},
 		{
 			args: []string{"--delay_commit", "10ms", "--block_period", "5", "--min_peers", "10"},
-			expConfig: consensusConfig{
+			expConfig: &consensusConfig{
 				DelayCommit: "10ms",
 				BlockTime:   "5s",
 				MinPeers:    10,

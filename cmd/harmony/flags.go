@@ -690,44 +690,49 @@ var (
 	consensusDelayCommitFlag = cli.StringFlag{
 		Name:     "consensus.delay-commit",
 		Usage:    "how long to delay sending commit messages in consensus, e.g: 500ms, 1s",
-		DefValue: defaultConfig.Consensus.DelayCommit,
+		DefValue: defaultConsensusConfig.DelayCommit,
 		Hidden:   true,
 	}
 	// TODO: hard code value?
 	consensusBlockTimeFlag = cli.StringFlag{
 		Name:     "consensus.block-time",
 		Usage:    "block interval time, e.g: 8s",
-		DefValue: defaultConfig.Consensus.BlockTime,
+		DefValue: defaultConsensusConfig.BlockTime,
 		Hidden:   true,
 	}
 	// TODO: hard code value?
 	consensusMinPeersFlag = cli.IntFlag{
 		Name:     "consensus.min-peers",
 		Usage:    "minimal number of peers in shard",
-		DefValue: defaultConfig.Consensus.MinPeers,
+		DefValue: defaultConsensusConfig.MinPeers,
 		Hidden:   true,
 	}
 	legacyDelayCommitFlag = cli.StringFlag{
 		Name:       "delay_commit",
 		Usage:      "how long to delay sending commit messages in consensus, ex: 500ms, 1s",
-		DefValue:   defaultConfig.Consensus.DelayCommit,
+		DefValue:   defaultConsensusConfig.DelayCommit,
 		Deprecated: "use --consensus.delay-commit",
 	}
 	legacyBlockTimeFlag = cli.IntFlag{
 		Name:       "block_period",
 		Usage:      "how long in second the leader waits to propose a new block",
-		DefValue:   8,
+		DefValue:   5,
 		Deprecated: "use --consensus.block-time",
 	}
 	legacyConsensusMinPeersFlag = cli.IntFlag{
 		Name:     "min_peers",
 		Usage:    "Minimal number of Peers in shard",
-		DefValue: defaultConfig.Consensus.MinPeers,
+		DefValue: defaultConsensusConfig.MinPeers,
 		Hidden:   true,
 	}
 )
 
 func applyConsensusFlags(cmd *cobra.Command, config *harmonyConfig) {
+	if cli.HasFlagsChanged(cmd, consensusFlags) {
+		cfg := getDefaultConsensusConfigCopy()
+		config.Consensus = &cfg
+	}
+
 	if cli.IsFlagChanged(cmd, consensusDelayCommitFlag) {
 		config.Consensus.DelayCommit = cli.GetStringFlagValue(cmd, consensusDelayCommitFlag)
 	} else if cli.IsFlagChanged(cmd, legacyDelayCommitFlag) {
