@@ -35,7 +35,7 @@ var defaultConfig = harmonyConfig{
 	},
 	BLSKeys: blsConfig{
 		KeyDir:   "./.hmy/blskeys",
-		KeyFiles: nil,
+		KeyFiles: []string{},
 		MaxKeys:  10,
 
 		PassEnabled:      true,
@@ -46,14 +46,8 @@ var defaultConfig = harmonyConfig{
 		KMSConfigSrcType: kmsConfigTypeShared,
 		KMSConfigFile:    "",
 	},
-	Consensus: consensusConfig{
-		DelayCommit: "0ms",
-		BlockTime:   "8s",
-		MinPeers:    32,
-	},
 	TxPool: txPoolConfig{
-		BlacklistFile:      "./.hmy/blacklist.txt",
-		BroadcastInvalidTx: false,
+		BlacklistFile: "./.hmy/blacklist.txt",
 	},
 	Pprof: pprofConfig{
 		Enabled:    false,
@@ -84,6 +78,14 @@ var defaultLogContext = logContext{
 	Port: 9000,
 }
 
+var defaultConsensusConfig = consensusConfig{
+	MinPeers: 6,
+}
+
+const (
+	defaultBroadcastInvalidTx = true
+)
+
 func getDefaultHmyConfigCopy(nt nodeconfig.NetworkType) harmonyConfig {
 	config := defaultConfig
 
@@ -107,6 +109,11 @@ func getDefaultRevertConfigCopy() revertConfig {
 
 func getDefaultLogContextCopy() logContext {
 	config := defaultLogContext
+	return config
+}
+
+func getDefaultConsensusConfigCopy() consensusConfig {
+	config := defaultConsensusConfig
 	return config
 }
 

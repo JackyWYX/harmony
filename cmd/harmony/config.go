@@ -22,14 +22,14 @@ type harmonyConfig struct {
 	P2P       p2pConfig
 	HTTP      httpConfig
 	WS        wsConfig
-	Consensus consensusConfig
 	BLSKeys   blsConfig
 	TxPool    txPoolConfig
 	Pprof     pprofConfig
 	Log       logConfig
-	Devnet    *devnetConfig `toml:",omitempty"`
-	Revert    *revertConfig `toml:",omitempty"`
-	Legacy    *legacyConfig `toml:",omitempty"`
+	Consensus *consensusConfig `toml:",omitempty"`
+	Devnet    *devnetConfig    `toml:",omitempty"`
+	Revert    *revertConfig    `toml:",omitempty"`
+	Legacy    *legacyConfig    `toml:",omitempty"`
 }
 
 type networkConfig struct {
@@ -56,9 +56,7 @@ type generalConfig struct {
 }
 
 type consensusConfig struct {
-	DelayCommit string
-	BlockTime   string
-	MinPeers    int
+	MinPeers int
 }
 
 type blsConfig struct {
@@ -77,8 +75,7 @@ type blsConfig struct {
 }
 
 type txPoolConfig struct {
-	BlacklistFile      string
-	BroadcastInvalidTx bool
+	BlacklistFile string
 }
 
 type pprofConfig struct {
@@ -125,7 +122,8 @@ type revertConfig struct {
 }
 
 type legacyConfig struct {
-	WebHookConfig string
+	WebHookConfig         *string `toml:",omitempty"`
+	TPBroadcastInvalidTxn *bool   `toml:",omitempty"`
 }
 
 // TODO: use specific type wise validation instead of general string types assertion.
