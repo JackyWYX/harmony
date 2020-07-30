@@ -35,7 +35,7 @@ var defaultConfig = harmonyConfig{
 	},
 	BLSKeys: blsConfig{
 		KeyDir:   "./.hmy/blskeys",
-		KeyFiles: nil,
+		KeyFiles: []string{},
 		MaxKeys:  10,
 
 		PassEnabled:      true,

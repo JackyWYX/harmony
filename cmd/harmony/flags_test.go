@@ -69,7 +69,7 @@ func TestHarmonyFlags(t *testing.T) {
 				},
 				BLSKeys: blsConfig{
 					KeyDir:           "./.hmy/blskeys",
-					KeyFiles:         nil,
+					KeyFiles:         []string{},
 					MaxKeys:          10,
 					PassEnabled:      true,
 					PassSrcType:      "auto",
