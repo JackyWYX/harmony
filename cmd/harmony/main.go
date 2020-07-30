@@ -487,26 +487,15 @@ func setupConsensusAndNode(hc harmonyConfig, nodeConfig *nodeconfig.ConfigType) 
 		os.Exit(1)
 	}
 
-	// Parse consensus settings
-	var (
-		delayCommit string
-		minPeers    int
-	)
+	currentConsensus.SetCommitDelay(time.Duration(0))
 
+	// Parse minPeers from harmonyConfig
+	var minPeers int
 	if hc.Consensus != nil {
-		delayCommit = hc.Consensus.DelayCommit
 		minPeers = hc.Consensus.MinPeers
 	} else {
-		delayCommit = defaultConsensusConfig.DelayCommit
 		minPeers = defaultConsensusConfig.MinPeers
 	}
-
-	commitDelay, err := time.ParseDuration(delayCommit)
-	if err != nil || commitDelay < 0 {
-		_, _ = fmt.Fprintf(os.Stderr, "ERROR invalid commit delay %#v", delayCommit)
-		os.Exit(1)
-	}
-	currentConsensus.SetCommitDelay(commitDelay)
 	currentConsensus.MinPeers = minPeers
 
 	blacklist, err := setupBlacklist(hc)

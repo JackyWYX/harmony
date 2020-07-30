@@ -56,9 +56,8 @@ type generalConfig struct {
 }
 
 type consensusConfig struct {
-	DelayCommit string
-	BlockTime   string
-	MinPeers    int
+	BlockTime string
+	MinPeers  int
 }
 
 type blsConfig struct {

@@ -82,14 +82,20 @@ var (
 		legacyKMSConfigSourceFlag,
 	}
 
-	consensusFlags = []cli.Flag{
-		consensusDelayCommitFlag,
+	consensusFlags = append(consensusValidFlags, consensusInvalidFlags...)
+
+	// consensusValidFlags are flags that are effective
+	consensusValidFlags = []cli.Flag{
 		consensusBlockTimeFlag,
 		consensusMinPeersFlag,
 
-		legacyDelayCommitFlag,
 		legacyBlockTimeFlag,
 		legacyConsensusMinPeersFlag,
+	}
+
+	// consensusInvalidFlags are flags that are no longer effective
+	consensusInvalidFlags = []cli.Flag{
+		legacyDelayCommitFlag,
 	}
 
 	txPoolFlags = []cli.Flag{
@@ -687,13 +693,6 @@ func legacyApplyKMSSourceVal(src string, config *harmonyConfig) {
 // consensus flags
 var (
 	// TODO: hard code value?
-	consensusDelayCommitFlag = cli.StringFlag{
-		Name:     "consensus.delay-commit",
-		Usage:    "how long to delay sending commit messages in consensus, e.g: 500ms, 1s",
-		DefValue: defaultConsensusConfig.DelayCommit,
-		Hidden:   true,
-	}
-	// TODO: hard code value?
 	consensusBlockTimeFlag = cli.StringFlag{
 		Name:     "consensus.block-time",
 		Usage:    "block interval time, e.g: 8s",
@@ -710,8 +709,7 @@ var (
 	legacyDelayCommitFlag = cli.StringFlag{
 		Name:       "delay_commit",
 		Usage:      "how long to delay sending commit messages in consensus, ex: 500ms, 1s",
-		DefValue:   defaultConsensusConfig.DelayCommit,
-		Deprecated: "use --consensus.delay-commit",
+		Deprecated: "flag delay_commit is no longer effective",
 	}
 	legacyBlockTimeFlag = cli.IntFlag{
 		Name:       "block_period",
@@ -728,15 +726,9 @@ var (
 )
 
 func applyConsensusFlags(cmd *cobra.Command, config *harmonyConfig) {
-	if cli.HasFlagsChanged(cmd, consensusFlags) {
+	if cli.HasFlagsChanged(cmd, consensusValidFlags) {
 		cfg := getDefaultConsensusConfigCopy()
 		config.Consensus = &cfg
-	}
-
-	if cli.IsFlagChanged(cmd, consensusDelayCommitFlag) {
-		config.Consensus.DelayCommit = cli.GetStringFlagValue(cmd, consensusDelayCommitFlag)
-	} else if cli.IsFlagChanged(cmd, legacyDelayCommitFlag) {
-		config.Consensus.DelayCommit = cli.GetStringFlagValue(cmd, legacyDelayCommitFlag)
 	}
 
 	if cli.IsFlagChanged(cmd, consensusBlockTimeFlag) {

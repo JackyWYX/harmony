@@ -61,9 +61,8 @@ func TestHarmonyFlags(t *testing.T) {
 					Port:    9800,
 				},
 				Consensus: &consensusConfig{
-					DelayCommit: "0ms",
-					BlockTime:   "5s",
-					MinPeers:    6,
+					BlockTime: "5s",
+					MinPeers:  6,
 				},
 				BLSKeys: blsConfig{
 					KeyDir:           "./.hmy/blskeys",
@@ -528,20 +527,17 @@ func TestConsensusFlags(t *testing.T) {
 			expConfig: nil,
 		},
 		{
-			args: []string{"--consensus.block-time", "5s", "--consensus.delay-commit", "10ms",
-				"--consensus.min-peers", "10"},
+			args: []string{"--consensus.block-time", "5s", "--consensus.min-peers", "10"},
 			expConfig: &consensusConfig{
-				DelayCommit: "10ms",
-				BlockTime:   "5s",
-				MinPeers:    10,
+				BlockTime: "5s",
+				MinPeers:  10,
 			},
 		},
 		{
 			args: []string{"--delay_commit", "10ms", "--block_period", "5", "--min_peers", "10"},
 			expConfig: &consensusConfig{
-				DelayCommit: "10ms",
-				BlockTime:   "5s",
-				MinPeers:    10,
+				BlockTime: "5s",
+				MinPeers:  10,
 			},
 		},
 	}
