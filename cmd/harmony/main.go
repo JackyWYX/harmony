@@ -487,6 +487,7 @@ func setupConsensusAndNode(hc harmonyConfig, nodeConfig *nodeconfig.ConfigType) 
 		os.Exit(1)
 	}
 
+	fmt.Println("set commit delay duration 0")
 	currentConsensus.SetCommitDelay(time.Duration(0))
 
 	// Parse minPeers from harmonyConfig
@@ -496,6 +497,7 @@ func setupConsensusAndNode(hc harmonyConfig, nodeConfig *nodeconfig.ConfigType) 
 	} else {
 		minPeers = defaultConsensusConfig.MinPeers
 	}
+	fmt.Println("set min peers", minPeers)
 	currentConsensus.MinPeers = minPeers
 
 	blacklist, err := setupBlacklist(hc)
@@ -509,8 +511,10 @@ func setupConsensusAndNode(hc harmonyConfig, nodeConfig *nodeconfig.ConfigType) 
 	currentNode := node.New(myHost, currentConsensus, chainDBFactory, blacklist, hc.General.IsArchival)
 
 	if hc.Legacy != nil && hc.Legacy.TPBroadcastInvalidTxn != nil {
+		fmt.Println("set from legacy flag broadcast txn", *hc.Legacy.TPBroadcastInvalidTxn)
 		currentNode.BroadcastInvalidTx = *hc.Legacy.TPBroadcastInvalidTxn
 	} else {
+		fmt.Println("use default legacy broadcast flag", defaultBroadcastInvalidTx)
 		currentNode.BroadcastInvalidTx = defaultBroadcastInvalidTx
 	}
 

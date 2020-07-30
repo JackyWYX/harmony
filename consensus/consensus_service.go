@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"fmt"
 	"math/big"
 	"sync/atomic"
 	"time"
@@ -348,8 +349,10 @@ func (consensus *Consensus) UpdateConsensusInformation() Mode {
 	}
 
 	if consensus.ChainReader.Config().IsFiveSeconds(curEpoch) {
+		fmt.Println("set consensus block time", 5)
 		consensus.BlockPeriod = 5 * time.Second
 	} else {
+		fmt.Println("set consensus block time", 8)
 		consensus.BlockPeriod = 8 * time.Second
 	}
 

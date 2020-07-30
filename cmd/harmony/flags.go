@@ -1067,12 +1067,14 @@ func applyLegacyMiscFlags(cmd *cobra.Command, config *harmonyConfig) {
 	}
 
 	if cli.HasFlagsChanged(cmd, []cli.Flag{legacyWebHookConfigFlag, legacyTPBroadcastInvalidTxFlag}) {
+		fmt.Println("legacy config is set")
 		config.Legacy = &legacyConfig{}
 		if cli.IsFlagChanged(cmd, legacyWebHookConfigFlag) {
 			val := cli.GetStringFlagValue(cmd, legacyWebHookConfigFlag)
 			config.Legacy.WebHookConfig = &val
 		}
 		if cli.IsFlagChanged(cmd, legacyTPBroadcastInvalidTxFlag) {
+			fmt.Println("legacy broadcast is set")
 			val := cli.GetBoolFlagValue(cmd, legacyTPBroadcastInvalidTxFlag)
 			config.Legacy.TPBroadcastInvalidTxn = &val
 		}
