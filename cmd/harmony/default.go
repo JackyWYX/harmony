@@ -48,7 +48,7 @@ var defaultConfig = harmonyConfig{
 	},
 	TxPool: txPoolConfig{
 		BlacklistFile:      "./.hmy/blacklist.txt",
-		BroadcastInvalidTx: false,
+		BroadcastInvalidTx: true,
 	},
 	Pprof: pprofConfig{
 		Enabled:    false,
