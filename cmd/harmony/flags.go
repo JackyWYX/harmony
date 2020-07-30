@@ -86,16 +86,14 @@ var (
 
 	// consensusValidFlags are flags that are effective
 	consensusValidFlags = []cli.Flag{
-		consensusBlockTimeFlag,
 		consensusMinPeersFlag,
-
-		legacyBlockTimeFlag,
 		legacyConsensusMinPeersFlag,
 	}
 
 	// consensusInvalidFlags are flags that are no longer effective
 	consensusInvalidFlags = []cli.Flag{
 		legacyDelayCommitFlag,
+		legacyBlockTimeFlag,
 	}
 
 	txPoolFlags = []cli.Flag{
@@ -692,14 +690,6 @@ func legacyApplyKMSSourceVal(src string, config *harmonyConfig) {
 
 // consensus flags
 var (
-	// TODO: hard code value?
-	consensusBlockTimeFlag = cli.StringFlag{
-		Name:     "consensus.block-time",
-		Usage:    "block interval time, e.g: 8s",
-		DefValue: defaultConsensusConfig.BlockTime,
-		Hidden:   true,
-	}
-	// TODO: hard code value?
 	consensusMinPeersFlag = cli.IntFlag{
 		Name:     "consensus.min-peers",
 		Usage:    "minimal number of peers in shard",
@@ -715,7 +705,7 @@ var (
 		Name:       "block_period",
 		Usage:      "how long in second the leader waits to propose a new block",
 		DefValue:   5,
-		Deprecated: "use --consensus.block-time",
+		Deprecated: "flag block_period is no longer effective",
 	}
 	legacyConsensusMinPeersFlag = cli.IntFlag{
 		Name:     "min_peers",
@@ -729,13 +719,6 @@ func applyConsensusFlags(cmd *cobra.Command, config *harmonyConfig) {
 	if cli.HasFlagsChanged(cmd, consensusValidFlags) {
 		cfg := getDefaultConsensusConfigCopy()
 		config.Consensus = &cfg
-	}
-
-	if cli.IsFlagChanged(cmd, consensusBlockTimeFlag) {
-		config.Consensus.BlockTime = cli.GetStringFlagValue(cmd, consensusBlockTimeFlag)
-	} else if cli.IsFlagChanged(cmd, legacyBlockTimeFlag) {
-		sec := cli.GetIntFlagValue(cmd, legacyBlockTimeFlag)
-		config.Consensus.BlockTime = fmt.Sprintf("%ds", sec)
 	}
 
 	if cli.IsFlagChanged(cmd, consensusMinPeersFlag) {

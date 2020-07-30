@@ -564,18 +564,6 @@ func setupConsensusAndNode(hc harmonyConfig, nodeConfig *nodeconfig.ConfigType) 
 	currentConsensus.OnConsensusDone = currentNode.PostConsensusProcessing
 	// update consensus information based on the blockchain
 	currentConsensus.SetMode(currentConsensus.UpdateConsensusInformation())
-	// Setup block period and block due time.
-	var blockTime string
-	if hc.Consensus != nil {
-		blockTime = hc.Consensus.BlockTime
-	} else {
-		blockTime = defaultConsensusConfig.BlockTime
-	}
-	currentConsensus.BlockPeriod, err = time.ParseDuration(blockTime)
-	if err != nil {
-		fmt.Printf("Unknown block period: %v\n", blockTime)
-		os.Exit(128)
-	}
 	currentConsensus.NextBlockDue = time.Now()
 	return currentNode
 }

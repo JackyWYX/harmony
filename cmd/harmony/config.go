@@ -56,8 +56,7 @@ type generalConfig struct {
 }
 
 type consensusConfig struct {
-	BlockTime string
-	MinPeers  int
+	MinPeers int
 }
 
 type blsConfig struct {
