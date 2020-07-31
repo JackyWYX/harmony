@@ -501,6 +501,7 @@ func setupConsensusAndNode(hc harmonyConfig, nodeConfig *nodeconfig.ConfigType) 
 	} else {
 		minPeers = defaultConsensusConfig.MinPeers
 	}
+	fmt.Println("minPeers", minPeers)
 	currentConsensus.MinPeers = minPeers
 
 	blacklist, err := setupBlacklist(hc)
@@ -518,6 +519,8 @@ func setupConsensusAndNode(hc harmonyConfig, nodeConfig *nodeconfig.ConfigType) 
 	} else {
 		currentNode.BroadcastInvalidTx = defaultBroadcastInvalidTx
 	}
+
+	fmt.Println("broad cast ", currentNode.BroadcastInvalidTx)
 
 	if hc.Network.LegacySyncing {
 		currentNode.SyncingPeerProvider = node.NewLegacySyncingPeerProvider(currentNode)
