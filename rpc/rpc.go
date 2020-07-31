@@ -70,6 +70,7 @@ func StartServers(hmy *hmy.Harmony, apis []rpc.API, config nodeconfig.RPCServerC
 		httpEndpoint = fmt.Sprintf("http port %v:%v", config.HTTPIp, config.HTTPPort)
 		fmt.Println("listening on http", httpEndpoint)
 		if err := startHTTP(apis); err != nil {
+			fmt.Println("error happened", err)
 			return err
 		}
 	}
