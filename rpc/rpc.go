@@ -66,6 +66,8 @@ func (n Version) Namespace() string {
 func StartServers(hmy *hmy.Harmony, apis []rpc.API, config nodeconfig.RPCServerConfig) error {
 	apis = append(apis, getAPIs(hmy)...)
 
+	fmt.Printf("config: [%+v]\n", config)
+
 	if config.HTTPEnabled {
 		httpEndpoint = fmt.Sprintf("http port %v:%v", config.HTTPIp, config.HTTPPort)
 		fmt.Println("listening on http", httpEndpoint)
