@@ -243,6 +243,9 @@ func setupNodeAndRun(hc harmonyConfig) {
 		}
 	}()
 
+	fmt.Println("http config", hc.HTTP)
+	fmt.Println("ws config", hc.WS)
+
 	// Parse RPC config
 	nodeConfig.RPCServer = nodeconfig.RPCServerConfig{
 		HTTPEnabled: hc.HTTP.Enabled,
