@@ -1,6 +1,7 @@
 package shardingconfig
 
 import (
+	"fmt"
 	"math/big"
 
 	"github.com/harmony-one/harmony/internal/genesis"
@@ -153,11 +154,13 @@ func (sc instance) FindAccount(blsPubKey string) (bool, *genesis.DeployAccount) 
 	for i, item := range sc.hmyAccounts {
 		if item.BLSPublicKey == blsPubKey {
 			item.ShardID = uint32(i) % sc.numShards
+			fmt.Println("hmy find account", i, sc.numShards)
 			return uint32(i) < sc.numShards, &item
 		}
 	}
 	for i, item := range sc.fnAccounts {
 		if item.BLSPublicKey == blsPubKey {
+			fmt.Println("hmy find account", i, sc.numShards)
 			item.ShardID = uint32(i) % sc.numShards
 			return false, &item
 		}
