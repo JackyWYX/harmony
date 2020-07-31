@@ -192,6 +192,8 @@ func setupNodeAndRun(hc harmonyConfig) {
 	nodeconfig.SetShardingSchedule(shard.Schedule)
 	nodeconfig.SetVersion(getHarmonyVersion())
 
+	fmt.Printf("%+v\n", hc)
+
 	if hc.General.NodeType == "validator" {
 		var err error
 		if hc.General.NoStaking {
@@ -431,6 +433,10 @@ func createGlobalConfig(hc harmonyConfig) (*nodeconfig.ConfigType, error) {
 
 	// Set network type
 	netType := nodeconfig.NetworkType(hc.Network.NetworkType)
+
+	fmt.Println("net type", netType)
+	fmt.Println("isArchival", hc.General.IsArchival)
+
 	nodeconfig.SetNetworkType(netType) // sets for both global and shard configs
 	nodeConfig.SetArchival(hc.General.IsArchival)
 
