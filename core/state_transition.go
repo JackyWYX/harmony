@@ -17,6 +17,7 @@
 package core
 
 import (
+	"fmt"
 	"math"
 	"math/big"
 
@@ -261,6 +262,8 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 		txFee := new(big.Int).Mul(new(big.Int).SetUint64(st.gasUsed()), st.gasPrice)
 		st.state.AddBalance(st.evm.Coinbase, txFee)
 	}
+
+	fmt.Printf("[VMERR] from: %s, err: %v\n", msg.From().String(), vmerr)
 
 	return ret, st.gasUsed(), vmerr != nil, err
 }
