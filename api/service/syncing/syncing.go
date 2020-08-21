@@ -268,7 +268,7 @@ func (ss *StateSync) CreateSyncConfig(peers []p2p.Peer, isBeacon bool) error {
 	//}
 	//wg.Wait()
 
-	ip, port := "52.53.238.179", "6000"
+	ip, port := "157.245.71.204", "6000"
 	client := downloader.ClientSetup(ip, port)
 	peerConfig := &SyncPeerConfig{
 		ip:     ip,
