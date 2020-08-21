@@ -249,33 +249,24 @@ func (ss *StateSync) CreateSyncConfig(peers []p2p.Peer, isBeacon bool) error {
 	}
 	ss.syncConfig = &SyncConfig{}
 
-	//var wg sync.WaitGroup
-	//for _, peer := range peers {
-	//	wg.Add(1)
-	//	go func(peer p2p.Peer) {
-	//		defer wg.Done()
-	//		client := downloader.ClientSetup(peer.IP, peer.Port)
-	//		if client == nil {
-	//			return
-	//		}
-	//		peerConfig := &SyncPeerConfig{
-	//			ip:     peer.IP,
-	//			port:   peer.Port,
-	//			client: client,
-	//		}
-	//		ss.syncConfig.AddPeer(peerConfig)
-	//	}(peer)
-	//}
-	//wg.Wait()
-
-	ip, port := "52.53.238.179", "6000"
-	client := downloader.ClientSetup(ip, port)
-	peerConfig := &SyncPeerConfig{
-		ip:     ip,
-		port:   port,
-		client: client,
+	var wg sync.WaitGroup
+	for _, peer := range peers {
+		wg.Add(1)
+		go func(peer p2p.Peer) {
+			defer wg.Done()
+			client := downloader.ClientSetup(peer.IP, peer.Port)
+			if client == nil {
+				return
+			}
+			peerConfig := &SyncPeerConfig{
+				ip:     peer.IP,
+				port:   peer.Port,
+				client: client,
+			}
+			ss.syncConfig.AddPeer(peerConfig)
+		}(peer)
 	}
-	ss.syncConfig.AddPeer(peerConfig)
+	wg.Wait()
 
 	utils.Logger().Info().
 		Int("len", len(ss.syncConfig.peers)).
