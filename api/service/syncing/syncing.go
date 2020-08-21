@@ -499,8 +499,10 @@ func (ss *StateSync) downloadBlocks(bc *core.BlockChain) {
 				ss.commonBlocks[syncTask.index] = &blockObj
 				ss.syncMux.Unlock()
 			}
-			fmt.Println("average get block", accumulatedGetBlockTime/time.Duration(i))
-			fmt.Println(i)
+			if i != 0 {
+				fmt.Println("average get block", accumulatedGetBlockTime/time.Duration(i))
+				fmt.Println(i)
+			}
 
 			timeUsed := time.Since(timeStart)
 			fmt.Println("download time", bc.ShardID(), timeUsed)
