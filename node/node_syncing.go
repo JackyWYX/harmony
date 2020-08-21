@@ -219,7 +219,9 @@ func (node *Node) DoBeaconSyncing() {
 // DoSyncing keep the node in sync with other peers, willJoinConsensus means the node will try to join consensus after catch up
 func (node *Node) DoSyncing(bc *core.BlockChain, worker *worker.Worker, willJoinConsensus bool) {
 	ticker := time.NewTicker(time.Duration(SyncFrequency) * time.Second)
+	fmt.Println("do syncing on", bc.ShardID())
 	// TODO ek – infinite loop; add shutdown/cleanup logic
+	node.doSync(bc, worker, willJoinConsensus)
 	for {
 		select {
 		case <-ticker.C:

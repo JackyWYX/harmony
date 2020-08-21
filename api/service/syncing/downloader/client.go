@@ -134,6 +134,7 @@ func (client *Client) GetBlockChainHeight() (*pb.DownloaderResponse, error) {
 	request := &pb.DownloaderRequest{Type: pb.DownloaderRequest_BLOCKHEIGHT}
 	response, err := client.dlClient.Query(ctx, request)
 	if err != nil {
+		fmt.Println(err)
 		return nil, err
 	}
 	return response, nil

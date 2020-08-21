@@ -268,7 +268,7 @@ func (ss *StateSync) CreateSyncConfig(peers []p2p.Peer, isBeacon bool) error {
 	//}
 	//wg.Wait()
 
-	ip, port := "52.53.238.179", "9000"
+	ip, port := "52.53.238.179", "6000"
 	client := downloader.ClientSetup(ip, port)
 	peerConfig := &SyncPeerConfig{
 		ip:     ip,
@@ -449,10 +449,6 @@ func (ss *StateSync) downloadBlocks(bc *core.BlockChain) {
 	var wg sync.WaitGroup
 	count := 0
 	ss.syncConfig.ForEachPeer(func(peerConfig *SyncPeerConfig) (brk bool) {
-		fmt.Println(peerConfig.ip)
-		if peerConfig.ip != "157.245.71.204" {
-			return
-		}
 		wg.Add(1)
 		go func(stateSyncTaskQueue *queue.Queue, bc *core.BlockChain) {
 			defer wg.Done()
@@ -726,6 +722,7 @@ func (ss *StateSync) ProcessStateSync(startHash []byte, size uint32, bc *core.Bl
 	ss.generateStateSyncTaskQueue(bc)
 	// Download blocks.
 	if ss.stateSyncTaskQueue.Len() > 0 {
+		fmt.Println("start download")
 		ss.downloadBlocks(bc)
 	}
 	err := ss.generateNewState(bc, worker)
@@ -784,7 +781,9 @@ func (ss *StateSync) RegisterNodeInfo() int {
 func (ss *StateSync) getMaxPeerHeight(isBeacon bool) uint64 {
 	maxHeight := uint64(0)
 	var wg sync.WaitGroup
+	fmt.Println("max height")
 	ss.syncConfig.ForEachPeer(func(peerConfig *SyncPeerConfig) (brk bool) {
+		fmt.Println(peerConfig.ip)
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -804,6 +803,7 @@ func (ss *StateSync) getMaxPeerHeight(isBeacon bool) uint64 {
 		return
 	})
 	wg.Wait()
+	fmt.Println(maxHeight)
 	return maxHeight
 }
 
