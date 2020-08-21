@@ -249,7 +249,7 @@ func (ss *StateSync) CreateSyncConfig(peers []p2p.Peer, isBeacon bool) error {
 	}
 	ss.syncConfig = &SyncConfig{}
 
-	var wg sync.WaitGroup
+	//var wg sync.WaitGroup
 	//for _, peer := range peers {
 	//	wg.Add(1)
 	//	go func(peer p2p.Peer) {
