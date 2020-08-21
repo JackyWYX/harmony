@@ -439,19 +439,30 @@ func (ss *StateSync) downloadBlocks(bc *core.BlockChain) {
 	var wg sync.WaitGroup
 	count := 0
 	ss.syncConfig.ForEachPeer(func(peerConfig *SyncPeerConfig) (brk bool) {
+		fmt.Println(peerConfig.ip)
+		if peerConfig.ip != "157.245.71.204" {
+			return
+		}
 		wg.Add(1)
 		go func(stateSyncTaskQueue *queue.Queue, bc *core.BlockChain) {
 			defer wg.Done()
 			timeStart := time.Now()
+			i := 0
+			accumulatedGetBlockTime := time.Duration(0)
 			for !stateSyncTaskQueue.Empty() {
+				i++
 				task, err := ss.stateSyncTaskQueue.Poll(1, time.Millisecond)
 				if err == queue.ErrTimeout || len(task) == 0 {
 					utils.Logger().Error().Err(err).Msg("[SYNC] downloadBlocks: ss.stateSyncTaskQueue poll timeout")
+					fmt.Println(err)
+					fmt.Println("break 1")
 					break
 				}
 				syncTask := task[0].(SyncBlockTask)
 				//id := syncTask.index
+				getBlockStart := time.Now()
 				payload, err := peerConfig.GetBlocks([][]byte{syncTask.blockHash})
+				accumulatedGetBlockTime += time.Since(getBlockStart)
 				if err != nil || len(payload) == 0 {
 					count++
 					utils.Logger().Error().Err(err).Int("failNumber", count).Msg("[SYNC] downloadBlocks: GetBlocks failed")
@@ -491,6 +502,9 @@ func (ss *StateSync) downloadBlocks(bc *core.BlockChain) {
 				ss.commonBlocks[syncTask.index] = &blockObj
 				ss.syncMux.Unlock()
 			}
+			fmt.Println("average get block", accumulatedGetBlockTime/time.Duration(i))
+			fmt.Println(i)
+
 			timeUsed := time.Since(timeStart)
 			fmt.Println("download time", bc.ShardID(), timeUsed)
 		}(ss.stateSyncTaskQueue, bc)
@@ -698,16 +712,13 @@ func (ss *StateSync) generateNewState(bc *core.BlockChain, worker *worker.Worker
 // ProcessStateSync processes state sync from the blocks received but not yet processed so far
 func (ss *StateSync) ProcessStateSync(startHash []byte, size uint32, bc *core.BlockChain, worker *worker.Worker) error {
 	// Gets consensus hashes.
-	fmt.Println("process state sync", bc.ShardID())
 	ss.getConsensusHashes(startHash, size)
 	ss.generateStateSyncTaskQueue(bc)
 	// Download blocks.
 	if ss.stateSyncTaskQueue.Len() > 0 {
 		ss.downloadBlocks(bc)
 	}
-	fmt.Println("after download blocks")
 	err := ss.generateNewState(bc, worker)
-	fmt.Println("finished generate new state")
 	return err
 }
 

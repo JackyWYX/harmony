@@ -2,8 +2,10 @@ package downloader
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net"
+	"time"
 
 	pb "github.com/harmony-one/harmony/api/service/syncing/downloader/proto"
 	"github.com/harmony-one/harmony/internal/utils"
@@ -23,9 +25,13 @@ type Server struct {
 	GrpcServer        *grpc.Server
 }
 
+var accumulatedQueryTime = time.Duration(0)
+var accumulatedRequest = 0
+
 // Query returns the feature at the given point.
 func (s *Server) Query(ctx context.Context, request *pb.DownloaderRequest) (*pb.DownloaderResponse, error) {
 	var pinfo string
+	start := time.Now()
 	// retrieve ip/port information; used for debug only
 	p, ok := peer.FromContext(ctx)
 	if !ok {
@@ -37,6 +43,10 @@ func (s *Server) Query(ctx context.Context, request *pb.DownloaderRequest) (*pb.
 	if err != nil {
 		return nil, err
 	}
+	accumulatedQueryTime += time.Since(start)
+	accumulatedRequest += 1
+
+	fmt.Println(accumulatedQueryTime / time.Duration(accumulatedRequest))
 	return response, nil
 }
 
