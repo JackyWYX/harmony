@@ -32,10 +32,10 @@ const (
 	TimesToFail                     = 5 // downloadBlocks service retry limit
 	RegistrationNumber              = 3
 	SyncingPortDifference           = 3000
-	inSyncThreshold                 = 0    // when peerBlockHeight - myBlockHeight <= inSyncThreshold, it's ready to join consensus
-	SyncLoopBatchSize        uint32 = 1000 // maximum size for one query of block hashes
-	verifyHeaderBatchSize    uint64 = 100  // block chain header verification batch size
-	SyncLoopFrequency               = 1    // unit in second
+	inSyncThreshold                 = 0   // when peerBlockHeight - myBlockHeight <= inSyncThreshold, it's ready to join consensus
+	SyncLoopBatchSize        uint32 = 100 // maximum size for one query of block hashes
+	verifyHeaderBatchSize    uint64 = 100 // block chain header verification batch size
+	SyncLoopFrequency               = 1   // unit in second
 	LastMileBlocksSize              = 50
 
 	// after cutting off a number of connected peers, the result number of peers
@@ -456,7 +456,9 @@ func (ss *StateSync) downloadBlocks(bc *core.BlockChain) {
 			i := 0
 			accumulatedGetBlockTime := time.Duration(0)
 			accumulatedPostTime := time.Duration(0)
+			accumulatedLoopTime := time.Duration(0)
 			for !stateSyncTaskQueue.Empty() {
+				loopStart := time.Now()
 				i++
 				task, err := ss.stateSyncTaskQueue.Poll(1, time.Millisecond)
 				if err == queue.ErrTimeout || len(task) == 0 {
@@ -508,9 +510,11 @@ func (ss *StateSync) downloadBlocks(bc *core.BlockChain) {
 				ss.syncMux.Lock()
 				ss.commonBlocks[syncTask.index] = &blockObj
 				ss.syncMux.Unlock()
+				accumulatedLoopTime += time.Since(loopStart)
 				accumulatedPostTime += time.Since(postStart)
 			}
 			if i != 0 {
+				fmt.Println("loop average", accumulatedLoopTime/time.Duration(i))
 				fmt.Println("average get block", accumulatedGetBlockTime/time.Duration(i))
 				fmt.Println("post get block", accumulatedPostTime/time.Duration(i))
 				fmt.Println(i)
