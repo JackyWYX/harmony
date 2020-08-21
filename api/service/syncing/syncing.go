@@ -455,6 +455,7 @@ func (ss *StateSync) downloadBlocks(bc *core.BlockChain) {
 			timeStart := time.Now()
 			i := 0
 			accumulatedGetBlockTime := time.Duration(0)
+			accumulatedPostTime := time.Duration(0)
 			for !stateSyncTaskQueue.Empty() {
 				i++
 				task, err := ss.stateSyncTaskQueue.Poll(1, time.Millisecond)
@@ -484,7 +485,7 @@ func (ss *StateSync) downloadBlocks(bc *core.BlockChain) {
 					}
 					continue
 				}
-
+				postStart := time.Now()
 				var blockObj types.Block
 				// currently only send one block a time
 				err = rlp.DecodeBytes(payload[0], &blockObj)
@@ -507,9 +508,13 @@ func (ss *StateSync) downloadBlocks(bc *core.BlockChain) {
 				ss.syncMux.Lock()
 				ss.commonBlocks[syncTask.index] = &blockObj
 				ss.syncMux.Unlock()
+				accumulatedPostTime += time.Since(postStart)
 			}
-			fmt.Println("average get block", accumulatedGetBlockTime/time.Duration(i))
-			fmt.Println(i)
+			if i != 0 {
+				fmt.Println("average get block", accumulatedGetBlockTime/time.Duration(i))
+				fmt.Println("post get block", accumulatedPostTime/time.Duration(i))
+				fmt.Println(i)
+			}
 
 			timeUsed := time.Since(timeStart)
 			fmt.Println("download time", bc.ShardID(), timeUsed)
