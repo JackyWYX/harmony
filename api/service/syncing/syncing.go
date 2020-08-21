@@ -442,6 +442,7 @@ func (ss *StateSync) downloadBlocks(bc *core.BlockChain) {
 		wg.Add(1)
 		go func(stateSyncTaskQueue *queue.Queue, bc *core.BlockChain) {
 			defer wg.Done()
+			timeStart := time.Now()
 			for !stateSyncTaskQueue.Empty() {
 				task, err := ss.stateSyncTaskQueue.Poll(1, time.Millisecond)
 				if err == queue.ErrTimeout || len(task) == 0 {
@@ -490,6 +491,8 @@ func (ss *StateSync) downloadBlocks(bc *core.BlockChain) {
 				ss.commonBlocks[syncTask.index] = &blockObj
 				ss.syncMux.Unlock()
 			}
+			timeUsed := time.Since(timeStart)
+			fmt.Println("download time", bc.ShardID(), timeUsed)
 		}(ss.stateSyncTaskQueue, bc)
 		return
 	})
@@ -695,13 +698,17 @@ func (ss *StateSync) generateNewState(bc *core.BlockChain, worker *worker.Worker
 // ProcessStateSync processes state sync from the blocks received but not yet processed so far
 func (ss *StateSync) ProcessStateSync(startHash []byte, size uint32, bc *core.BlockChain, worker *worker.Worker) error {
 	// Gets consensus hashes.
+	fmt.Println("process state sync", bc.ShardID())
 	ss.getConsensusHashes(startHash, size)
 	ss.generateStateSyncTaskQueue(bc)
 	// Download blocks.
 	if ss.stateSyncTaskQueue.Len() > 0 {
 		ss.downloadBlocks(bc)
 	}
-	return ss.generateNewState(bc, worker)
+	fmt.Println("after download blocks")
+	err := ss.generateNewState(bc, worker)
+	fmt.Println("finished generate new state")
+	return err
 }
 
 func (peerConfig *SyncPeerConfig) registerToBroadcast(peerHash []byte, ip, port string) error {
