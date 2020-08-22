@@ -576,8 +576,8 @@ type downloadTaskQueue struct {
 	q *queue.Queue
 }
 
-func (queue downloadTaskQueue) poll(num int64, timeOut time.Duration) (syncBlockTasks, error) {
-	items, err := queue.q.Poll(num, timeOut)
+func (queue downloadTaskQueue) poll(num int64, timeOutPerRequest time.Duration) (syncBlockTasks, error) {
+	items, err := queue.q.Poll(num, timeOutPerRequest)
 	if err != nil {
 		return nil, err
 	}
