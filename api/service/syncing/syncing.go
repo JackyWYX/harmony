@@ -468,6 +468,7 @@ func (ss *StateSync) generateStateSyncTaskQueue(bc *core.BlockChain) {
 func (ss *StateSync) downloadBlocks(bc *core.BlockChain) {
 	// Initialize blockchain
 	var wg sync.WaitGroup
+	timeStart := time.Now()
 	count := 0
 	taskQueue := downloadTaskQueue{ss.stateSyncTaskQueue}
 	ss.syncConfig.ForEachPeer(func(peerConfig *SyncPeerConfig) (brk bool) {
@@ -521,6 +522,7 @@ func (ss *StateSync) downloadBlocks(bc *core.BlockChain) {
 		return
 	})
 	wg.Wait()
+	fmt.Println("download time used", time.Since(timeStart))
 	utils.Logger().Info().Msg("[SYNC] downloadBlocks: finished")
 }
 
