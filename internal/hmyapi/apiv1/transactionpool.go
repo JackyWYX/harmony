@@ -1,13 +1,16 @@
 package apiv1
 
 import (
+	"bytes"
 	"context"
+	"io"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/ethereum/go-ethereum/trie"
 	"github.com/harmony-one/harmony/core"
 	"github.com/harmony-one/harmony/core/rawdb"
 	"github.com/harmony-one/harmony/core/types"
@@ -406,4 +409,96 @@ func (s *PublicTransactionPoolAPI) GetCXReceiptByHash(
 // GetPendingCXReceipts ..
 func (s *PublicTransactionPoolAPI) GetPendingCXReceipts(ctx context.Context) []*types.CXReceiptsProof {
 	return s.b.GetPendingCXReceipts()
+}
+
+// GetReceiptProof get the receipt proof of the given transaction hash
+func (s *PublicTransactionPoolAPI) GetReceiptProof(ctx context.Context, hash common.Hash) (ReceiptProofResponse, error) {
+	tx, blockHash, _, index := rawdb.ReadTransaction(s.b.ChainDb(), hash)
+	if tx == nil {
+		return ReceiptProofResponse{}, errors.New("Staking transaction not supported or transaction not found")
+	}
+	receipts, err := s.b.GetReceipts(ctx, blockHash)
+	if err != nil {
+		return ReceiptProofResponse{}, err
+	}
+	if len(receipts) <= int(index) {
+		return ReceiptProofResponse{}, errors.New("receipt not found in block")
+	}
+	block, err := s.b.GetBlock(ctx, blockHash)
+	if err != nil {
+		return ReceiptProofResponse{}, err
+	}
+	if block == nil {
+		return ReceiptProofResponse{}, errors.New("block not found")
+	}
+	return constructProof(block, receipts, index)
+}
+
+type ReceiptProofResponse struct {
+	BlockHash    string `json:"blockHash"`
+	ReceiptRoot  string `json:"receiptRoot"`
+	TxIndex      string `json:"txIndex"`
+	ReceiptProof string `json:"receiptProof"`
+}
+
+type RawRLP []byte
+
+func (raw RawRLP) EncodeRLP(w io.Writer) error {
+	w.Write(raw)
+	return nil
+}
+
+type MemDB struct {
+	keys   [][]byte
+	values []RawRLP
+}
+
+func (db *MemDB) Put(key []byte, value []byte) error {
+	db.keys = append(db.keys, key)
+	db.values = append(db.values, value)
+	return nil
+}
+
+func (db *MemDB) ToProof() string {
+	b, _ := rlp.EncodeToBytes(db.values)
+	return common.Bytes2Hex(b)
+}
+
+func constructProof(block *types.Block, receipts types.Receipts, txIndex uint64) (ReceiptProofResponse, error) {
+	blockHash := block.Hash()
+	receiptsRoot := block.Header().ReceiptHash()
+
+	// construct the receipt trie
+	tr, root := deriveSha(receipts)
+	if root != receiptsRoot {
+		return ReceiptProofResponse{}, errors.New("construct proof failed: unexpected receipt root")
+	}
+	key, _ := rlp.EncodeToBytes(uint(txIndex))
+
+	var db MemDB
+	if err := tr.Prove(key, 0, &db); err != nil {
+		return ReceiptProofResponse{}, err
+	}
+	return ReceiptProofResponse{
+		TxIndex:      "0x" + common.Bytes2Hex(key),
+		ReceiptProof: "0x" + db.ToProof(),
+		BlockHash:    blockHash.String(),
+		ReceiptRoot:  receiptsRoot.String(),
+	}, nil
+}
+
+func deriveSha(list DerivableList) (*trie.Trie, common.Hash) {
+	keyBuf := new(bytes.Buffer)
+	tr := new(trie.Trie)
+	for i := 0; i < list.Len(); i++ {
+		keyBuf.Reset()
+		rlp.Encode(keyBuf, uint(i))
+		tr.Update(keyBuf.Bytes(), list.GetRlp(i))
+	}
+	return tr, tr.Hash()
+}
+
+type DerivableList interface {
+	Len() int
+	GetRlp(i int) []byte
 }
