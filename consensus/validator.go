@@ -168,6 +168,10 @@ func (consensus *Consensus) onPrepared(msg *msg_pb.Message) {
 
 	// tryCatchup is also run in onCommitted(), so need to lock with commitMutex.
 	consensus.tryCatchup()
+	if recvMsg.BlockNum > consensus.blockNum {
+		consensus.getLogger().Info().Uint64("MsgBlockNum", recvMsg.BlockNum).Msg("[OnPrepared] OUT OF SYNC")
+		consensus.spinUpStateSync()
+	}
 
 	if consensus.current.Mode() != Normal {
 		// don't sign the block that is not verified
@@ -302,16 +306,7 @@ func (consensus *Consensus) onCommitted(msg *msg_pb.Message) {
 
 	if recvMsg.BlockNum > consensus.blockNum && recvMsg.BlockNum-consensus.blockNum > consensusBlockNumBuffer {
 		consensus.getLogger().Info().Uint64("MsgBlockNum", recvMsg.BlockNum).Msg("[OnCommitted] OUT OF SYNC")
-		go func() {
-			select {
-			case consensus.BlockNumLowChan <- struct{}{}:
-				consensus.current.SetMode(Syncing)
-				for _, v := range consensus.consensusTimeout {
-					v.Stop()
-				}
-			case <-time.After(1 * time.Second):
-			}
-		}()
+		consensus.spinUpStateSync()
 		return
 	}
 
@@ -337,18 +332,7 @@ func (consensus *Consensus) spinUpStateSync() {
 		for _, v := range consensus.consensusTimeout {
 			v.Stop()
 		}
-	case <-time.After(1 * time.Second):
-	}
-}
-
-func (consensus *Consensus) spinUpStateSync() {
-	select {
-	case consensus.BlockNumLowChan <- struct{}{}:
-		consensus.current.SetMode(Syncing)
-		for _, v := range consensus.consensusTimeout {
-			v.Stop()
-		}
-	case <-time.After(1 * time.Second):
+	default:
 	}
 }
 
