@@ -415,8 +415,8 @@ type LastMileBlockIter struct {
 	logger          *zerolog.Logger
 }
 
-// GetLastMileBlockIt get the iterator of the last mile blocks starting from number bnStart
-func (consensus *Consensus) GetLastMileBlockIt(bnStart uint64) (*LastMileBlockIter, error) {
+// GetLastMileBlockIter get the iterator of the last mile blocks starting from number bnStart
+func (consensus *Consensus) GetLastMileBlockIter(bnStart uint64) (*LastMileBlockIter, error) {
 	consensus.mutex.Lock()
 	defer consensus.mutex.Unlock()
 
@@ -441,6 +441,9 @@ func (iter *LastMileBlockIter) Next() *types.Block {
 		return nil
 	}
 	block := iter.blockCandidates[iter.curIndex]
+	if block == nil {
+		return nil
+	}
 	iter.curIndex++
 
 	if !iter.fbftLog.IsBlockVerified(block) {
@@ -487,6 +490,9 @@ func (consensus *Consensus) tryCatchup() error {
 	}
 	for i := range blks {
 		blk, msg := blks[i], msgs[i]
+		if blk == nil {
+			return nil
+		}
 		blk.SetCurrentCommitSig(msg.Payload)
 
 		if !consensus.FBFTLog.IsBlockVerified(blk) {
