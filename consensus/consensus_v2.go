@@ -7,6 +7,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/rs/zerolog"
+
 	msg_pb "github.com/harmony-one/harmony/api/proto/message"
 	"github.com/harmony-one/harmony/block"
 	"github.com/harmony-one/harmony/consensus/quorum"
@@ -221,106 +223,6 @@ func (consensus *Consensus) BlockCommitSig(blockNum uint64) ([]byte, []byte, err
 	return aggSig, bitmap, nil
 }
 
-// GetLastMileBlocks get the last mile block from consensus memory cache (PBFT log)
-func (consensus *Consensus) GetLastMileBlocks(bnStart uint64) ([]*types.Block, error) {
-	consensus.mutex.Lock()
-	defer consensus.mutex.Unlock()
-
-	blocks, _, err := consensus.getLastMileBlocksAndMsg(bnStart)
-	return blocks, err
-}
-
-// TODO: change this to an iterator
-func (consensus *Consensus) getLastMileBlocksAndMsg(bnStart uint64) ([]*types.Block, []*FBFTMessage, error) {
-	var (
-		blocks []*types.Block
-		msgs   []*FBFTMessage
-	)
-	for blockNum := bnStart; ; blockNum++ {
-		blk, msg, err := consensus.FBFTLog.GetCommittedBlockAndMsgsFromNumber(blockNum, consensus.getLogger())
-		if err != nil {
-			if err == errPBFTLogNotFound {
-				break
-			}
-			return nil, nil, err
-		}
-		blocks = append(blocks, blk)
-		msgs = append(msgs, msg)
-	}
-	return blocks, msgs, nil
-}
-
-// tryCatchup add the last mile block in PBFT log memory cache to blockchain.
-func (consensus *Consensus) tryCatchup() error {
-	// TODO: change this to a more systematic symbol
-	if consensus.BlockVerifier == nil {
-		return errors.New("consensus haven't finished initialization")
-	}
-	initBN := consensus.blockNum
-	defer consensus.postCatchup(initBN)
-
-	blks, msgs, err := consensus.getLastMileBlocksAndMsg(initBN)
-	if err != nil {
-		return errors.Wrapf(err, "[TryCatchup] Failed to get last mile blocks: %v", err)
-	}
-	for i := range blks {
-		blk, msg := blks[i], msgs[i]
-		blk.SetCurrentCommitSig(msg.Payload)
-
-		// TODO: start implement here
-		if !consensus.FBFTLog.IsBlockVerified(blk) {
-			if err := consensus.BlockVerifier(blk); err != nil {
-				consensus.getLogger().Err(err).Msg("[TryCatchup] failed block verifier")
-				return err
-			}
-			consensus.FBFTLog.MarkBlockVerified(blk)
-		}
-		consensus.getLogger().Info().Msg("[TryCatchup] Adding block to chain")
-		if err := consensus.commitBlock(blk, msgs[i]); err != nil {
-			consensus.getLogger().Error().Err(err).Msg("[TryCatchup] Failed to add block to chain")
-			return err
-		}
-		select {
-		case consensus.VerifiedNewBlock <- blk:
-		default:
-			consensus.getLogger().Info().
-				Str("blockHash", blk.Hash().String()).
-				Msg("[TryCatchup] consensus verified block send to chan failed")
-			continue
-		}
-	}
-	return nil
-}
-
-func (consensus *Consensus) commitBlock(blk *types.Block, committedMsg *FBFTMessage) error {
-	if err := consensus.OnConsensusDone(blk); err != nil {
-		return err
-	}
-
-	atomic.AddUint64(&consensus.blockNum, 1)
-	consensus.SetCurViewID(committedMsg.ViewID + 1)
-	consensus.LeaderPubKey = committedMsg.SenderPubkeys[0]
-	consensus.ResetState()
-	return nil
-}
-
-func (consensus *Consensus) postCatchup(initBN uint64) {
-	if initBN < consensus.blockNum {
-		consensus.getLogger().Info().
-			Uint64("From", initBN).
-			Uint64("To", consensus.blockNum).
-			Msg("[TryCatchup] Caught up!")
-		consensus.switchPhase(FBFTAnnounce, true)
-	}
-	// catch up and skip from view change trap
-	if initBN < consensus.blockNum && consensus.IsViewChangingMode() {
-		consensus.current.SetMode(Normal)
-		consensus.consensusTimeout[timeoutViewChange].Stop()
-	}
-	// clean up old log
-	consensus.FBFTLog.PruneCacheBeforeBlock(consensus.blockNum)
-}
-
 // Start waits for the next new block and run consensus
 func (consensus *Consensus) Start(
 	blockChannel chan *types.Block, stopChan, stoppedChan, startChannel chan struct{},
@@ -501,6 +403,143 @@ func (consensus *Consensus) Start(
 		}
 		consensus.getLogger().Info().Msg("[ConsensusMainLoop] Ended.")
 	}()
+}
+
+// LastMileBlockIter is the iterator to iterate over the last mile blocks in consensus cache.
+// All blocks returned are guaranteed to pass the verification.
+type LastMileBlockIter struct {
+	blockCandidates []*types.Block
+	fbftLog         FBFTLog
+	verify          func(*types.Block) error
+	curIndex        int
+	logger          *zerolog.Logger
+}
+
+// GetLastMileBlockIt get the iterator of the last mile blocks starting from number bnStart
+func (consensus *Consensus) GetLastMileBlockIt(bnStart uint64) (*LastMileBlockIter, error) {
+	consensus.mutex.Lock()
+	defer consensus.mutex.Unlock()
+
+	if consensus.BlockVerifier == nil {
+		return nil, errors.New("consensus haven't initialized yet")
+	}
+	blocks, _, err := consensus.getLastMileBlocksAndMsg(bnStart)
+	if err != nil {
+		return nil, err
+	}
+	return &LastMileBlockIter{
+		blockCandidates: blocks,
+		verify:          consensus.BlockVerifier,
+		curIndex:        0,
+		logger:          consensus.getLogger(),
+	}, nil
+}
+
+// Next iterate to the next last mile block
+func (iter *LastMileBlockIter) Next() *types.Block {
+	if iter.curIndex >= len(iter.blockCandidates) {
+		return nil
+	}
+	block := iter.blockCandidates[iter.curIndex]
+	iter.curIndex++
+
+	if !iter.fbftLog.IsBlockVerified(block) {
+		if err := iter.verify(block); err != nil {
+			iter.logger.Debug().Err(err).Msg("block verification failed in consensus last mile block")
+			return nil
+		}
+		iter.fbftLog.MarkBlockVerified(block)
+	}
+	return block
+}
+
+func (consensus *Consensus) getLastMileBlocksAndMsg(bnStart uint64) ([]*types.Block, []*FBFTMessage, error) {
+	var (
+		blocks []*types.Block
+		msgs   []*FBFTMessage
+	)
+	for blockNum := bnStart; ; blockNum++ {
+		blk, msg, err := consensus.FBFTLog.GetCommittedBlockAndMsgsFromNumber(blockNum, consensus.getLogger())
+		if err != nil {
+			if err == errPBFTLogNotFound {
+				break
+			}
+			return nil, nil, err
+		}
+		blocks = append(blocks, blk)
+		msgs = append(msgs, msg)
+	}
+	return blocks, msgs, nil
+}
+
+// tryCatchup add the last mile block in PBFT log memory cache to blockchain.
+func (consensus *Consensus) tryCatchup() error {
+	// TODO: change this to a more systematic symbol
+	if consensus.BlockVerifier == nil {
+		return errors.New("consensus haven't finished initialization")
+	}
+	initBN := consensus.blockNum
+	defer consensus.postCatchup(initBN)
+
+	blks, msgs, err := consensus.getLastMileBlocksAndMsg(initBN)
+	if err != nil {
+		return errors.Wrapf(err, "[TryCatchup] Failed to get last mile blocks: %v", err)
+	}
+	for i := range blks {
+		blk, msg := blks[i], msgs[i]
+		blk.SetCurrentCommitSig(msg.Payload)
+
+		if !consensus.FBFTLog.IsBlockVerified(blk) {
+			if err := consensus.BlockVerifier(blk); err != nil {
+				consensus.getLogger().Err(err).Msg("[TryCatchup] failed block verifier")
+				return err
+			}
+			consensus.FBFTLog.MarkBlockVerified(blk)
+		}
+		consensus.getLogger().Info().Msg("[TryCatchup] Adding block to chain")
+		if err := consensus.commitBlock(blk, msgs[i]); err != nil {
+			consensus.getLogger().Error().Err(err).Msg("[TryCatchup] Failed to add block to chain")
+			return err
+		}
+		select {
+		case consensus.VerifiedNewBlock <- blk:
+		default:
+			consensus.getLogger().Info().
+				Str("blockHash", blk.Hash().String()).
+				Msg("[TryCatchup] consensus verified block send to chan failed")
+			continue
+		}
+	}
+	return nil
+}
+
+func (consensus *Consensus) commitBlock(blk *types.Block, committedMsg *FBFTMessage) error {
+	if err := consensus.OnConsensusDone(blk); err != nil {
+		return err
+	}
+
+	atomic.AddUint64(&consensus.blockNum, 1)
+	consensus.SetCurViewID(committedMsg.ViewID + 1)
+	consensus.LeaderPubKey = committedMsg.SenderPubkeys[0]
+	consensus.ResetState()
+	return nil
+}
+
+func (consensus *Consensus) postCatchup(initBN uint64) {
+	if initBN < consensus.blockNum {
+		consensus.getLogger().Info().
+			Uint64("From", initBN).
+			Uint64("To", consensus.blockNum).
+			Msg("[TryCatchup] Caught up!")
+		consensus.switchPhase(FBFTAnnounce, true)
+	}
+	// catch up and skip from view change trap
+	if initBN < consensus.blockNum && consensus.IsViewChangingMode() {
+		consensus.current.SetMode(Normal)
+		consensus.consensusTimeout[timeoutViewChange].Stop()
+	}
+	// clean up old log
+	consensus.FBFTLog.PruneCacheBeforeBlock(consensus.blockNum)
 }
 
 // GenerateVrfAndProof generates new VRF/Proof from hash of previous block
