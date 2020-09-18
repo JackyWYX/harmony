@@ -3,6 +3,7 @@ package consensus
 import (
 	"bytes"
 	"encoding/hex"
+	"fmt"
 	"time"
 
 	"github.com/pkg/errors"
@@ -129,24 +130,27 @@ func (consensus *Consensus) onPrepared(msg *msg_pb.Message) {
 		Uint64("MsgViewID", recvMsg.ViewID).
 		Msg("[OnPrepared] Received prepared message")
 
-	if err := consensus.isSendByLeader(recvMsg); err != nil {
-		consensus.getLogger().Debug().Err(err).Msg("[onPrepared] message failed leader check")
+	if recvMsg.BlockNum%10 == 0 {
+		fmt.Println("onPrepared skip", recvMsg.BlockNum)
 		return
+	} else {
+		fmt.Println("onPrepared  ", recvMsg.BlockNum, consensus.blockNum)
 	}
+	fmt.Println("onPrepared", 1)
 	if recvMsg.BlockNum < consensus.blockNum {
 		consensus.getLogger().Debug().Uint64("MsgBlockNum", recvMsg.BlockNum).
 			Msg("Wrong BlockNum Received, ignoring!")
 		return
 	}
-
 	// check validity of prepared signature
 	blockHash := recvMsg.BlockHash
 	aggSig, mask, err := consensus.ReadSignatureBitmapPayload(recvMsg.Payload, 0)
 	if err != nil {
+		fmt.Println("2.1", err)
 		consensus.getLogger().Error().Err(err).Msg("ReadSignatureBitmapPayload failed!")
 		return
 	}
-
+	fmt.Println(2)
 	if !aggSig.VerifyHash(mask.AggregatePublic, blockHash[:]) {
 		myBlockHash := common.Hash{}
 		myBlockHash.SetBytes(consensus.blockHash[:])
@@ -156,7 +160,7 @@ func (consensus *Consensus) onPrepared(msg *msg_pb.Message) {
 			Msg("[OnPrepared] failed to verify multi signature for prepare phase")
 		return
 	}
-
+	fmt.Println("onPrepared", 3)
 	// check validity of block
 	var blockObj types.Block
 	if err := rlp.DecodeBytes(recvMsg.Block, &blockObj); err != nil {
@@ -172,7 +176,7 @@ func (consensus *Consensus) onPrepared(msg *msg_pb.Message) {
 	}
 	consensus.mutex.Lock()
 	defer consensus.mutex.Unlock()
-
+	fmt.Println("onPrepared", 4)
 	consensus.FBFTLog.AddBlock(&blockObj)
 	// add block field
 	blockPayload := make([]byte, len(recvMsg.Block))
@@ -185,17 +189,18 @@ func (consensus *Consensus) onPrepared(msg *msg_pb.Message) {
 		Uint64("MsgBlockNum", recvMsg.BlockNum).
 		Hex("blockHash", recvMsg.BlockHash[:]).
 		Msg("[OnPrepared] Prepared message and block added")
-
+	fmt.Println("onPrepared", 5)
 	// tryCatchup is also run in onCommitted(), so need to lock with commitMutex.
 	consensus.tryCatchup()
 	if recvMsg.BlockNum > consensus.blockNum {
 		consensus.getLogger().Info().Uint64("MsgBlockNum", recvMsg.BlockNum).Msg("[OnPrepared] OUT OF SYNC")
 		consensus.spinUpStateSync()
 	} else if !consensus.Decider.IsQuorumAchievedByMask(mask) {
+		fmt.Println("failed quorum, also spin")
 		consensus.getLogger().Warn().Msgf("[OnPrepared] Quorum Not achieved.")
 		consensus.spinUpStateSync()
 	}
-	if consensus.current.Mode() != Normal {
+	if consensus.current.Mode() == Syncing {
 		// don't sign the block that is not verified
 		consensus.getLogger().Info().Msg("[OnPrepared] Not in normal mode, Exiting!!")
 		return
@@ -204,6 +209,7 @@ func (consensus *Consensus) onPrepared(msg *msg_pb.Message) {
 		consensus.getLogger().Debug().Msg("[onPrepared] consensus received message before init. Ignoring")
 		return
 	}
+	fmt.Println("onPrepared", 6)
 	if err := consensus.BlockVerifier(&blockObj); err != nil {
 		consensus.getLogger().Error().Err(err).Msg("[OnPrepared] Block verification failed")
 		return
@@ -219,6 +225,7 @@ func (consensus *Consensus) onPrepared(msg *msg_pb.Message) {
 		}
 		return
 	}
+	fmt.Println("onPrepared", 7)
 	if recvMsg.BlockNum > consensus.blockNum {
 		consensus.getLogger().Debug().
 			Uint64("MsgBlockNum", recvMsg.BlockNum).
@@ -231,7 +238,7 @@ func (consensus *Consensus) onPrepared(msg *msg_pb.Message) {
 	if consensus.delayCommit > 0 {
 		time.Sleep(consensus.delayCommit)
 	}
-
+	fmt.Println("onPrepared", 8)
 	// add preparedSig field
 	consensus.aggregatedPrepareSig = aggSig
 	consensus.prepareBitmap = mask
@@ -242,6 +249,10 @@ func (consensus *Consensus) onPrepared(msg *msg_pb.Message) {
 		copy(consensus.blockHash[:], blockHash[:])
 	}
 
+	fmt.Println("signing onPrepared", recvMsg.BlockNum)
+	if consensus.current.Mode() == Listening {
+		return
+	}
 	// Sign commit signature on the received block
 	commitPayload := signature.ConstructCommitPayload(consensus.ChainReader,
 		blockObj.Epoch(), blockObj.Hash(), blockObj.NumberU64(), blockObj.Header().ViewID().Uint64())
@@ -312,12 +323,14 @@ func (consensus *Consensus) onCommitted(msg *msg_pb.Message) {
 		consensus.getLogger().Warn().Msg("[OnCommitted] unable to parse msg")
 		return
 	}
+	if recvMsg.BlockNum%10 == 1 {
+		fmt.Println("onCommitted skip", recvMsg.BlockNum)
+		return
+	} else {
+		fmt.Println("onCommitted ", recvMsg.BlockNum, consensus.blockNum)
+	}
 	// NOTE let it handle its own logs
 	if !consensus.isRightBlockNumCheck(recvMsg) {
-		return
-	}
-	if err := consensus.isSendByLeader(recvMsg); err != nil {
-		consensus.getLogger().Debug().Err(err).Msg("[onCommitted] message failed leader check")
 		return
 	}
 	if len(recvMsg.SenderPubkeys) != 1 {
@@ -386,6 +399,7 @@ func (consensus *Consensus) onCommitted(msg *msg_pb.Message) {
 func (consensus *Consensus) spinUpStateSync() {
 	select {
 	case consensus.BlockNumLowChan <- struct{}{}:
+		fmt.Println("spin sync")
 		consensus.current.SetMode(Syncing)
 		for _, v := range consensus.consensusTimeout {
 			v.Stop()
@@ -394,6 +408,7 @@ func (consensus *Consensus) spinUpStateSync() {
 	}
 }
 
+// TODO: Add this logic to consensus handling
 func (consensus *Consensus) isSendByLeader(recvMsg *FBFTMessage) error {
 	if len(recvMsg.SenderPubkeys) != 1 {
 		return errors.New("message should be sent by 1 pubKey")

@@ -937,6 +937,7 @@ func (ss *StateSync) SyncLoop(bc *core.BlockChain, worker *worker.Worker, isBeac
 		}
 		err := ss.ProcessStateSync(startHash[:], size, bc, worker)
 		if err != nil {
+			fmt.Println("ProcessStateSync", err)
 			utils.Logger().Error().Err(err).
 				Msgf("[SYNC] ProcessStateSync failed (isBeacon: %t, ShardID: %d, otherHeight: %d, currentHeight: %d)",
 					isBeacon, bc.ShardID(), otherHeight, currentHeight)

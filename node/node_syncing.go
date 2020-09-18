@@ -226,6 +226,7 @@ func (node *Node) DoSyncing(bc *core.BlockChain, worker *worker.Worker, willJoin
 			node.doSync(bc, worker, willJoinConsensus)
 		case <-node.Consensus.BlockNumLowChan:
 			node.doSync(bc, worker, willJoinConsensus)
+			fmt.Println("finish sync")
 		}
 	}
 }
