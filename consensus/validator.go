@@ -5,6 +5,8 @@ import (
 	"encoding/hex"
 	"time"
 
+	"github.com/pkg/errors"
+
 	"github.com/harmony-one/harmony/crypto/bls"
 	nodeconfig "github.com/harmony-one/harmony/internal/configs/node"
 
@@ -127,6 +129,10 @@ func (consensus *Consensus) onPrepared(msg *msg_pb.Message) {
 		Uint64("MsgViewID", recvMsg.ViewID).
 		Msg("[OnPrepared] Received prepared message")
 
+	if err := consensus.isSendByLeader(recvMsg); err != nil {
+		consensus.getLogger().Debug().Err(err).Msg("[onPrepared] message failed leader check")
+		return
+	}
 	if recvMsg.BlockNum < consensus.blockNum {
 		consensus.getLogger().Debug().Uint64("MsgBlockNum", recvMsg.BlockNum).
 			Msg("Wrong BlockNum Received, ignoring!")
@@ -138,12 +144,6 @@ func (consensus *Consensus) onPrepared(msg *msg_pb.Message) {
 	aggSig, mask, err := consensus.ReadSignatureBitmapPayload(recvMsg.Payload, 0)
 	if err != nil {
 		consensus.getLogger().Error().Err(err).Msg("ReadSignatureBitmapPayload failed!")
-		return
-	}
-
-	if !consensus.Decider.IsQuorumAchievedByMask(mask) {
-		consensus.getLogger().Warn().
-			Msgf("[OnPrepared] Quorum Not achieved")
 		return
 	}
 
@@ -190,6 +190,9 @@ func (consensus *Consensus) onPrepared(msg *msg_pb.Message) {
 	consensus.tryCatchup()
 	if recvMsg.BlockNum > consensus.blockNum {
 		consensus.getLogger().Info().Uint64("MsgBlockNum", recvMsg.BlockNum).Msg("[OnPrepared] OUT OF SYNC")
+		consensus.spinUpStateSync()
+	} else if !consensus.Decider.IsQuorumAchievedByMask(mask) {
+		consensus.getLogger().Warn().Msgf("[OnPrepared] Quorum Not achieved.")
 		consensus.spinUpStateSync()
 	}
 	if consensus.current.Mode() != Normal {
@@ -313,6 +316,10 @@ func (consensus *Consensus) onCommitted(msg *msg_pb.Message) {
 	if !consensus.isRightBlockNumCheck(recvMsg) {
 		return
 	}
+	if err := consensus.isSendByLeader(recvMsg); err != nil {
+		consensus.getLogger().Debug().Err(err).Msg("[onCommitted] message failed leader check")
+		return
+	}
 	if len(recvMsg.SenderPubkeys) != 1 {
 		consensus.getLogger().Warn().Msg("[OnCommitted] leader message can not have multiple sender keys")
 		return
@@ -321,12 +328,6 @@ func (consensus *Consensus) onCommitted(msg *msg_pb.Message) {
 	aggSig, mask, err := consensus.ReadSignatureBitmapPayload(recvMsg.Payload, 0)
 	if err != nil {
 		consensus.getLogger().Error().Err(err).Msg("[OnCommitted] readSignatureBitmapPayload failed")
-		return
-	}
-
-	if !consensus.Decider.IsQuorumAchievedByMask(mask) {
-		consensus.getLogger().Warn().
-			Msgf("[OnCommitted] Quorum Not achieved")
 		return
 	}
 
@@ -357,13 +358,17 @@ func (consensus *Consensus) onCommitted(msg *msg_pb.Message) {
 	consensus.aggregatedCommitSig = aggSig
 	consensus.commitBitmap = mask
 
+	consensus.tryCatchup()
 	if recvMsg.BlockNum > consensus.blockNum && recvMsg.BlockNum-consensus.blockNum > consensusBlockNumBuffer {
 		consensus.getLogger().Info().Uint64("MsgBlockNum", recvMsg.BlockNum).Msg("[OnCommitted] OUT OF SYNC")
 		consensus.spinUpStateSync()
 		return
+	} else if !consensus.Decider.IsQuorumAchievedByMask(mask) {
+		consensus.getLogger().Warn().Msgf("[OnCommitted] Quorum Not achieved.")
+		consensus.spinUpStateSync()
+		return
 	}
 
-	consensus.tryCatchup()
 	if consensus.IsViewChangingMode() {
 		consensus.getLogger().Info().Msg("[OnCommitted] Still in ViewChanging mode, Exiting!!")
 		return
@@ -387,4 +392,14 @@ func (consensus *Consensus) spinUpStateSync() {
 		}
 	default:
 	}
+}
+
+func (consensus *Consensus) isSendByLeader(recvMsg *FBFTMessage) error {
+	if len(recvMsg.SenderPubkeys) != 1 {
+		return errors.New("message should be sent by 1 pubKey")
+	}
+	if recvMsg.SenderPubkeys[0] != consensus.LeaderPubKey {
+		return errors.New("message not sent by leader")
+	}
+	return nil
 }
