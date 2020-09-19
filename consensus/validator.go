@@ -137,6 +137,7 @@ func (consensus *Consensus) onPrepared(msg *msg_pb.Message) {
 		fmt.Println("onPrepared  ", recvMsg.BlockNum, consensus.blockNum)
 	}
 	fmt.Println("onPrepared", 1)
+
 	if recvMsg.BlockNum < consensus.blockNum {
 		consensus.getLogger().Debug().Uint64("MsgBlockNum", recvMsg.BlockNum).
 			Msg("Wrong BlockNum Received, ignoring!")
@@ -333,6 +334,7 @@ func (consensus *Consensus) onCommitted(msg *msg_pb.Message) {
 	if !consensus.isRightBlockNumCheck(recvMsg) {
 		return
 	}
+
 	if len(recvMsg.SenderPubkeys) != 1 {
 		consensus.getLogger().Warn().Msg("[OnCommitted] leader message can not have multiple sender keys")
 		return
