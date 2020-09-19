@@ -160,6 +160,7 @@ func (consensus *Consensus) onPrepared(msg *msg_pb.Message) {
 		return
 	}
 	//fmt.Println("onPrepared", 2)
+
 	if !aggSig.VerifyHash(mask.AggregatePublic, blockHash[:]) {
 		myBlockHash := common.Hash{}
 		myBlockHash.SetBytes(consensus.blockHash[:])
@@ -393,7 +394,6 @@ func (consensus *Consensus) onCommitted(msg *msg_pb.Message) {
 		consensus.getLogger().Info().Uint64("MsgBlockNum", recvMsg.BlockNum).Msg("[OnCommitted] OUT OF SYNC")
 		consensus.spinUpStateSync()
 		fmt.Println("\tspin sync 1")
-
 		return
 	}
 	//fmt.Println("onCommitted", 4)

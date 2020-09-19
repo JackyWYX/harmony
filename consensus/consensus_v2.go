@@ -443,9 +443,6 @@ func (iter *LastMileBlockIter) Next() *types.Block {
 		return nil
 	}
 	block := iter.blockCandidates[iter.curIndex]
-	if block == nil {
-		return nil
-	}
 	iter.curIndex++
 
 	if !iter.fbftLog.IsBlockVerified(block) {
