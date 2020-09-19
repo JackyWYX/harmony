@@ -142,7 +142,11 @@ func (consensus *Consensus) onPrepared(msg *msg_pb.Message) {
 		consensus.getLogger().Error().Err(err).Msg("ReadSignatureBitmapPayload failed!")
 		return
 	}
-
+	if !consensus.Decider.IsQuorumAchievedByMask(mask) {
+		consensus.getLogger().Warn().Msgf("[OnPrepared] Quorum Not achieved.")
+		consensus.spinUpStateSync()
+		return
+	}
 	if !aggSig.VerifyHash(mask.AggregatePublic, blockHash[:]) {
 		myBlockHash := common.Hash{}
 		myBlockHash.SetBytes(consensus.blockHash[:])
@@ -186,9 +190,6 @@ func (consensus *Consensus) onPrepared(msg *msg_pb.Message) {
 	consensus.tryCatchup()
 	if recvMsg.BlockNum > consensus.blockNum {
 		consensus.getLogger().Info().Uint64("MsgBlockNum", recvMsg.BlockNum).Msg("[OnPrepared] OUT OF SYNC")
-		consensus.spinUpStateSync()
-	} else if !consensus.Decider.IsQuorumAchievedByMask(mask) {
-		consensus.getLogger().Warn().Msgf("[OnPrepared] Quorum Not achieved.")
 		consensus.spinUpStateSync()
 	}
 	if consensus.current.Mode() != Normal {
@@ -322,6 +323,11 @@ func (consensus *Consensus) onCommitted(msg *msg_pb.Message) {
 		consensus.getLogger().Error().Err(err).Msg("[OnCommitted] readSignatureBitmapPayload failed")
 		return
 	}
+	if !consensus.Decider.IsQuorumAchievedByMask(mask) {
+		consensus.getLogger().Warn().Msgf("[OnCommitted] Quorum Not achieved.")
+		consensus.spinUpStateSync()
+		return
+	}
 
 	// Must have the corresponding block to verify committed message.
 	blockObj := consensus.FBFTLog.GetBlockByHash(recvMsg.BlockHash)
@@ -353,10 +359,6 @@ func (consensus *Consensus) onCommitted(msg *msg_pb.Message) {
 	consensus.tryCatchup()
 	if recvMsg.BlockNum > consensus.blockNum && recvMsg.BlockNum-consensus.blockNum > consensusBlockNumBuffer {
 		consensus.getLogger().Info().Uint64("MsgBlockNum", recvMsg.BlockNum).Msg("[OnCommitted] OUT OF SYNC")
-		consensus.spinUpStateSync()
-		return
-	} else if !consensus.Decider.IsQuorumAchievedByMask(mask) {
-		consensus.getLogger().Warn().Msgf("[OnCommitted] Quorum Not achieved.")
 		consensus.spinUpStateSync()
 		return
 	}
