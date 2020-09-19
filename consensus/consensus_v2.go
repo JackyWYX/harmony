@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/hex"
+	"fmt"
 	"sync/atomic"
 	"time"
 
@@ -286,6 +287,7 @@ func (consensus *Consensus) Start(
 				consensus.SetBlockNum(consensus.ChainReader.CurrentHeader().Number().Uint64() + 1)
 				consensus.SetViewIDs(consensus.ChainReader.CurrentHeader().ViewID().Uint64() + 1)
 				mode := consensus.UpdateConsensusInformation()
+				//fmt.Println("sync ready chan", mode)
 				consensus.current.SetMode(mode)
 				consensus.getLogger().Info().Str("Mode", mode.String()).Msg("Node is IN SYNC")
 
@@ -498,6 +500,7 @@ func (consensus *Consensus) tryCatchup() error {
 		if !consensus.FBFTLog.IsBlockVerified(blk) {
 			if err := consensus.BlockVerifier(blk); err != nil {
 				consensus.getLogger().Err(err).Msg("[TryCatchup] failed block verifier")
+				fmt.Println("catchup failed verify")
 				return err
 			}
 			consensus.FBFTLog.MarkBlockVerified(blk)
@@ -532,6 +535,7 @@ func (consensus *Consensus) commitBlock(blk *types.Block, committedMsg *FBFTMess
 }
 
 func (consensus *Consensus) postCatchup(initBN uint64) {
+	//fmt.Println("initBN / curBN", initBN, consensus.blockNum)
 	if initBN < consensus.blockNum {
 		consensus.getLogger().Info().
 			Uint64("From", initBN).

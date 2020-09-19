@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"fmt"
 	"math/big"
 	"sync/atomic"
 	"time"
@@ -334,6 +335,7 @@ func (consensus *Consensus) UpdateConsensusInformation() Mode {
 	if len(curHeader.ShardState()) > 0 {
 		nextShardState, err := curHeader.GetShardState()
 		if err != nil {
+			fmt.Println("update consensus 1")
 			return Syncing
 		}
 		if nextShardState.Epoch != nil {
@@ -374,6 +376,7 @@ func (consensus *Consensus) UpdateConsensusInformation() Mode {
 			Err(err).
 			Uint32("shard", consensus.ShardID).
 			Msg("[UpdateConsensusInformation] Error retrieving current shard state")
+		fmt.Println("update consensus 2")
 		return Syncing
 	}
 
@@ -390,6 +393,7 @@ func (consensus *Consensus) UpdateConsensusInformation() Mode {
 				Err(err).
 				Uint32("shard", consensus.ShardID).
 				Msg("Error retrieving nextEpoch shard state")
+			fmt.Println("update consensus 3")
 			return Syncing
 		}
 
@@ -411,6 +415,7 @@ func (consensus *Consensus) UpdateConsensusInformation() Mode {
 				Err(err).
 				Uint32("shard", consensus.ShardID).
 				Msg("Error retrieving current shard state")
+			fmt.Println("update consensus 4")
 			return Syncing
 		}
 
@@ -440,6 +445,7 @@ func (consensus *Consensus) UpdateConsensusInformation() Mode {
 			Err(err).
 			Uint32("shard", consensus.ShardID).
 			Msg("Error when updating voters")
+		fmt.Println("update consensus 5")
 		return Syncing
 	}
 
@@ -470,6 +476,7 @@ func (consensus *Consensus) UpdateConsensusInformation() Mode {
 		myPubKeys := consensus.GetPublicKeys()
 		if myPubKeys.Contains(key.Object) {
 			if hasError {
+				fmt.Println("update consensus 6")
 				return Syncing
 			}
 
@@ -487,6 +494,7 @@ func (consensus *Consensus) UpdateConsensusInformation() Mode {
 		}
 	}
 	// not in committee
+	//fmt.Println("mode listen")
 	return Listening
 }
 
