@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"fmt"
 	"math/big"
 	"sync/atomic"
 	"time"
@@ -88,6 +89,7 @@ func (consensus *Consensus) UpdatePublicKeys(pubKeys []bls_cosi.PublicKeyWrapper
 
 	allKeys := consensus.Decider.Participants()
 	if len(allKeys) != 0 {
+		fmt.Println("set leader to", allKeys[0].Bytes.Hex())
 		consensus.LeaderPubKey = &allKeys[0]
 		utils.Logger().Info().
 			Str("info", consensus.LeaderPubKey.Bytes.Hex()).Msg("My Leader")
