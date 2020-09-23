@@ -373,7 +373,7 @@ func (consensus *Consensus) UpdateConsensusInformation() Mode {
 	curShardState, err := committee.WithStakingEnabled.ReadFromDB(
 		curEpoch, consensus.ChainReader,
 	)
-	fmt.Println(curShardState.Epoch)
+	fmt.Println("epoch", curShardState.Epoch)
 	fmt.Println("cur shard state", len(curShardState.Shards[3].Slots))
 	if err != nil {
 		utils.Logger().Error().

@@ -1738,16 +1738,19 @@ func (bc *BlockChain) ReadShardState(epoch *big.Int) (*shard.State, error) {
 	cacheKey := string(epoch.Bytes())
 	if cached, ok := bc.shardStateCache.Get(cacheKey); ok {
 		shardState := cached.(*shard.State)
+		fmt.Println("state shard in cache", shardState.Epoch)
 		return shardState, nil
 	}
 	shardState, err := rawdb.ReadShardState(bc.db, epoch)
 	if err != nil {
 		if strings.Contains(err.Error(), rawdb.MsgNoShardStateFromDB) &&
 			shard.Schedule.IsSkippedEpoch(bc.ShardID(), epoch) {
+			fmt.Println("epoch skipped")
 			return nil, fmt.Errorf("epoch skipped on chain: %w", err)
 		}
 		return nil, err
 	}
+	fmt.Println("state shard read", shardState.Epoch)
 	bc.shardStateCache.Add(cacheKey, shardState)
 	return shardState, nil
 }
