@@ -373,6 +373,7 @@ func (consensus *Consensus) UpdateConsensusInformation() Mode {
 	curShardState, err := committee.WithStakingEnabled.ReadFromDB(
 		curEpoch, consensus.ChainReader,
 	)
+	fmt.Println(curShardState.Epoch)
 	fmt.Println("cur shard state", len(curShardState.Shards[3].Slots))
 	if err != nil {
 		utils.Logger().Error().
@@ -433,7 +434,7 @@ func (consensus *Consensus) UpdateConsensusInformation() Mode {
 	// update public keys in the committee
 	oldLeader := consensus.LeaderPubKey
 	pubKeys, _ := committeeToSet.BLSPublicKeys()
-	fmt.Println("new leader", pubKeys[0])
+	//fmt.Println("new leader", pubKeys[0].Bytes.Hex())
 
 	consensus.getLogger().Info().
 		Int("numPubKeys", len(pubKeys)).
