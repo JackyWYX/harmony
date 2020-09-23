@@ -332,6 +332,8 @@ func (consensus *Consensus) UpdateConsensusInformation() Mode {
 	curEpoch := curHeader.Epoch()
 	nextEpoch := new(big.Int).Add(curHeader.Epoch(), common.Big1)
 
+	fmt.Println("[UpdateConsensusInformation]", curHeader.Number())
+
 	// Overwrite nextEpoch if the shard state has a epoch number
 	if len(curHeader.ShardState()) > 0 {
 		nextShardState, err := curHeader.GetShardState()
@@ -371,6 +373,7 @@ func (consensus *Consensus) UpdateConsensusInformation() Mode {
 	curShardState, err := committee.WithStakingEnabled.ReadFromDB(
 		curEpoch, consensus.ChainReader,
 	)
+	fmt.Println("cur shard state", len(curShardState.Shards[3].Slots))
 	if err != nil {
 		utils.Logger().Error().
 			Err(err).
@@ -383,7 +386,7 @@ func (consensus *Consensus) UpdateConsensusInformation() Mode {
 	// genesis block is a special case that will have shard state and needs to skip processing
 	isNotGenesisBlock := curHeader.Number().Cmp(big.NewInt(0)) > 0
 	if len(curHeader.ShardState()) > 0 && isNotGenesisBlock {
-
+		fmt.Println("new shard state")
 		nextShardState, err := committee.WithStakingEnabled.ReadFromDB(
 			nextEpoch, consensus.ChainReader,
 		)
@@ -407,8 +410,10 @@ func (consensus *Consensus) UpdateConsensusInformation() Mode {
 		committeeToSet = subComm
 		epochToSet = nextEpoch
 	} else {
+		fmt.Println("old shard state")
 		subComm, err := curShardState.FindCommitteeByID(curHeader.ShardID())
 		if err != nil {
+			fmt.Println(err)
 			utils.Logger().Error().
 				Err(err).
 				Uint32("shard", consensus.ShardID).
@@ -428,6 +433,7 @@ func (consensus *Consensus) UpdateConsensusInformation() Mode {
 	// update public keys in the committee
 	oldLeader := consensus.LeaderPubKey
 	pubKeys, _ := committeeToSet.BLSPublicKeys()
+	fmt.Println("new leader", pubKeys[0])
 
 	consensus.getLogger().Info().
 		Int("numPubKeys", len(pubKeys)).
