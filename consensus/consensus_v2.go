@@ -276,7 +276,7 @@ func (consensus *Consensus) Start(
 						break
 					} else {
 						consensus.getLogger().Warn().Msg("[ConsensusMainLoop] Ops View Change Timeout!!!")
-						viewID := consensus.GetViewChangingID()
+						viewID := consensus.GetCurBlockViewID()
 						consensus.startViewChange(viewID + 1)
 						break
 					}
@@ -522,8 +522,8 @@ func (consensus *Consensus) commitBlock(blk *types.Block, committedMsg *FBFTMess
 	}
 
 	atomic.AddUint64(&consensus.blockNum, 1)
-	consensus.SetCurViewID(committedMsg.ViewID + 1)
-	consensus.LeaderPubKey = committedMsg.SenderPubkeys[0]
+	consensus.SetCurBlockViewID(committedMsg.ViewID + 1)
+	consensus.LeaderPubKey = committedMsg.SenderPubkey
 	consensus.ResetState()
 	return nil
 }

@@ -12,7 +12,6 @@ import (
 	"github.com/harmony-one/harmony/core/types"
 	nodeconfig "github.com/harmony-one/harmony/internal/configs/node"
 	"github.com/harmony-one/harmony/p2p"
-	"github.com/pkg/errors"
 )
 
 func (consensus *Consensus) onAnnounce(msg *msg_pb.Message) {
@@ -266,10 +265,6 @@ func (consensus *Consensus) onCommitted(msg *msg_pb.Message) {
 	if !consensus.isRightBlockNumCheck(recvMsg) {
 		return
 	}
-	if len(recvMsg.SenderPubkeys) != 1 {
-		consensus.getLogger().Warn().Msg("[OnCommitted] leader message can not have multiple sender keys")
-		return
-	}
 
 	aggSig, mask, err := consensus.ReadSignatureBitmapPayload(recvMsg.Payload, 0)
 	if err != nil {
@@ -339,14 +334,4 @@ func (consensus *Consensus) spinUpStateSync() {
 		}
 	default:
 	}
-}
-
-func (consensus *Consensus) isSendByLeader(recvMsg *FBFTMessage) error {
-	if len(recvMsg.SenderPubkeys) != 1 {
-		return errors.New("message should be sent by 1 pubKey")
-	}
-	if recvMsg.SenderPubkeys[0] != consensus.LeaderPubKey {
-		return errors.New("message not sent by leader")
-	}
-	return nil
 }
