@@ -3,6 +3,8 @@ package consensus
 import (
 	"bytes"
 	"encoding/hex"
+	"fmt"
+	"sync/atomic"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -93,9 +95,16 @@ func (consensus *Consensus) prepare() {
 	consensus.switchPhase(FBFTPrepare, true)
 }
 
+var (
+	toSign int64
+	signed int64
+)
+
 // if onPrepared accepts the prepared message from the leader, then
 // it will send a COMMIT message for the leader to receive on the network.
 func (consensus *Consensus) onPrepared(msg *msg_pb.Message) {
+	atomic.AddInt64(&toSign, 1)
+	fmt.Printf("\tsigning rate [%v/%v]=%v%%\n", signed, toSign, signed*100/toSign)
 	recvMsg, err := ParseFBFTMessage(msg)
 	if err != nil {
 		consensus.getLogger().Debug().Err(err).Msg("[OnPrepared] Unparseable validator message")
@@ -106,6 +115,14 @@ func (consensus *Consensus) onPrepared(msg *msg_pb.Message) {
 		Uint64("MsgViewID", recvMsg.ViewID).
 		Msg("[OnPrepared] Received prepared message")
 
+	fmt.Println("[onPrepared] -----------------", recvMsg.BlockNum, consensus.blockNum)
+
+	if recvMsg.BlockNum%10 == 1 {
+		fmt.Println("\tSKIPPED")
+		return
+	} else {
+		fmt.Println("\tinSync:", recvMsg.BlockNum == consensus.blockNum)
+	}
 	if recvMsg.BlockNum < consensus.blockNum {
 		consensus.getLogger().Debug().Uint64("MsgBlockNum", recvMsg.BlockNum).
 			Msg("Wrong BlockNum Received, ignoring!")
@@ -113,6 +130,7 @@ func (consensus *Consensus) onPrepared(msg *msg_pb.Message) {
 	}
 	if recvMsg.BlockNum > consensus.blockNum {
 		consensus.getLogger().Warn().Msgf("[OnPrepared] low consensus block number. Spin sync")
+		fmt.Println("\tspin sync")
 		consensus.spinUpStateSync()
 	}
 
@@ -166,8 +184,7 @@ func (consensus *Consensus) onPrepared(msg *msg_pb.Message) {
 		Hex("blockHash", recvMsg.BlockHash[:]).
 		Msg("[OnPrepared] Prepared message and block added")
 
-	// tryCatchup is also run in onCommitted(), so need to lock with commitMutex.
-	if consensus.current.Mode() != Normal {
+	if consensus.current.Mode() == ViewChanging || consensus.current.Mode() == Syncing {
 		// don't sign the block that is not verified
 		consensus.getLogger().Info().Msg("[OnPrepared] Not in normal mode, Exiting!!")
 		return
@@ -215,6 +232,11 @@ func (consensus *Consensus) onPrepared(msg *msg_pb.Message) {
 		copy(consensus.blockHash[:], blockHash[:])
 	}
 
+	fmt.Println("\tBINGO - SIGNED")
+	atomic.AddInt64(&signed, 1)
+	if consensus.current.Mode() != Normal {
+		return
+	}
 	// Sign commit signature on the received block
 	commitPayload := signature.ConstructCommitPayload(consensus.ChainReader,
 		blockObj.Epoch(), blockObj.Hash(), blockObj.NumberU64(), blockObj.Header().ViewID().Uint64())
@@ -259,12 +281,21 @@ func (consensus *Consensus) onCommitted(msg *msg_pb.Message) {
 		consensus.getLogger().Warn().Msg("[OnCommitted] unable to parse msg")
 		return
 	}
+
+	fmt.Println("[onCommitted] ----------------", recvMsg.BlockNum, consensus.blockNum)
+	if recvMsg.BlockNum%10 == 0 {
+		fmt.Println("\tSKIPPED")
+		return
+	} else {
+		fmt.Println("\tisInSync:", recvMsg.BlockNum == consensus.blockNum)
+	}
 	// NOTE let it handle its own logs
 	if !consensus.isRightBlockNumCheck(recvMsg) {
 		return
 	}
 	if recvMsg.BlockNum > consensus.blockNum {
 		consensus.getLogger().Info().Msg("[OnCommitted] low consensus block number. Spin up state sync")
+		fmt.Println("\tspin sync")
 		consensus.spinUpStateSync()
 	}
 

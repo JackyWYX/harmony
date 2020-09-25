@@ -140,7 +140,7 @@ func (p *StateProcessor) Process(
 		receipts, outcxs, incxs, block.StakingTransactions(), slashes,
 	)
 	if err != nil {
-		return nil, nil, nil, 0, nil, errors.New("[Process] Cannot finalize block")
+		return nil, nil, nil, 0, nil, errors.Wrap(err, "[Process] Cannot finalize block")
 	}
 
 	return receipts, outcxs, allLogs, *usedGas, payout, nil

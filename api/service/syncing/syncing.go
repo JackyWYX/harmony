@@ -749,6 +749,7 @@ func (ss *StateSync) generateNewState(bc *core.BlockChain, worker *worker.Worker
 		}
 		err = ss.UpdateBlockAndStatus(block, bc, worker, false)
 		if err != nil {
+			fmt.Println("[SYNC] UpdateBlockAndStatus 1", err)
 			break
 		}
 		parentHash = block.Hash()
@@ -766,6 +767,7 @@ func (ss *StateSync) generateNewState(bc *core.BlockChain, worker *worker.Worker
 		}
 		err = ss.UpdateBlockAndStatus(block, bc, worker, false)
 		if err != nil {
+			fmt.Println("[SYNC] UpdateBlockAndStatus 2", err)
 			break
 		}
 		parentHash = block.Hash()
@@ -787,6 +789,7 @@ func (ss *StateSync) generateNewState(bc *core.BlockChain, worker *worker.Worker
 		}
 		err = ss.UpdateBlockAndStatus(block, bc, worker, false)
 		if err != nil {
+			fmt.Println("[SYNC] UpdateBlockAndStatus 3", err)
 			break
 		}
 		parentHash = block.Hash()
@@ -937,6 +940,7 @@ func (ss *StateSync) SyncLoop(bc *core.BlockChain, worker *worker.Worker, isBeac
 		}
 		err := ss.ProcessStateSync(startHash[:], size, bc, worker)
 		if err != nil {
+			fmt.Println("[SYNC] ProcessStateSync", err)
 			utils.Logger().Error().Err(err).
 				Msgf("[SYNC] ProcessStateSync failed (isBeacon: %t, ShardID: %d, otherHeight: %d, currentHeight: %d)",
 					isBeacon, bc.ShardID(), otherHeight, currentHeight)

@@ -1196,12 +1196,12 @@ func (bc *BlockChain) WriteBlockWithState(
 	rawdb.WriteCxLookupEntries(batch, block)
 	rawdb.WritePreimages(batch, block.NumberU64(), state.Preimages())
 
-	// Update current block
-	bc.insertWithWriter(batch, block)
-
 	if err := batch.Write(); err != nil {
 		return NonStatTy, err
 	}
+
+	// Update current block
+	bc.insertWithWriter(batch, block)
 
 	bc.futureBlocks.Remove(block.Hash())
 	return CanonStatTy, nil
