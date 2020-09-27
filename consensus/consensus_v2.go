@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/hex"
+	"fmt"
 	"sync/atomic"
 	"time"
 
@@ -37,6 +38,7 @@ func (consensus *Consensus) HandleMessageUpdate(ctx context.Context, msg *msg_pb
 	// in order to avoid possible trap forever but drop PREPARE and COMMIT
 	// which are message types specifically for a node acting as leader
 	// so we just ignore those messages
+	fmt.Println("handle message")
 	if consensus.IsViewChangingMode() &&
 		(msg.Type == msg_pb.MessageType_PREPARE ||
 			msg.Type == msg_pb.MessageType_COMMIT) {

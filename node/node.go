@@ -617,6 +617,7 @@ func (node *Node) Start() error {
 			topicNamed,
 			// this is the validation function called to quickly validate every p2p message
 			func(ctx context.Context, peer libp2p_peer.ID, msg *libp2p_pubsub.Message) libp2p_pubsub.ValidationResult {
+				fmt.Println("validating message")
 				atomic.AddUint32(&node.NumP2PMessages, 1)
 				hmyMsg := msg.GetData()
 
@@ -627,6 +628,7 @@ func (node *Node) Start() error {
 				}
 
 				openBox := hmyMsg[p2pMsgPrefixSize:]
+				fmt.Println(proto.MessageCategory(openBox[proto.MessageCategoryBytes-1]) == proto.Consensus)
 
 				// validate message category
 				switch proto.MessageCategory(openBox[proto.MessageCategoryBytes-1]) {
