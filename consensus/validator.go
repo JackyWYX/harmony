@@ -3,6 +3,7 @@ package consensus
 import (
 	"bytes"
 	"encoding/hex"
+	"fmt"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -105,6 +106,7 @@ func (consensus *Consensus) onPrepared(msg *msg_pb.Message) {
 		Uint64("MsgBlockNum", recvMsg.BlockNum).
 		Uint64("MsgViewID", recvMsg.ViewID).
 		Msg("[OnPrepared] Received prepared message")
+	fmt.Println("onPrepared", recvMsg.BlockNum)
 
 	if recvMsg.BlockNum < consensus.blockNum {
 		consensus.getLogger().Debug().Uint64("MsgBlockNum", recvMsg.BlockNum).
@@ -246,6 +248,7 @@ func (consensus *Consensus) onPrepared(msg *msg_pb.Message) {
 }
 
 func (consensus *Consensus) onCommitted(msg *msg_pb.Message) {
+
 	recvMsg, err := ParseFBFTMessage(msg)
 	if err != nil {
 		consensus.getLogger().Warn().Msg("[OnCommitted] unable to parse msg")
@@ -255,6 +258,7 @@ func (consensus *Consensus) onCommitted(msg *msg_pb.Message) {
 	if !consensus.isRightBlockNumCheck(recvMsg) {
 		return
 	}
+	fmt.Println("onCommitted", recvMsg.BlockNum)
 
 	aggSig, mask, err := consensus.ReadSignatureBitmapPayload(recvMsg.Payload, 0)
 	if err != nil {
