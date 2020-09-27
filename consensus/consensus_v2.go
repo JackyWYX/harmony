@@ -50,28 +50,28 @@ func (consensus *Consensus) HandleMessageUpdate(ctx context.Context, msg *msg_pb
 	switch t := msg.Type; true {
 	// Handle validator intended messages first
 	case t == msg_pb.MessageType_ANNOUNCE && intendedForValidator:
-		if !bytes.Equal(senderKey[:], consensus.LeaderPubKey.Bytes[:]) &&
-			consensus.current.Mode() == Normal && !consensus.IgnoreViewIDCheck.IsSet() {
-			return errSenderPubKeyNotLeader
-		}
-		if !consensus.senderKeySanityChecks(msg, senderKey) {
-			return errVerifyMessageSignature
-		}
+		//if !bytes.Equal(senderKey[:], consensus.LeaderPubKey.Bytes[:]) &&
+		//	consensus.current.Mode() == Normal && !consensus.IgnoreViewIDCheck.IsSet() {
+		//	return errSenderPubKeyNotLeader
+		//}
+		//if !consensus.senderKeySanityChecks(msg, senderKey) {
+		//	return errVerifyMessageSignature
+		//}
 		consensus.onAnnounce(msg)
 	case t == msg_pb.MessageType_PREPARED && intendedForValidator:
-		if !bytes.Equal(senderKey[:], consensus.LeaderPubKey.Bytes[:]) &&
-			consensus.current.Mode() == Normal && !consensus.IgnoreViewIDCheck.IsSet() {
-			return errSenderPubKeyNotLeader
-		}
-		if !consensus.senderKeySanityChecks(msg, senderKey) {
-			return errVerifyMessageSignature
-		}
+		//if !bytes.Equal(senderKey[:], consensus.LeaderPubKey.Bytes[:]) &&
+		//	consensus.current.Mode() == Normal && !consensus.IgnoreViewIDCheck.IsSet() {
+		//	return errSenderPubKeyNotLeader
+		//}
+		//if !consensus.senderKeySanityChecks(msg, senderKey) {
+		//	return errVerifyMessageSignature
+		//}
 		consensus.onPrepared(msg)
 	case t == msg_pb.MessageType_COMMITTED && intendedForValidator:
-		if !bytes.Equal(senderKey[:], consensus.LeaderPubKey.Bytes[:]) &&
-			consensus.current.Mode() == Normal && !consensus.IgnoreViewIDCheck.IsSet() {
-			return errSenderPubKeyNotLeader
-		}
+		//if !bytes.Equal(senderKey[:], consensus.LeaderPubKey.Bytes[:]) &&
+		//	consensus.current.Mode() == Normal && !consensus.IgnoreViewIDCheck.IsSet() {
+		//	return errSenderPubKeyNotLeader
+		//}
 		//if !consensus.senderKeySanityChecks(msg, senderKey) {
 		//	return errVerifyMessageSignature
 		//}
