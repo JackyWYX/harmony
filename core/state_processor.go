@@ -17,6 +17,7 @@
 package core
 
 import (
+	"fmt"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -108,6 +109,7 @@ func (p *StateProcessor) Process(
 			p.config, p.bc, &beneficiary, gp, statedb, header, tx, usedGas, cfg,
 		)
 		if err != nil {
+			fmt.Printf("processing staking transaction %v: %v\n", tx.Hash(), err)
 			return nil, nil, nil, 0, nil, err
 		}
 		receipts = append(receipts, receipt)

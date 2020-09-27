@@ -177,6 +177,7 @@ func (w *Worker) commitStakingTransaction(
 		w.config, w.chain, &coinbase, w.current.gasPool,
 		w.current.state, w.current.header, tx, &gasUsed, vm.Config{},
 	)
+	fmt.Println("leader prepare", tx.Hash(), err)
 	w.current.header.SetGasUsed(gasUsed)
 	if err != nil {
 		w.current.state.RevertToSnapshot(snap)
