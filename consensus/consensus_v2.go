@@ -72,9 +72,9 @@ func (consensus *Consensus) HandleMessageUpdate(ctx context.Context, msg *msg_pb
 			consensus.current.Mode() == Normal && !consensus.IgnoreViewIDCheck.IsSet() {
 			return errSenderPubKeyNotLeader
 		}
-		if !consensus.senderKeySanityChecks(msg, senderKey) {
-			return errVerifyMessageSignature
-		}
+		//if !consensus.senderKeySanityChecks(msg, senderKey) {
+		//	return errVerifyMessageSignature
+		//}
 		consensus.onCommitted(msg)
 
 	// Handle leader intended messages now
