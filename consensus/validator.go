@@ -266,11 +266,11 @@ func (consensus *Consensus) onCommitted(msg *msg_pb.Message) {
 		return
 	}
 
-	if !consensus.Decider.IsQuorumAchievedByMask(mask) {
-		consensus.getLogger().Warn().
-			Msgf("[OnCommitted] Quorum Not achieved")
-		return
-	}
+	//if !consensus.Decider.IsQuorumAchievedByMask(mask) {
+	//	consensus.getLogger().Warn().
+	//		Msgf("[OnCommitted] Quorum Not achieved")
+	//	return
+	//}
 
 	// Must have the corresponding block to verify committed message.
 	blockObj := consensus.FBFTLog.GetBlockByHash(recvMsg.BlockHash)

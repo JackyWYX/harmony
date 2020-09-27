@@ -39,11 +39,11 @@ func (consensus *Consensus) HandleMessageUpdate(ctx context.Context, msg *msg_pb
 	// which are message types specifically for a node acting as leader
 	// so we just ignore those messages
 	fmt.Println("handle message")
-	if consensus.IsViewChangingMode() &&
-		(msg.Type == msg_pb.MessageType_PREPARE ||
-			msg.Type == msg_pb.MessageType_COMMIT) {
-		return nil
-	}
+	//if consensus.IsViewChangingMode() &&
+	//	(msg.Type == msg_pb.MessageType_PREPARE ||
+	//		msg.Type == msg_pb.MessageType_COMMIT) {
+	//	return nil
+	//}
 
 	intendedForValidator, intendedForLeader :=
 		!consensus.IsLeader(),
