@@ -16,7 +16,10 @@
 
 package fdlimit
 
-import "syscall"
+import (
+	"fmt"
+	"syscall"
+)
 
 // hardlimit is the number of file descriptors allowed at max by the kernel.
 const hardlimit = 10240
@@ -35,6 +38,7 @@ func Raise(max uint64) (uint64, error) {
 	if limit.Cur > max {
 		limit.Cur = max
 	}
+	fmt.Println("raise darwin")
 	if err := syscall.Setrlimit(syscall.RLIMIT_NOFILE, &limit); err != nil {
 		return 0, err
 	}

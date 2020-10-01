@@ -18,7 +18,10 @@
 
 package fdlimit
 
-import "syscall"
+import (
+	"fmt"
+	"syscall"
+)
 
 // Raise tries to maximize the file descriptor allowance of this process
 // to the maximum hard-limit allowed by the OS.
@@ -37,6 +40,7 @@ func Raise(max uint64) (uint64, error) {
 	if err := syscall.Setrlimit(syscall.RLIMIT_NOFILE, &limit); err != nil {
 		return 0, err
 	}
+	fmt.Println("linux raised to limit", limit)
 	// MacOS can silently apply further caps, so retrieve the actually set limit
 	if err := syscall.Getrlimit(syscall.RLIMIT_NOFILE, &limit); err != nil {
 		return 0, err
