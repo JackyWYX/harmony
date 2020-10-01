@@ -2,6 +2,7 @@ package core
 
 import (
 	"bytes"
+	"fmt"
 	"math/big"
 
 	"github.com/harmony-one/harmony/crypto/bls"
@@ -221,6 +222,7 @@ func VerifyAndDelegateFromMsg(
 
 	var delegateeWrapper *staking.ValidatorWrapper
 	if redelegation {
+		fmt.Println("redelegation", redelegation)
 		// Check if we can use tokens in undelegation to delegate (redelegate)
 		for i := range delegations {
 			delegationIndex := &delegations[i]
