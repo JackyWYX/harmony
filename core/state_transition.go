@@ -17,8 +17,10 @@
 package core
 
 import (
+	"bytes"
 	"math"
 	"math/big"
+	"sort"
 
 	staking2 "github.com/harmony-one/harmony/staking"
 	"github.com/harmony-one/harmony/staking/network"
@@ -96,7 +98,7 @@ type Message interface {
 }
 
 // IntrinsicGas computes the 'intrinsic gas' for a message with the given data.
-func IntrinsicGas(data []byte, contractCreation, homestead, isValidatorCreation bool) (uint64, error) {
+func IntrinsicGas(data []byte, contractCreation, homestead, istanbul, isValidatorCreation bool) (uint64, error) {
 	// Set the starting gas for the raw transaction
 	var gas uint64
 	if contractCreation && homestead {
@@ -116,10 +118,14 @@ func IntrinsicGas(data []byte, contractCreation, homestead, isValidatorCreation 
 			}
 		}
 		// Make sure we don't exceed uint64 for all data combinations
-		if (math.MaxUint64-gas)/params.TxDataNonZeroGas < nz {
+		nonZeroGas := params.TxDataNonZeroGasFrontier
+		if istanbul {
+			nonZeroGas = params.TxDataNonZeroGasEIP2028
+		}
+		if (math.MaxUint64-gas)/nonZeroGas < nz {
 			return 0, vm.ErrOutOfGas
 		}
-		gas += nz * params.TxDataNonZeroGas
+		gas += nz * nonZeroGas
 
 		z := uint64(len(data)) - nz
 		if (math.MaxUint64-gas)/params.TxDataZeroGas < z {
@@ -219,10 +225,11 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 	msg := st.msg
 	sender := vm.AccountRef(msg.From())
 	homestead := st.evm.ChainConfig().IsS3(st.evm.EpochNumber) // s3 includes homestead
+	istanbul := st.evm.ChainConfig().IsIstanbul(st.evm.EpochNumber)
 	contractCreation := msg.To() == nil
 
 	// Pay intrinsic gas
-	gas, err := IntrinsicGas(st.data, contractCreation, homestead, false)
+	gas, err := IntrinsicGas(st.data, contractCreation, homestead, istanbul, false)
 	if err != nil {
 		return nil, 0, false, err
 	}
@@ -298,9 +305,10 @@ func (st *StateTransition) StakingTransitionDb() (usedGas uint64, err error) {
 
 	sender := vm.AccountRef(msg.From())
 	homestead := st.evm.ChainConfig().IsS3(st.evm.EpochNumber) // s3 includes homestead
+	istanbul := st.evm.ChainConfig().IsIstanbul(st.evm.EpochNumber)
 
 	// Pay intrinsic gas
-	gas, err := IntrinsicGas(st.data, false, homestead, msg.Type() == types.StakeCreateVal)
+	gas, err := IntrinsicGas(st.data, false, homestead, istanbul, msg.Type() == types.StakeCreateVal)
 
 	if err != nil {
 		return 0, err
@@ -425,21 +433,34 @@ func (st *StateTransition) verifyAndApplyDelegateTx(delegate *staking.Delegate) 
 
 	st.state.SubBalance(delegate.DelegatorAddress, balanceToBeDeducted)
 
-	// Add log if everything is good
-	for valAddr, redelegatedToken := range fromLockedTokens {
-		encodedRedelegationData := []byte{}
-		addrBytes := valAddr.Bytes()
-		encodedRedelegationData = append(encodedRedelegationData, addrBytes...)
-		encodedRedelegationData = append(encodedRedelegationData, redelegatedToken.Bytes()...)
-		// The data field format is:
-		// [first 20 bytes]: Validator address from which the locked token is used for redelegation.
-		// [rest of the bytes]: the bigInt serialized bytes for the token amount.
-		st.state.AddLog(&types.Log{
-			Address:     delegate.DelegatorAddress,
-			Topics:      []common.Hash{staking2.DelegateTopic},
-			Data:        encodedRedelegationData,
-			BlockNumber: st.evm.BlockNumber.Uint64(),
+	if len(fromLockedTokens) > 0 {
+		sortedKeys := []common.Address{}
+		for key := range fromLockedTokens {
+			sortedKeys = append(sortedKeys, key)
+		}
+		sort.SliceStable(sortedKeys, func(i, j int) bool {
+			return bytes.Compare(sortedKeys[i][:], sortedKeys[j][:]) < 0
 		})
+		// Add log if everything is good
+		for _, key := range sortedKeys {
+			redelegatedToken, ok := fromLockedTokens[key]
+			if !ok {
+				return errors.New("Key missing for delegation receipt")
+			}
+			encodedRedelegationData := []byte{}
+			addrBytes := key.Bytes()
+			encodedRedelegationData = append(encodedRedelegationData, addrBytes...)
+			encodedRedelegationData = append(encodedRedelegationData, redelegatedToken.Bytes()...)
+			// The data field format is:
+			// [first 20 bytes]: Validator address from which the locked token is used for redelegation.
+			// [rest of the bytes]: the bigInt serialized bytes for the token amount.
+			st.state.AddLog(&types.Log{
+				Address:     delegate.DelegatorAddress,
+				Topics:      []common.Hash{staking2.DelegateTopic},
+				Data:        encodedRedelegationData,
+				BlockNumber: st.evm.BlockNumber.Uint64(),
+			})
+		}
 	}
 	return nil
 }
