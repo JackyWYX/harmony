@@ -5,10 +5,10 @@ import (
 	"sync"
 
 	"github.com/ethereum/go-ethereum/common"
+	bls_core "github.com/harmony-one/bls/ffi/go/bls"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 
-	bls_core "github.com/harmony-one/bls/ffi/go/bls"
 	msg_pb "github.com/harmony-one/harmony/api/proto/message"
 	"github.com/harmony-one/harmony/core/types"
 	"github.com/harmony-one/harmony/crypto/bls"
@@ -82,10 +82,11 @@ func (m *FBFTMessage) Hash() common.Hash {
 // FBFTLog represents the log stored by a node during FBFT process
 type FBFTLog struct {
 	blocks         map[common.Hash]*types.Block // store blocks received in FBFT
-	messages       map[common.Hash]*FBFTMessage // store messages received in FBFT
 	verifiedBlocks map[common.Hash]struct{}     // store block hashes for blocks that has already been verified
+	blockLock      sync.RWMutex
 
-	lock sync.Mutex
+	messages map[common.Hash]*FBFTMessage // store messages received in FBFT
+	msgLock  sync.RWMutex
 }
 
 // NewFBFTLog returns new instance of FBFTLog
@@ -100,24 +101,24 @@ func NewFBFTLog() *FBFTLog {
 
 // AddBlock add a new block into the log
 func (log *FBFTLog) AddBlock(block *types.Block) {
-	log.lock.Lock()
-	defer log.lock.Unlock()
+	log.blockLock.Lock()
+	defer log.blockLock.Unlock()
 
 	log.blocks[block.Hash()] = block
 }
 
 // MarkBlockVerified marks the block as verified
 func (log *FBFTLog) MarkBlockVerified(block *types.Block) {
-	log.lock.Lock()
-	defer log.lock.Unlock()
+	log.blockLock.Lock()
+	defer log.blockLock.Unlock()
 
 	log.verifiedBlocks[block.Hash()] = struct{}{}
 }
 
 // IsBlockVerified checks whether the block is verified
 func (log *FBFTLog) IsBlockVerified(block *types.Block) bool {
-	log.lock.Lock()
-	defer log.lock.Unlock()
+	log.blockLock.RLock()
+	defer log.blockLock.RUnlock()
 
 	_, exist := log.verifiedBlocks[block.Hash()]
 	return exist
@@ -125,16 +126,16 @@ func (log *FBFTLog) IsBlockVerified(block *types.Block) bool {
 
 // GetBlockByHash returns the block matches the given block hash
 func (log *FBFTLog) GetBlockByHash(hash common.Hash) *types.Block {
-	log.lock.Lock()
-	defer log.lock.Unlock()
+	log.blockLock.RLock()
+	defer log.blockLock.RUnlock()
 
 	return log.blocks[hash]
 }
 
 // GetBlocksByNumber returns the blocks match the given block number
 func (log *FBFTLog) GetBlocksByNumber(number uint64) []*types.Block {
-	log.lock.Lock()
-	defer log.lock.Unlock()
+	log.blockLock.RLock()
+	defer log.blockLock.RUnlock()
 
 	var blocks []*types.Block
 	for _, block := range log.blocks {
@@ -147,8 +148,8 @@ func (log *FBFTLog) GetBlocksByNumber(number uint64) []*types.Block {
 
 // DeleteBlocksLessThan deletes blocks less than given block number
 func (log *FBFTLog) DeleteBlocksLessThan(number uint64) {
-	log.lock.Lock()
-	defer log.lock.Unlock()
+	log.blockLock.Lock()
+	defer log.blockLock.Unlock()
 
 	for h, block := range log.blocks {
 		if block.NumberU64() < number {
@@ -160,8 +161,8 @@ func (log *FBFTLog) DeleteBlocksLessThan(number uint64) {
 
 // DeleteBlockByNumber deletes block of specific number
 func (log *FBFTLog) DeleteBlockByNumber(number uint64) {
-	log.lock.Lock()
-	defer log.lock.Unlock()
+	log.blockLock.Lock()
+	defer log.blockLock.Unlock()
 
 	for h, block := range log.blocks {
 		if block.NumberU64() == number {
@@ -173,8 +174,8 @@ func (log *FBFTLog) DeleteBlockByNumber(number uint64) {
 
 // DeleteMessagesLessThan deletes messages less than given block number
 func (log *FBFTLog) DeleteMessagesLessThan(number uint64) {
-	log.lock.Lock()
-	defer log.lock.Unlock()
+	log.msgLock.Lock()
+	defer log.msgLock.Unlock()
 
 	for h, msg := range log.messages {
 		if msg.BlockNum < number {
@@ -185,16 +186,16 @@ func (log *FBFTLog) DeleteMessagesLessThan(number uint64) {
 
 // AddMessage adds a pbft message into the log
 func (log *FBFTLog) AddMessage(msg *FBFTMessage) {
-	log.lock.Lock()
-	defer log.lock.Unlock()
+	log.msgLock.Lock()
+	defer log.msgLock.Unlock()
 
 	log.messages[msg.Hash()] = msg
 }
 
 // GetMessagesByTypeSeqViewHash returns pbft messages with matching type, blockNum, viewID and blockHash
 func (log *FBFTLog) GetMessagesByTypeSeqViewHash(typ msg_pb.MessageType, blockNum uint64, viewID uint64, blockHash common.Hash) []*FBFTMessage {
-	log.lock.Lock()
-	defer log.lock.Unlock()
+	log.msgLock.RLock()
+	defer log.msgLock.RUnlock()
 
 	var found []*FBFTMessage
 	for _, msg := range log.messages {
@@ -207,8 +208,8 @@ func (log *FBFTLog) GetMessagesByTypeSeqViewHash(typ msg_pb.MessageType, blockNu
 
 // GetMessagesByTypeSeq returns pbft messages with matching type, blockNum
 func (log *FBFTLog) GetMessagesByTypeSeq(typ msg_pb.MessageType, blockNum uint64) []*FBFTMessage {
-	log.lock.Lock()
-	defer log.lock.Unlock()
+	log.msgLock.RLock()
+	defer log.msgLock.RUnlock()
 
 	var found []*FBFTMessage
 	for _, msg := range log.messages {
@@ -221,8 +222,8 @@ func (log *FBFTLog) GetMessagesByTypeSeq(typ msg_pb.MessageType, blockNum uint64
 
 // GetMessagesByTypeSeqHash returns pbft messages with matching type, blockNum
 func (log *FBFTLog) GetMessagesByTypeSeqHash(typ msg_pb.MessageType, blockNum uint64, blockHash common.Hash) []*FBFTMessage {
-	log.lock.Lock()
-	defer log.lock.Unlock()
+	log.msgLock.RLock()
+	defer log.msgLock.RUnlock()
 
 	var found []*FBFTMessage
 	for _, msg := range log.messages {
@@ -259,8 +260,8 @@ func (log *FBFTLog) HasMatchingViewPrepared(blockNum uint64, viewID uint64, bloc
 
 // GetMessagesByTypeSeqView returns pbft messages with matching type, blockNum and viewID
 func (log *FBFTLog) GetMessagesByTypeSeqView(typ msg_pb.MessageType, blockNum uint64, viewID uint64) []*FBFTMessage {
-	log.lock.Lock()
-	defer log.lock.Unlock()
+	log.msgLock.RLock()
+	defer log.msgLock.RUnlock()
 
 	var found []*FBFTMessage
 	for _, msg := range log.messages {
