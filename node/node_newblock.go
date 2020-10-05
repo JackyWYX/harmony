@@ -3,7 +3,6 @@ package node
 import (
 	"errors"
 	"sort"
-	"strings"
 	"time"
 
 	staking "github.com/harmony-one/harmony/staking/types"
@@ -293,7 +292,10 @@ Loop:
 		}
 
 		if err := node.Blockchain().Validator().ValidateCXReceiptsProof(cxp); err != nil {
-			if strings.Contains(err.Error(), rawdb.MsgNoShardStateFromDB) {
+			// Temporary hack. It's possible that the node does not have the latest state shard
+			// to validate the CXReceipt proof. In this case, add to pending pool and wait it to
+			// be verified in the next round.
+			if errors.Is(err, rawdb.ErrNoShardStateFromDB) {
 				pendingReceiptsList = append(pendingReceiptsList, cxp)
 			} else {
 				utils.Logger().Error().Err(err).Msg("[proposeReceiptsProof] Invalid CXReceiptsProof")

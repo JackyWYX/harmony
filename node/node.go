@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/big"
 	"os"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -300,9 +299,11 @@ func (node *Node) AddPendingReceipts(receipts *types.CXReceiptsProof) {
 	shardID := receipts.Header.ShardID()
 
 	// Sanity checks
-
 	if err := node.Blockchain().Validator().ValidateCXReceiptsProof(receipts); err != nil {
-		if !strings.Contains(err.Error(), rawdb.MsgNoShardStateFromDB) {
+		// Temporary hack. It's possible that the node does not have the latest state shard
+		// to validate the CXReceipt proof. In this case, add to pending pool for now.
+		// TODO: Resolve this with a better solution. Else there can be some security issues.
+		if !errors.Is(err, rawdb.ErrNoShardStateFromDB) {
 			utils.Logger().Error().Err(err).Msg("[AddPendingReceipts] Invalid CXReceiptsProof")
 			return
 		}

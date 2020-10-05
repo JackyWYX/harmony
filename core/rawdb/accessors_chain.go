@@ -26,10 +26,11 @@ import (
 	"github.com/harmony-one/harmony/block"
 	"github.com/harmony-one/harmony/core/types"
 	"github.com/harmony-one/harmony/internal/utils"
+	"github.com/pkg/errors"
 )
 
-// MsgNoShardStateFromDB error message for shard state reading failure
-var MsgNoShardStateFromDB = "failed to read shard state from DB"
+// ErrNoShardStateFromDB is the error for shard state reading failure
+var ErrNoShardStateFromDB = errors.New("failed to read shard state from DB")
 
 // Indicate whether the receipts corresponding to a blockHash is spent or not
 const (
