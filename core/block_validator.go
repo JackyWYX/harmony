@@ -22,6 +22,11 @@ import (
 	"encoding/hex"
 	"fmt"
 
+	"github.com/harmony-one/bls/ffi/go/bls"
+	"github.com/harmony-one/harmony/internal/utils"
+	"github.com/harmony-one/harmony/shard"
+	"github.com/harmony-one/harmony/staking/verify"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -68,13 +73,7 @@ func (v *BlockValidator) ValidateBody(block *types.Block) error {
 	}
 	// Header validity is known at this point, check the uncles and transactions
 	header := block.Header()
-	//if err := v.engine.VerifyUncles(v.bc, block); err != nil {
-	//	return err
-	//}
-	if hash := types.DeriveSha(
-		block.Transactions(),
-		block.StakingTransactions(),
-	); hash != header.TxHash() {
+	if hash := types.DeriveSha(block.Transactions(), block.StakingTransactions()); hash != header.TxHash() {
 		return fmt.Errorf("transaction root hash mismatch: have %x, want %x", hash, header.TxHash())
 	}
 	return nil
@@ -183,6 +182,74 @@ func CalcGasLimit(parent *types.Block, gasFloor, gasCeil uint64) uint64 {
 		}
 	}
 	return limit
+}
+
+// ValidateBlockCrossLink checks whether the cross link in the block is valid
+func (v *BlockValidator) ValidateBlockCrossLinks(block *types.Block) error {
+	cxLinksData := block.Header().CrossLinks()
+	if block.ShardID() == shard.BeaconChainShardID {
+		if len(cxLinksData) != 0 {
+			return errors.New("shard chain shall not have cross link data")
+		}
+		return nil
+	}
+	if len(cxLinksData) == 0 {
+		utils.Logger().Debug().Msgf("Zero CrossLinks in the header")
+		return nil
+	}
+	var crossLinks types.CrossLinks
+	err := rlp.DecodeBytes(cxLinksData, &crossLinks)
+	if err != nil {
+		return errors.Wrapf(err, "failed to decode cross links")
+	}
+
+	if !crossLinks.IsSorted() {
+		return errors.New("cross links are not sorted")
+	}
+
+	for _, crossLink := range crossLinks {
+		cl, err := v.bc.ReadCrossLink(crossLink.ShardID(), crossLink.BlockNum())
+		if err == nil && cl != nil {
+			return errors.New("cross link already exist")
+		}
+		if err := v.ValidateCrossLink(crossLink); err != nil {
+			return errors.Wrapf(err, "cannot VerifyBlockCrossLinks")
+		}
+	}
+	return nil
+}
+
+// ValidateCrossLink checks the validation of the CrossLink.
+func (v *BlockValidator) ValidateCrossLink(cl types.CrossLink) error {
+	if !v.bc.Config().IsCrossLink(cl.Epoch()) {
+		return errors.Errorf(
+			"[VerifyCrossLink] CrossLink Epoch should >= cross link starting epoch %v %v",
+			cl.Epoch(), v.bc.Config().CrossLinkEpoch,
+		)
+	}
+	aggSig := &bls.Sign{}
+	sig := cl.Signature()
+	if err := aggSig.Deserialize(sig[:]); err != nil {
+		return errors.Wrapf(
+			err,
+			"[VerifyCrossLink] unable to deserialize multi-signature from payload",
+		)
+	}
+	if cl, _ := v.bc.ReadCrossLink(cl.ShardID(), cl.Number().Uint64()); cl != nil {
+		return errors.Errorf("[VerifyCrossLink] Cross Link already exist")
+	}
+	committee, err := v.bc.getCommitteeByEpochShard(cl.Epoch(), cl.ShardID())
+	if err != nil {
+		return err
+	}
+	decider, err := v.bc.getDeciderByEpochShard(cl.Epoch(), cl.ShardID())
+	if err != nil {
+		return err
+	}
+
+	return verify.AggregateSigForCommittee(
+		v.bc, committee, decider, aggSig, cl.Hash(), cl.BlockNum(), cl.ViewID().Uint64(), cl.Epoch(), cl.Bitmap(),
+	)
 }
 
 // ValidateCXReceiptsProof checks whether the given CXReceiptsProof is consistency with itself

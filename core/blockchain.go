@@ -19,6 +19,7 @@ package core
 
 import (
 	"bytes"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -28,6 +29,9 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/harmony-one/harmony/consensus/quorum"
+	"github.com/harmony-one/harmony/multibls"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/mclock"
@@ -86,6 +90,8 @@ const (
 	validatorListByDelegatorCacheLimit = 1024
 	pendingCrossLinksCacheLimit        = 2
 	blockAccumulatorCacheLimit         = 256
+	committeeCacheLimit                = 16
+	deciderCacheLimit                  = 16
 	maxPendingSlashes                  = 512
 	// BlockChainVersion ensures that an incompatible database forces a resync from scratch.
 	BlockChainVersion = 3
@@ -148,16 +154,19 @@ type BlockChain struct {
 	futureBlocks                  *lru.Cache     // future blocks are blocks added for later processing
 	shardStateCache               *lru.Cache
 	lastCommitsCache              *lru.Cache
-	epochCache                    *lru.Cache    // Cache epoch number → first block number
-	randomnessCache               *lru.Cache    // Cache for vrf/vdf
-	validatorSnapshotCache        *lru.Cache    // Cache for validator snapshot
-	validatorStatsCache           *lru.Cache    // Cache for validator stats
-	validatorListCache            *lru.Cache    // Cache of validator list
-	validatorListByDelegatorCache *lru.Cache    // Cache of validator list by delegator
-	pendingCrossLinksCache        *lru.Cache    // Cache of last pending crosslinks
-	blockAccumulatorCache         *lru.Cache    // Cache of block accumulators
-	quit                          chan struct{} // blockchain quit channel
-	running                       int32         // running must be called atomically
+	epochCache                    *lru.Cache // Cache epoch number → first block number
+	randomnessCache               *lru.Cache // Cache for vrf/vdf
+	validatorSnapshotCache        *lru.Cache // Cache for validator snapshot
+	validatorStatsCache           *lru.Cache // Cache for validator stats
+	validatorListCache            *lru.Cache // Cache of validator list
+	validatorListByDelegatorCache *lru.Cache // Cache of validator list by delegator
+	pendingCrossLinksCache        *lru.Cache // Cache of last pending crosslinks
+	blockAccumulatorCache         *lru.Cache // Cache of block accumulators
+	committeeCache                *lru.Cache // Cache of committee with epoch and shard ID
+	deciderCache                  *lru.Cache // Cache of decider with epoch and shard
+
+	quit    chan struct{} // blockchain quit channel
+	running int32         // running must be called atomically
 	// procInterrupt must be atomically called
 	procInterrupt int32          // interrupt signaler for block processing
 	wg            sync.WaitGroup // chain processing wait group for shutting down
@@ -202,6 +211,8 @@ func NewBlockChain(
 	validatorListByDelegatorCache, _ := lru.New(validatorListByDelegatorCacheLimit)
 	pendingCrossLinksCache, _ := lru.New(pendingCrossLinksCacheLimit)
 	blockAccumulatorCache, _ := lru.New(blockAccumulatorCacheLimit)
+	committeeCache, _ := lru.New(committeeCacheLimit)
+	deciderCache, _ := lru.New(deciderCacheLimit)
 
 	bc := &BlockChain{
 		chainConfig:                   chainConfig,
@@ -226,6 +237,8 @@ func NewBlockChain(
 		validatorListByDelegatorCache: validatorListByDelegatorCache,
 		pendingCrossLinksCache:        pendingCrossLinksCache,
 		blockAccumulatorCache:         blockAccumulatorCache,
+		committeeCache:                committeeCache,
+		deciderCache:                  deciderCache,
 		engine:                        engine,
 		vmConfig:                      vmConfig,
 		badBlocks:                     badBlocks,
@@ -257,8 +270,11 @@ func NewBlockChain(
 
 // ValidateNewBlock validates new block.
 func (bc *BlockChain) ValidateNewBlock(block *types.Block) error {
-	state, err := state.New(bc.CurrentBlock().Root(), bc.stateCache)
-
+	curBlock := bc.CurrentBlock()
+	if curBlock.Hash() != block.ParentHash() {
+		return errors.New("block not extending canonical chain")
+	}
+	state, err := state.New(curBlock.Root(), bc.stateCache)
 	if err != nil {
 		return err
 	}
@@ -280,6 +296,11 @@ func (bc *BlockChain) ValidateNewBlock(block *types.Block) error {
 		bc.reportBlock(block, receipts, err)
 		return err
 	}
+
+	if err := bc.Validator().ValidateBlockCrossLinks(block); err != nil {
+		return errors.Wrap(err, "[CrossLinkVerification]")
+	}
+
 	return nil
 }
 
@@ -1998,9 +2019,7 @@ func (bc *BlockChain) ReadCrossLink(shardID uint32, blockNum uint64) (*types.Cro
 	if err != nil {
 		return nil, err
 	}
-	crossLink, err := types.DeserializeCrossLink(bytes)
-
-	return crossLink, err
+	return types.DeserializeCrossLink(bytes)
 }
 
 // LastContinuousCrossLink saves the last crosslink of a shard
@@ -2918,6 +2937,56 @@ func (bc *BlockChain) GetECDSAFromCoinbase(header *block.Header) (common.Address
 		"cannot find corresponding ECDSA Address for coinbase %s",
 		header.Coinbase().Hash().Hex(),
 	)
+}
+
+// getCommitteeByEpochShard get the shard committee by epoch and shard ID
+func (bc *BlockChain) getCommitteeByEpochShard(epoch *big.Int, shardID uint32) (*shard.Committee, error) {
+	// Look up in cache
+	key := make([]byte, 12)
+	binary.LittleEndian.PutUint64(key, epoch.Uint64())
+	binary.LittleEndian.PutUint32(key[8:], shardID)
+	if cmt, ok := bc.committeeCache.Get(key); ok {
+		return cmt.(*shard.Committee), nil
+	}
+
+	// If not found, construct
+	shardState, err := bc.ReadShardState(epoch)
+	if err != nil {
+		return nil, err
+	}
+	cmt, err := shardState.FindCommitteeByID(shardID)
+	if err != nil {
+		return nil, err
+	}
+	bc.committeeCache.Add(key, cmt)
+
+	return cmt, nil
+}
+
+func (bc *BlockChain) getDeciderByEpochShard(epoch *big.Int, shardID uint32) (quorum.Decider, error) {
+	// Look up in cache
+	key := make([]byte, 12)
+	binary.LittleEndian.PutUint64(key, epoch.Uint64())
+	binary.LittleEndian.PutUint32(key[8:], shardID)
+	if d, ok := bc.deciderCache.Get(key); ok {
+		return d.(quorum.Decider), nil
+	}
+
+	// If not found, construct
+	cmt, err := bc.getCommitteeByEpochShard(epoch, shardID)
+	if err != nil {
+		return nil, err
+	}
+	decider := quorum.NewDecider(quorum.SuperMajorityStake, shardID)
+	decider.SetMyPublicKeyProvider(func() (multibls.PublicKeys, error) {
+		return nil, nil
+	})
+	if _, err := decider.SetVoters(cmt, epoch); err != nil {
+		return nil, err
+	}
+
+	bc.deciderCache.Add(key, decider)
+	return decider, nil
 }
 
 // SuperCommitteeForNextEpoch ...

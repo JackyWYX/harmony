@@ -304,16 +304,6 @@ func (node *Node) VerifyNewBlock(newBlock *types.Block) error {
 		)
 	}
 
-	// Verify cross links
-	// TODO: move into ValidateNewBlock
-	if node.NodeConfig.ShardID == shard.BeaconChainShardID {
-		err := node.VerifyBlockCrossLinks(newBlock)
-		if err != nil {
-			utils.Logger().Debug().Err(err).Msg("ops2 VerifyBlockCrossLinks Failed")
-			return err
-		}
-	}
-
 	// TODO: move into ValidateNewBlock
 	if err := node.verifyIncomingReceipts(newBlock); err != nil {
 		utils.Logger().Error().

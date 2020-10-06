@@ -7,7 +7,6 @@ import (
 	"github.com/harmony-one/bls/ffi/go/bls"
 	"github.com/harmony-one/harmony/consensus/quorum"
 	"github.com/harmony-one/harmony/consensus/signature"
-	"github.com/harmony-one/harmony/core"
 	bls_cosi "github.com/harmony-one/harmony/crypto/bls"
 	"github.com/harmony-one/harmony/shard"
 	"github.com/pkg/errors"
@@ -20,7 +19,7 @@ var (
 
 // AggregateSigForCommittee ..
 func AggregateSigForCommittee(
-	chain *core.BlockChain,
+	chain signature.SigChainReader,
 	committee *shard.Committee,
 	decider quorum.Decider,
 	aggSignature *bls.Sign,
