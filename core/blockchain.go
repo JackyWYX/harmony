@@ -274,6 +274,9 @@ func (bc *BlockChain) ValidateNewBlock(block *types.Block) error {
 	if curBlock.Hash() != block.ParentHash() {
 		return errors.New("block not extending canonical chain")
 	}
+	if err := bc.validator.ValidateBody(block); err != nil {
+		return err
+	}
 	state, err := state.New(curBlock.Root(), bc.stateCache)
 	if err != nil {
 		return err
@@ -290,15 +293,11 @@ func (bc *BlockChain) ValidateNewBlock(block *types.Block) error {
 	}
 
 	// Verify all the hash roots (state, txns, receipts, cross-shard)
-	if err := bc.Validator().ValidateState(
+	if err := bc.validator.ValidateState(
 		block, state, receipts, cxReceipts, usedGas,
 	); err != nil {
 		bc.reportBlock(block, receipts, err)
 		return err
-	}
-
-	if err := bc.Validator().ValidateBlockCrossLinks(block); err != nil {
-		return errors.Wrap(err, "[CrossLinkVerification]")
 	}
 
 	return nil
@@ -2294,8 +2293,8 @@ func (bc *BlockChain) WriteCXReceiptsProofSpent(db rawdb.DatabaseWriter, cxps []
 	return nil
 }
 
-// IsSpent checks whether a CXReceiptsProof is unspent
-func (bc *BlockChain) IsSpent(cxp *types.CXReceiptsProof) bool {
+// isCXReceiptSpent checks whether a CXReceiptsProof is unspent
+func (bc *BlockChain) isCXReceiptSpent(cxp *types.CXReceiptsProof) bool {
 	shardID := cxp.MerkleProof.ShardID
 	blockNum := cxp.MerkleProof.BlockNum.Uint64()
 	by, _ := rawdb.ReadCXReceiptsProofSpent(bc.db, shardID, blockNum)

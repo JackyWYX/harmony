@@ -76,6 +76,12 @@ func (v *BlockValidator) ValidateBody(block *types.Block) error {
 	if hash := types.DeriveSha(block.Transactions(), block.StakingTransactions()); hash != header.TxHash() {
 		return fmt.Errorf("transaction root hash mismatch: have %x, want %x", hash, header.TxHash())
 	}
+	if err := v.validateBlockCrossLinks(block); err != nil {
+		return fmt.Errorf("[ValidateCrossLinks]")
+	}
+	if err := v.validateBlockCXProofs(block); err != nil {
+		return fmt.Errorf("[ValidateIncomingReceipts]")
+	}
 	return nil
 }
 
@@ -184,8 +190,8 @@ func CalcGasLimit(parent *types.Block, gasFloor, gasCeil uint64) uint64 {
 	return limit
 }
 
-// ValidateBlockCrossLink checks whether the cross link in the block is valid
-func (v *BlockValidator) ValidateBlockCrossLinks(block *types.Block) error {
+// validateBlockCrossLink checks whether the cross link in the block is valid
+func (v *BlockValidator) validateBlockCrossLinks(block *types.Block) error {
 	cxLinksData := block.Header().CrossLinks()
 	if block.ShardID() == shard.BeaconChainShardID {
 		if len(cxLinksData) != 0 {
@@ -221,10 +227,10 @@ func (v *BlockValidator) ValidateBlockCrossLinks(block *types.Block) error {
 
 // ValidateCrossLink checks the validation of the CrossLink.
 func (v *BlockValidator) ValidateCrossLink(cl types.CrossLink) error {
-	if !v.bc.Config().IsCrossLink(cl.Epoch()) {
+	if !v.config.IsCrossLink(cl.Epoch()) {
 		return errors.Errorf(
 			"[VerifyCrossLink] CrossLink Epoch should >= cross link starting epoch %v %v",
-			cl.Epoch(), v.bc.Config().CrossLinkEpoch,
+			cl.Epoch(), v.config.CrossLinkEpoch,
 		)
 	}
 	aggSig := &bls.Sign{}
@@ -252,15 +258,38 @@ func (v *BlockValidator) ValidateCrossLink(cl types.CrossLink) error {
 	)
 }
 
+// validateBlockCXProofs checks the validation of the block's incoming receipts
+func (v *BlockValidator) validateBlockCXProofs(block *types.Block) error {
+	CXReceipts := block.IncomingReceipts()
+
+	if err := checkDuplicateCXReceipts(CXReceipts); err != nil {
+		return err
+	}
+	if gotRoot := types.DeriveSha(CXReceipts); gotRoot != block.Header().IncomingReceiptHash() {
+		return fmt.Errorf("invalid IncomingReceiptHash: %v / %v", gotRoot.Hex(),
+			block.Header().IncomingReceiptHash().Hex())
+	}
+	for _, cxp := range CXReceipts {
+		if err := v.ValidateCXReceiptsProof(cxp); err != nil {
+			return errors.Wrapf(err, "failed to verify CXReceipt at block %v on shard %v",
+				cxp.MerkleProof.BlockHash.Hex(), cxp.MerkleProof.ShardID)
+		}
+	}
+	return nil
+}
+
 // ValidateCXReceiptsProof checks whether the given CXReceiptsProof is consistency with itself
 func (v *BlockValidator) ValidateCXReceiptsProof(cxp *types.CXReceiptsProof) error {
 	if !v.config.AcceptsCrossTx(cxp.Header.Epoch()) {
-		return errors.New("[ValidateCXReceiptsProof] cross shard receipt received before cx fork")
+		return errors.New("cross shard receipt received before cx fork")
 	}
-
 	toShardID, err := cxp.GetToShardID()
 	if err != nil {
-		return errors.Wrapf(err, "[ValidateCXReceiptsProof] invalid shardID")
+		return errors.Wrapf(err, "invalid shardID")
+	}
+	if toShardID != v.bc.ShardID() {
+		return fmt.Errorf("unexpected shard ID: CXReceipt(%v) != Blockchain(%v)",
+			toShardID, v.bc.ShardID())
 	}
 
 	merkleProof := cxp.MerkleProof
@@ -281,14 +310,14 @@ func (v *BlockValidator) ValidateCXReceiptsProof(cxp *types.CXReceiptsProof) err
 	}
 
 	if !foundMatchingShardID {
-		return errors.New("[ValidateCXReceiptsProof] Didn't find matching toShardID (no receipts for my shard)")
+		return errors.New("Didn't find matching toShardID (no receipts for my shard)")
 	}
 
 	sha := types.DeriveSha(cxp.Receipts)
 	// (1) verify the CXReceipts trie root match
 	if sha != shardRoot {
 		return errors.New(
-			"[ValidateCXReceiptsProof] Trie Root of ReadCXReceipts Not Match",
+			"Trie Root of ReadCXReceipts Not Match",
 		)
 	}
 
@@ -299,7 +328,7 @@ func (v *BlockValidator) ValidateCXReceiptsProof(cxp *types.CXReceiptsProof) err
 	}
 	if outgoingHashFromSourceShard != merkleProof.CXReceiptHash {
 		return errors.New(
-			"[ValidateCXReceiptsProof] IncomingReceiptRootHash from source shard not match",
+			"IncomingReceiptRootHash from source shard not match",
 		)
 	}
 
@@ -307,10 +336,28 @@ func (v *BlockValidator) ValidateCXReceiptsProof(cxp *types.CXReceiptsProof) err
 	if cxp.Header.Hash() != merkleProof.BlockHash ||
 		cxp.Header.OutgoingReceiptHash() != merkleProof.CXReceiptHash {
 		return errors.New(
-			"[ValidateCXReceiptsProof] BlockHash or OutgoingReceiptHash not match in block Header",
+			"BlockHash or OutgoingReceiptHash not match in block Header",
 		)
 	}
 
-	// (4) verify blockHeader with seal
+	// (4) verify double spent
+	if v.bc.isCXReceiptSpent(cxp) {
+		return errors.New("Double Spent")
+	}
+
+	// (5) verify blockHeader with seal
 	return v.engine.VerifyHeaderWithSignature(v.bc, cxp.Header, cxp.CommitSig, cxp.CommitBitmap, true)
+}
+
+// checkDuplicateCXReceipts checks whether there are duplicate CXReceipts within a block
+func checkDuplicateCXReceipts(CXReceipts types.CXReceiptsProofs) error {
+	m := make(map[common.Hash]struct{})
+	for _, cxp := range CXReceipts {
+		blockHash := cxp.MerkleProof.BlockHash
+		if _, ok := m[blockHash]; ok {
+			return errors.New("duplicate CXReceipts in a block")
+		}
+		m[blockHash] = struct{}{}
+	}
+	return nil
 }

@@ -295,24 +295,13 @@ func (node *Node) VerifyNewBlock(newBlock *types.Block) error {
 			Str("blockHash", newBlock.Hash().Hex()).
 			Int("numTx", len(newBlock.Transactions())).
 			Int("numStakingTx", len(newBlock.StakingTransactions())).
+			Int("numIncomingReceipts", len(newBlock.IncomingReceipts())).
 			Err(err).
 			Msg("[VerifyNewBlock] Cannot Verify New Block!!!")
 		return errors.Errorf(
 			"[VerifyNewBlock] Cannot Verify New Block!!! block-hash %s txn-count %d",
 			newBlock.Hash().Hex(),
 			len(newBlock.Transactions()),
-		)
-	}
-
-	// TODO: move into ValidateNewBlock
-	if err := node.verifyIncomingReceipts(newBlock); err != nil {
-		utils.Logger().Error().
-			Str("blockHash", newBlock.Hash().Hex()).
-			Int("numIncomingReceipts", len(newBlock.IncomingReceipts())).
-			Err(err).
-			Msg("[VerifyNewBlock] Cannot ValidateNewBlock")
-		return errors.Wrapf(
-			err, "[VerifyNewBlock] Cannot ValidateNewBlock",
 		)
 	}
 	return nil

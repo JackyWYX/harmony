@@ -44,9 +44,6 @@ type Validator interface {
 	// to abort the operations and a results channel to retrieve the async verifications
 	ValidateHeaders(chain []*types.Block) (chan<- struct{}, <-chan error)
 
-	// ValidateBlockCrossLinks checks the validation of block cross links
-	ValidateBlockCrossLinks(block *types.Block) error
-
 	// ValidateCrossLink checks the validation of a cross link
 	ValidateCrossLink(cl types.CrossLink) error
 

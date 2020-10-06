@@ -272,11 +272,6 @@ Loop:
 			pendingReceiptsList = append(pendingReceiptsList, cxp)
 			continue
 		}
-		// check double spent
-		if node.Blockchain().IsSpent(cxp) {
-			utils.Logger().Debug().Interface("cxp", cxp).Msg("[proposeReceiptsProof] CXReceipt is spent")
-			continue
-		}
 		hash := cxp.MerkleProof.BlockHash
 		// ignore duplicated receipts
 		if _, ok := m[hash]; ok {
