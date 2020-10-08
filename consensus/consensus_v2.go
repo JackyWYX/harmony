@@ -7,6 +7,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 
 	msg_pb "github.com/harmony-one/harmony/api/proto/message"
@@ -19,7 +20,6 @@ import (
 	"github.com/harmony-one/harmony/p2p"
 	"github.com/harmony-one/harmony/shard"
 	"github.com/harmony-one/vdf/src/vdf_go"
-	"github.com/pkg/errors"
 )
 
 var (
@@ -283,6 +283,7 @@ func (consensus *Consensus) Start(
 				}
 			case <-consensus.syncReadyChan:
 				consensus.getLogger().Info().Msg("[ConsensusMainLoop] syncReadyChan")
+				consensus.addLastMile()
 				consensus.SetBlockNum(consensus.ChainReader.CurrentHeader().Number().Uint64() + 1)
 				consensus.SetViewIDs(consensus.ChainReader.CurrentHeader().ViewID().Uint64() + 1)
 				mode := consensus.UpdateConsensusInformation()
@@ -403,6 +404,26 @@ func (consensus *Consensus) Start(
 		}
 		consensus.getLogger().Info().Msg("[ConsensusMainLoop] Ended.")
 	}()
+}
+
+// addLastMile add the last mile block from FBFTLog and insert to blockchain
+func (consensus *Consensus) addLastMile() error {
+	curNumber := consensus.ChainReader.CurrentBlock().NumberU64()
+	blockIter, err := consensus.GetLastMileBlockIter(curNumber + 1)
+	if err != nil {
+		return err
+	}
+	for {
+		block := blockIter.Next()
+		if block == nil {
+			break
+		}
+		if err := consensus.OnConsensusDone(block); err != nil {
+			return errors.Wrap(err, "failed to InsertChain")
+		}
+	}
+	consensus.FBFTLog.PruneCacheBeforeBlock(consensus.ChainReader.CurrentBlock().NumberU64() + 1)
+	return nil
 }
 
 // LastMileBlockIter is the iterator to iterate over the last mile blocks in consensus cache.

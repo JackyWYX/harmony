@@ -369,7 +369,7 @@ func (node *Node) PostConsensusProcessing(newBlock *types.Block) error {
 		}
 		node.BroadcastCXReceipts(newBlock)
 	} else {
-		if node.Consensus.Mode() != consensus.Listening {
+		if node.Consensus.Mode() == consensus.Normal {
 			utils.Logger().Info().
 				Uint64("blockNum", newBlock.NumberU64()).
 				Uint64("epochNum", newBlock.Epoch().Uint64()).

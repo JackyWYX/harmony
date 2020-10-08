@@ -14,6 +14,8 @@ import (
 	"github.com/Workiva/go-datastructures/queue"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/pkg/errors"
+
 	"github.com/harmony-one/harmony/api/service/syncing/downloader"
 	pb "github.com/harmony-one/harmony/api/service/syncing/downloader/proto"
 	"github.com/harmony-one/harmony/consensus"
@@ -23,7 +25,6 @@ import (
 	"github.com/harmony-one/harmony/internal/utils"
 	"github.com/harmony-one/harmony/node/worker"
 	"github.com/harmony-one/harmony/p2p"
-	"github.com/pkg/errors"
 )
 
 // Constants for syncing.
@@ -948,32 +949,7 @@ func (ss *StateSync) SyncLoop(bc *core.BlockChain, worker *worker.Worker, isBeac
 		}
 		ss.purgeOldBlocksFromCache()
 	}
-	if consensus != nil {
-		if err := ss.addConsensusLastMile(bc, consensus); err != nil {
-			utils.Logger().Error().Err(err).Msg("[SYNC] Add consensus last mile")
-		}
-		consensus.SetMode(consensus.UpdateConsensusInformation())
-	}
 	ss.purgeAllBlocksFromCache()
-}
-
-func (ss *StateSync) addConsensusLastMile(bc *core.BlockChain, consensus *consensus.Consensus) error {
-	curNumber := bc.CurrentBlock().NumberU64()
-	blockIter, err := consensus.GetLastMileBlockIter(curNumber + 1)
-	if err != nil {
-		return err
-	}
-	for {
-		block := blockIter.Next()
-		if block == nil {
-			break
-		}
-		if _, err := bc.InsertChain(types.Blocks{block}, true); err != nil {
-			return errors.Wrap(err, "failed to InsertChain")
-		}
-	}
-	consensus.FBFTLog.PruneCacheBeforeBlock(bc.CurrentBlock().NumberU64() + 1)
-	return nil
 }
 
 // GetSyncingPort returns the syncing port.
