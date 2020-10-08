@@ -77,10 +77,10 @@ func (v *BlockValidator) ValidateBody(block *types.Block) error {
 		return fmt.Errorf("transaction root hash mismatch: have %x, want %x", hash, header.TxHash())
 	}
 	if err := v.validateBlockCrossLinks(block); err != nil {
-		return fmt.Errorf("[ValidateCrossLinks]")
+		return errors.Wrap(err, "[ValidateCrossLinks]")
 	}
 	if err := v.validateBlockCXProofs(block); err != nil {
-		return fmt.Errorf("[ValidateIncomingReceipts]")
+		return errors.Wrap(err, "[ValidateIncomingReceipts]")
 	}
 	return nil
 }
@@ -193,7 +193,7 @@ func CalcGasLimit(parent *types.Block, gasFloor, gasCeil uint64) uint64 {
 // validateBlockCrossLink checks whether the cross link in the block is valid
 func (v *BlockValidator) validateBlockCrossLinks(block *types.Block) error {
 	cxLinksData := block.Header().CrossLinks()
-	if block.ShardID() == shard.BeaconChainShardID {
+	if block.ShardID() != shard.BeaconChainShardID {
 		if len(cxLinksData) != 0 {
 			return errors.New("shard chain shall not have cross link data")
 		}

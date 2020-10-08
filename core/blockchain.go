@@ -2941,8 +2941,8 @@ func (bc *BlockChain) GetECDSAFromCoinbase(header *block.Header) (common.Address
 // getCommitteeByEpochShard get the shard committee by epoch and shard ID
 func (bc *BlockChain) getCommitteeByEpochShard(epoch *big.Int, shardID uint32) (*shard.Committee, error) {
 	// Look up in cache
-	key := make([]byte, 12)
-	binary.LittleEndian.PutUint64(key, epoch.Uint64())
+	var key [12]byte
+	binary.LittleEndian.PutUint64(key[:], epoch.Uint64())
 	binary.LittleEndian.PutUint32(key[8:], shardID)
 	if cmt, ok := bc.committeeCache.Get(key); ok {
 		return cmt.(*shard.Committee), nil
@@ -2964,8 +2964,8 @@ func (bc *BlockChain) getCommitteeByEpochShard(epoch *big.Int, shardID uint32) (
 
 func (bc *BlockChain) getDeciderByEpochShard(epoch *big.Int, shardID uint32) (quorum.Decider, error) {
 	// Look up in cache
-	key := make([]byte, 12)
-	binary.LittleEndian.PutUint64(key, epoch.Uint64())
+	var key [12]byte
+	binary.LittleEndian.PutUint64(key[:], epoch.Uint64())
 	binary.LittleEndian.PutUint32(key[8:], shardID)
 	if d, ok := bc.deciderCache.Get(key); ok {
 		return d.(quorum.Decider), nil
