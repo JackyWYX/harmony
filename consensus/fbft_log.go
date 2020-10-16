@@ -122,11 +122,13 @@ func (log *FBFTLog) IsBlockVerified(block *types.Block) bool {
 	log.blockLock.RLock()
 	defer log.blockLock.RUnlock()
 
+	fmt.Println("before is verified", log.verifiedBlocks)
 	_, exist := log.verifiedBlocks[block.Hash()]
+	fmt.Println("after is verified", log.verifiedBlocks)
 	return exist
 }
 
-// GetBlockByHash returns the block matches the given block hash
+// GetBlockBhe block matches the given block hash
 func (log *FBFTLog) GetBlockByHash(hash common.Hash) *types.Block {
 	log.blockLock.RLock()
 	defer log.blockLock.RUnlock()
