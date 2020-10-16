@@ -151,12 +151,17 @@ func (log *FBFTLog) DeleteBlocksLessThan(number uint64) {
 	log.blockLock.Lock()
 	defer log.blockLock.Unlock()
 
+	fmt.Println("before delete")
+	fmt.Println(log.verifiedBlocks)
+
 	for h, block := range log.blocks {
 		if block.NumberU64() < number {
 			delete(log.blocks, h)
 			delete(log.verifiedBlocks, h)
 		}
 	}
+	fmt.Println("after delete")
+	fmt.Println(log.verifiedBlocks)
 }
 
 // DeleteBlockByNumber deletes block of specific number
@@ -164,12 +169,17 @@ func (log *FBFTLog) DeleteBlockByNumber(number uint64) {
 	log.blockLock.Lock()
 	defer log.blockLock.Unlock()
 
+	fmt.Println("before delete")
+	fmt.Println(log.verifiedBlocks)
+
 	for h, block := range log.blocks {
 		if block.NumberU64() == number {
 			delete(log.blocks, h)
 			delete(log.verifiedBlocks, h)
 		}
 	}
+	fmt.Println("after delete")
+	fmt.Println(log.verifiedBlocks)
 }
 
 // DeleteMessagesLessThan deletes messages less than given block number
