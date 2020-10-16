@@ -112,7 +112,9 @@ func (log *FBFTLog) MarkBlockVerified(block *types.Block) {
 	log.blockLock.Lock()
 	defer log.blockLock.Unlock()
 
+	fmt.Println("before mark", log.verifiedBlocks)
 	log.verifiedBlocks[block.Hash()] = struct{}{}
+	fmt.Println("after mark", log.verifiedBlocks)
 }
 
 // IsBlockVerified checks whether the block is verified
