@@ -3,6 +3,7 @@ package consensus
 import (
 	"bytes"
 	"encoding/hex"
+	"fmt"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -128,9 +129,15 @@ func (consensus *Consensus) sendCommitMessages(blockObj *types.Block) {
 	}
 }
 
+var (
+	onPreparedTotal   = 0
+	onPreparedMissing = 0
+)
+
 // if onPrepared accepts the prepared message from the leader, then
 // it will send a COMMIT message for the leader to receive on the network.
 func (consensus *Consensus) onPrepared(msg *msg_pb.Message) {
+	onPreparedTotal += 1
 	recvMsg, err := ParseFBFTMessage(msg)
 	if err != nil {
 		consensus.getLogger().Debug().Err(err).Msg("[OnPrepared] Unparseable validator message")
@@ -149,8 +156,9 @@ func (consensus *Consensus) onPrepared(msg *msg_pb.Message) {
 	if recvMsg.BlockNum > consensus.blockNum {
 		consensus.getLogger().Warn().Msgf("[OnPrepared] low consensus block number. Spin sync")
 		consensus.spinUpStateSync()
+		onPreparedMissing += 1
 	}
-
+	fmt.Printf("[onPrepared] %v / %v\n", onPreparedMissing, onPreparedTotal)
 	// check validity of prepared signature
 	blockHash := recvMsg.BlockHash
 	aggSig, mask, err := consensus.ReadSignatureBitmapPayload(recvMsg.Payload, 0)
@@ -253,7 +261,13 @@ func (consensus *Consensus) onPrepared(msg *msg_pb.Message) {
 	consensus.switchPhase("onPrepared", FBFTCommit)
 }
 
+var (
+	onCommittedMissing int
+	onCommittedTotal   int
+)
+
 func (consensus *Consensus) onCommitted(msg *msg_pb.Message) {
+	onCommittedTotal += 1
 	recvMsg, err := ParseFBFTMessage(msg)
 	if err != nil {
 		consensus.getLogger().Warn().Msg("[OnCommitted] unable to parse msg")
@@ -266,7 +280,9 @@ func (consensus *Consensus) onCommitted(msg *msg_pb.Message) {
 	if recvMsg.BlockNum > consensus.blockNum {
 		consensus.getLogger().Info().Msg("[OnCommitted] low consensus block number. Spin up state sync")
 		consensus.spinUpStateSync()
+		onCommittedMissing += 1
 	}
+	fmt.Printf("[onCommitted] %v / %v\n", onCommittedMissing, onCommittedTotal)
 
 	aggSig, mask, err := consensus.ReadSignatureBitmapPayload(recvMsg.Payload, 0)
 	if err != nil {
