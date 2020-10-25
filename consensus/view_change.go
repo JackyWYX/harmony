@@ -281,6 +281,7 @@ func (consensus *Consensus) startNewView(viewID uint64, newLeaderPriKey *bls.Pri
 	msgToSend := consensus.constructNewViewMessage(
 		viewID, newLeaderPriKey,
 	)
+	consensus.getLogger().Error().Msg("start new view as leader")
 	if err := consensus.msgSender.SendWithRetry(
 		consensus.blockNum,
 		msg_pb.MessageType_NEWVIEW,
@@ -377,6 +378,7 @@ func (consensus *Consensus) onViewChange(msg *msg_pb.Message) {
 	if consensus.Decider.IsQuorumAchievedByMask(consensus.vc.GetViewIDBitmap(recvMsg.ViewID)) && consensus.IsViewChangingMode() {
 		// no previous prepared message, go straight to normal mode
 		// and start proposing new block
+		consensus.getLogger().Error().Msg("quorum achieved onViewChange")
 		if consensus.vc.IsM1PayloadEmpty() {
 			if err := consensus.startNewView(recvMsg.ViewID, newLeaderPriKey); err != nil {
 				consensus.getLogger().Error().Err(err).Msg("[onViewChange] startNewView failed")
@@ -384,6 +386,7 @@ func (consensus *Consensus) onViewChange(msg *msg_pb.Message) {
 			}
 
 			go func() {
+				consensus.getLogger().Error().Msg("quorum achieved. Sending new block signal")
 				consensus.ReadySignal <- struct{}{}
 			}()
 			return
