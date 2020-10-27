@@ -43,14 +43,14 @@ func TestDHTOption_getLibp2pRawOptions(t *testing.T) {
 			opt: DHTOption{
 				BootNodes: testAddrList,
 			},
-			expLen: 4,
+			expLen: 1,
 		},
 		{
 			opt: DHTOption{
 				BootNodes:     testAddrList,
 				DataStoreFile: &validPath,
 			},
-			expLen: 5,
+			expLen: 2,
 		},
 		{
 			opt: DHTOption{

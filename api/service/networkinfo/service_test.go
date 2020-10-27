@@ -21,7 +21,10 @@ func TestService(t *testing.T) {
 		t.Fatal("generate key error")
 	}
 	selfPeer := p2p.Peer{IP: "127.0.0.1", Port: "12345", ConsensusPubKey: peerPubKey}
-	host, err := p2p.NewHost(&selfPeer, nodePriKey)
+	host, err := p2p.NewHost(p2p.HostConfig{
+		Self:   &selfPeer,
+		BLSKey: nodePriKey,
+	})
 	if err != nil {
 		t.Fatal("unable to new host in harmony")
 	}

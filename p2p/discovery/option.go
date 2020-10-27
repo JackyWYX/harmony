@@ -41,8 +41,6 @@ func (opt DHTOption) getLibp2pRawOptions() ([]libp2p_dht.Option, error) {
 		opts = append(opts, dsOption)
 	}
 
-	opts = append(opts, getDHTDefaultOptions()...)
-
 	return opts, nil
 }
 
@@ -61,14 +59,4 @@ func getDataStoreOption(dataStoreFile string) (libp2p_dht.Option, error) {
 			"cannot open Badger data store at %s", dataStoreFile)
 	}
 	return libp2p_dht.Datastore(ds), nil
-}
-
-func getDHTDefaultOptions() []libp2p_dht.Option {
-	var opts []libp2p_dht.Option
-
-	opts = append(opts, libp2p_dht.BucketSize(defaultDHTBucketSize))
-	opts = append(opts, libp2p_dht.Concurrency(defaultDHTConcurrency))
-	opts = append(opts, libp2p_dht.Resiliency(defaultDHTResiliency))
-
-	return opts
 }
