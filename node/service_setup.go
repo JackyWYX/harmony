@@ -8,7 +8,6 @@ import (
 	"github.com/harmony-one/harmony/api/service/blockproposal"
 	"github.com/harmony-one/harmony/api/service/consensus"
 	"github.com/harmony-one/harmony/api/service/explorer"
-	"github.com/harmony-one/harmony/api/service/networkinfo"
 	nodeconfig "github.com/harmony-one/harmony/internal/configs/node"
 	"github.com/harmony-one/harmony/internal/utils"
 )
@@ -27,14 +26,8 @@ func (node *Node) setupForValidator() {
 }
 
 func (node *Node) setupForExplorerNode() {
-	_, chanPeer, _ := node.initNodeConfiguration()
+	node.initNodeConfiguration()
 
-	// Register networkinfo service.
-	node.serviceManager.RegisterService(
-		service.NetworkInfo,
-		networkinfo.MustNew(
-			node.host, node.NodeConfig.GetShardGroupID(), chanPeer, nil, node.networkInfoDHTPath()),
-	)
 	// Register explorer service.
 	node.serviceManager.RegisterService(
 		service.SupportExplorer, explorer.New(&node.SelfPeer, node.stateSync, node.Blockchain()),

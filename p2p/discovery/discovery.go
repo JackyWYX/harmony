@@ -18,6 +18,7 @@ type Discovery interface {
 	Stop()
 	Advertise(ctx context.Context, ns string) (time.Duration, error)
 	FindPeers(ctx context.Context, ns string, peerLimit int) (<-chan libp2p_peer.AddrInfo, error)
+	GetRawDiscovery() discovery.Discovery
 }
 
 // dhtDiscovery is a wrapper of libp2p dht discovery service. It implements Discovery
@@ -67,4 +68,9 @@ func (d *dhtDiscovery) Advertise(ctx context.Context, ns string) (time.Duration,
 func (d *dhtDiscovery) FindPeers(ctx context.Context, ns string, peerLimit int) (<-chan libp2p_peer.AddrInfo, error) {
 	opt := discovery.Limit(peerLimit)
 	return d.disc.FindPeers(ctx, ns, opt)
+}
+
+// GetRawDiscovery get the raw discovery to be used for libp2p pubsub options
+func (d *dhtDiscovery) GetRawDiscovery() discovery.Discovery {
+	return d.disc
 }

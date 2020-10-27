@@ -60,6 +60,7 @@ const (
 
 // New returns role conversion service.  If dataStorePath is not empty, it
 // points to a persistent database directory to use.
+// Deprecated: do not use this module. Use p2p/discovery.Discovery
 func New(
 	h p2p.Host, rendezvous nodeconfig.GroupID, peerChan chan p2p.Peer,
 	bootnodes p2putils.AddrList, dataStorePath string,
@@ -134,10 +135,6 @@ func (s *Service) Init() error {
 	}
 
 	var wg sync.WaitGroup
-	if s.bootnodes == nil {
-		// TODO: should've passed in bootnodes through constructor.
-		s.bootnodes = p2p.BootNodes
-	}
 
 	connected := false
 	for _, peerAddr := range s.bootnodes {

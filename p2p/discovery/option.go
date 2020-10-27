@@ -23,7 +23,7 @@ type DHTOption struct {
 	DataStoreFile *string // File path to store DHT data. Shall be only used for bootstrap nodes.
 }
 
-// getLibp2pRawOptions get the raw libp2p option slice.
+// getLibp2pRawOptions get the raw libp2p options as a slice.
 func (opt DHTOption) getLibp2pRawOptions() ([]libp2p_dht.Option, error) {
 	var opts []libp2p_dht.Option
 

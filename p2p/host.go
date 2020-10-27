@@ -10,11 +10,6 @@ import (
 	"strings"
 	"sync"
 
-	p2putils "github.com/harmony-one/harmony/p2p/utils"
-
-	"github.com/harmony-one/bls/ffi/go/bls"
-	nodeconfig "github.com/harmony-one/harmony/internal/configs/node"
-	"github.com/harmony-one/harmony/internal/utils"
 	"github.com/libp2p/go-libp2p"
 	libp2p_crypto "github.com/libp2p/go-libp2p-core/crypto"
 	libp2p_host "github.com/libp2p/go-libp2p-core/host"
@@ -25,10 +20,16 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
+
+	nodeconfig "github.com/harmony-one/harmony/internal/configs/node"
+	"github.com/harmony-one/harmony/internal/utils"
+	"github.com/harmony-one/harmony/p2p/discovery"
+	p2putils "github.com/harmony-one/harmony/p2p/utils"
 )
 
 // Host is the client + server in p2p network.
 type Host interface {
+	Start()
 	GetSelfPeer() Peer
 	AddPeer(*Peer) error
 	GetID() libp2p_peer.ID
@@ -47,11 +48,10 @@ type Host interface {
 
 // Peer is the object for a p2p peer (node)
 type Peer struct {
-	IP              string         // IP address of the peer
-	Port            string         // Port number of the peer
-	ConsensusPubKey *bls.PublicKey // Public key of the peer, used for consensus signing
-	Addrs           []ma.Multiaddr // MultiAddress of the peer
-	PeerID          libp2p_peer.ID // PeerID, the pubkey for communication
+	IP     string         // IP address of the peer
+	Port   string         // Port number of the peer
+	Addrs  []ma.Multiaddr // MultiAddress of the peer
+	PeerID libp2p_peer.ID // PeerID, the pubkey for communication
 }
 
 const (
@@ -65,14 +65,27 @@ const (
 	MaxMessageSize = 1 << 21
 )
 
+// HostConfig is the config structure to create a new host
+type HostConfig struct {
+	Self          *Peer
+	BLSKey        libp2p_crypto.PrivKey
+	BootNodes     p2putils.AddrList
+	DataStoreFile *string
+}
+
 // NewHost ..
-func NewHost(self *Peer, key libp2p_crypto.PrivKey) (Host, error) {
+// TODO: Further refactor this new function when merging dynamic pub sub handlers
+func NewHost(cfg HostConfig) (Host, error) {
+	var (
+		self = cfg.Self
+		key  = cfg.BLSKey
+	)
 	listenAddr, err := ma.NewMultiaddr(fmt.Sprintf("/ip4/%s/tcp/%s", self.IP, self.Port))
+
 	if err != nil {
 		return nil, errors.Wrapf(err,
 			"cannot create listen multiaddr from port %#v", self.Port)
 	}
-
 	ctx := context.Background()
 	p2pHost, err := libp2p.New(ctx,
 		libp2p.ListenAddrs(listenAddr),
@@ -82,6 +95,14 @@ func NewHost(self *Peer, key libp2p_crypto.PrivKey) (Host, error) {
 	)
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot initialize libp2p host")
+	}
+
+	disc, err := discovery.NewDHTDiscovery(p2pHost, discovery.DHTOption{
+		BootNodes:     cfg.BootNodes,
+		DataStoreFile: cfg.DataStoreFile,
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot create DHT discovery")
 	}
 
 	options := []libp2p_pubsub.Option{
@@ -94,6 +115,7 @@ func NewHost(self *Peer, key libp2p_crypto.PrivKey) (Host, error) {
 		// WithValidateThrottle sets the upper bound on the number of active validation goroutines across all topics. The default is 8192.
 		libp2p_pubsub.WithValidateThrottle(MaxMessageHandlers),
 		libp2p_pubsub.WithMaxMessageSize(MaxMessageSize),
+		libp2p_pubsub.WithDiscovery(disc.GetRawDiscovery()),
 	}
 
 	traceFile := os.Getenv("P2P_TRACEFILE")
@@ -116,7 +138,6 @@ func NewHost(self *Peer, key libp2p_crypto.PrivKey) (Host, error) {
 				Msg("can't add event tracer from P2P_TRACEFILE")
 		}
 	}
-
 	pubsub, err := libp2p_pubsub.NewGossipSub(ctx, p2pHost, options...)
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot initialize libp2p pubsub")
@@ -127,12 +148,13 @@ func NewHost(self *Peer, key libp2p_crypto.PrivKey) (Host, error) {
 
 	// has to save the private key for host
 	h := &HostV2{
-		h:      p2pHost,
-		pubsub: pubsub,
-		joined: map[string]*libp2p_pubsub.Topic{},
-		self:   *self,
-		priKey: key,
-		logger: &subLogger,
+		h:         p2pHost,
+		pubsub:    pubsub,
+		joined:    map[string]*libp2p_pubsub.Topic{},
+		self:      *self,
+		priKey:    key,
+		discovery: disc,
+		logger:    &subLogger,
 	}
 
 	if err != nil {
@@ -142,7 +164,6 @@ func NewHost(self *Peer, key libp2p_crypto.PrivKey) (Host, error) {
 	utils.Logger().Info().
 		Str("self", net.JoinHostPort(self.IP, self.Port)).
 		Interface("PeerID", self.PeerID).
-		Str("PubKey", self.ConsensusPubKey.SerializeToHexStr()).
 		Msg("libp2p host ready")
 	return h, nil
 }
@@ -155,13 +176,21 @@ type HostV2 struct {
 	self      Peer
 	priKey    libp2p_crypto.PrivKey
 	lock      sync.Mutex
+	discovery discovery.Discovery
 	logger    *zerolog.Logger
-	blocklist libp2p_pubsub.Blacklist
 }
 
 // PubSub ..
 func (host *HostV2) PubSub() *libp2p_pubsub.PubSub {
 	return host.pubsub
+}
+
+// Start start the HostV2 discovery process
+// TODO: move PubSub start handling logic here
+// TODO: add stop logic with context control
+func (host *HostV2) Start() {
+	ctx := context.Background()
+	host.discovery.Start(ctx)
 }
 
 // C .. -> (total known peers, connected, not connected)
@@ -333,9 +362,3 @@ func ConstructMessage(content []byte) []byte {
 	copy(message[5:], content)
 	return message
 }
-
-// BootNodes is a list of boot nodes.
-// It is populated either from default or from user CLI input.
-// TODO: refactor p2p config into a config structure (now part of config is here, part is in
-//   nodeconfig)
-var BootNodes p2putils.AddrList

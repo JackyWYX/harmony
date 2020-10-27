@@ -231,12 +231,7 @@ func setupPprof(config harmonyConfig) {
 
 func setupNodeAndRun(hc harmonyConfig) {
 	var err error
-	bootNodes := hc.Network.BootNodes
-	p2p.BootNodes, err = p2putils.StringsToAddrs(bootNodes)
-	if err != nil {
-		utils.FatalErrMsg(err, "cannot parse bootnode list %#v",
-			bootNodes)
-	}
+
 	nodeconfigSetShardSchedule(hc)
 	nodeconfig.SetShardingSchedule(shard.Schedule)
 	nodeconfig.SetVersion(getHarmonyVersion())
@@ -376,6 +371,8 @@ func setupNodeAndRun(hc harmonyConfig) {
 	currentNode.SupportSyncing()
 	currentNode.ServiceManagerSetup()
 	currentNode.RunServices()
+
+	myHost.Start()
 
 	if err := currentNode.StartRPC(); err != nil {
 		utils.Logger().Warn().
@@ -527,12 +524,19 @@ func createGlobalConfig(hc harmonyConfig) (*nodeconfig.ConfigType, error) {
 	}
 
 	selfPeer := p2p.Peer{
-		IP:              hc.P2P.IP,
-		Port:            strconv.Itoa(hc.P2P.Port),
-		ConsensusPubKey: nodeConfig.ConsensusPriKey[0].Pub.Object,
+		IP:   hc.P2P.IP,
+		Port: strconv.Itoa(hc.P2P.Port),
 	}
-
-	myHost, err = p2p.NewHost(&selfPeer, nodeConfig.P2PPriKey)
+	bootNodes, err := p2putils.StringsToAddrs(hc.Network.BootNodes)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to parse boot nodes")
+	}
+	myHost, err = p2p.NewHost(p2p.HostConfig{
+		Self:          &selfPeer,
+		BLSKey:        nodeConfig.P2PPriKey,
+		BootNodes:     bootNodes,
+		DataStoreFile: hc.P2P.DHTDataStore,
+	})
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot create P2P network host")
 	}
