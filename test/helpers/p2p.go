@@ -37,11 +37,6 @@ func init() {
 		"hmy/testnet/0.0.1/node/shard/2",
 		"hmy/testnet/0.0.1/node/shard/3",
 	}
-
-	Bootnodes = []string{
-		"/ip4/54.86.126.90/tcp/9850/p2p/Qmdfjtk6hPoyrH1zVD9PEH4zfWLo38dP2mDvvKXfh3tnEv",
-		"/ip4/52.40.84.2/tcp/9850/p2p/QmbPVwrqWsTYXq1RxGWcxx9SWaTUCfoo1wA6wmdbduWe29",
-	}
 }
 
 // GenerateHost - test helper to generate a new host
