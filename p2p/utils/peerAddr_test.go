@@ -1,4 +1,4 @@
-package p2ptests
+package p2putils
 
 import (
 	"strings"
@@ -10,9 +10,7 @@ import (
 )
 
 func TestMultiAddressParsing(t *testing.T) {
-	t.Parallel()
-
-	multiAddresses, err := p2p.StringsToAddrs(helpers.Bootnodes)
+	multiAddresses, err := StringsToAddrs(helpers.Bootnodes)
 	assert.NoError(t, err)
 	assert.Equal(t, len(helpers.Bootnodes), len(multiAddresses))
 
@@ -22,9 +20,7 @@ func TestMultiAddressParsing(t *testing.T) {
 }
 
 func TestAddressListConversionToString(t *testing.T) {
-	t.Parallel()
-
-	multiAddresses, err := p2p.StringsToAddrs(helpers.Bootnodes)
+	multiAddresses, err := StringsToAddrs(helpers.Bootnodes)
 	assert.NoError(t, err)
 	assert.Equal(t, len(helpers.Bootnodes), len(multiAddresses))
 
@@ -34,9 +30,7 @@ func TestAddressListConversionToString(t *testing.T) {
 }
 
 func TestAddressListConversionFromString(t *testing.T) {
-	t.Parallel()
-
-	multiAddresses, err := p2p.StringsToAddrs(helpers.Bootnodes)
+	multiAddresses, err := StringsToAddrs(helpers.Bootnodes)
 	assert.NoError(t, err)
 	assert.Equal(t, len(helpers.Bootnodes), len(multiAddresses))
 

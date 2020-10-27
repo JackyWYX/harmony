@@ -14,14 +14,6 @@ import (
 )
 
 func (node *Node) setupForValidator() {
-	_, chanPeer, _ := node.initNodeConfiguration()
-	// Register networkinfo service. "0" is the beacon shard ID
-	node.serviceManager.RegisterService(
-		service.NetworkInfo,
-		networkinfo.MustNew(
-			node.host, node.NodeConfig.GetShardGroupID(), chanPeer, nil, node.networkInfoDHTPath(),
-		),
-	)
 	// Register consensus service.
 	node.serviceManager.RegisterService(
 		service.Consensus,

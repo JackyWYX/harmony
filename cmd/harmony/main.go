@@ -16,6 +16,8 @@ import (
 	"syscall"
 	"time"
 
+	p2putils "github.com/harmony-one/harmony/p2p/utils"
+
 	ethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/harmony-one/bls/ffi/go/bls"
@@ -230,7 +232,7 @@ func setupPprof(config harmonyConfig) {
 func setupNodeAndRun(hc harmonyConfig) {
 	var err error
 	bootNodes := hc.Network.BootNodes
-	p2p.BootNodes, err = p2p.StringsToAddrs(bootNodes)
+	p2p.BootNodes, err = p2putils.StringsToAddrs(bootNodes)
 	if err != nil {
 		utils.FatalErrMsg(err, "cannot parse bootnode list %#v",
 			bootNodes)
