@@ -525,7 +525,7 @@ func createGlobalConfig(hc harmonyConfig) (*nodeconfig.ConfigType, error) {
 		Port:            strconv.Itoa(hc.P2P.Port),
 		ConsensusPubKey: nodeConfig.ConsensusPriKey[0].Pub.Object,
 	}
-	bootNodes, err := p2putils.StringsToAddrs(hc.Network.BootNodes)
+	bootNodes, err := p2putils.StringsToP2PAddrs(hc.Network.BootNodes)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse boot nodes")
 	}

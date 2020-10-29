@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	libp2p_peer "github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 )
 
@@ -34,8 +35,8 @@ func (al *AddrList) Set(value string) error {
 	return nil
 }
 
-// StringsToAddrs convert a list of strings to a list of multiaddresses
-func StringsToAddrs(addrStrings []string) (maddrs []ma.Multiaddr, err error) {
+// StringsToMultiAddrs convert a list of strings to a list of multiaddresses
+func StringsToMultiAddrs(addrStrings []string) (maddrs []ma.Multiaddr, err error) {
 	for _, addrString := range addrStrings {
 		addr, err := ma.NewMultiaddr(addrString)
 		if err != nil {
@@ -44,4 +45,21 @@ func StringsToAddrs(addrStrings []string) (maddrs []ma.Multiaddr, err error) {
 		maddrs = append(maddrs, addr)
 	}
 	return
+}
+
+// StringsToP2PAddrs convert a slice of strings to a slice of libp2p_peer.AddrInfo
+func StringsToP2PAddrs(addrStrings []string) ([]libp2p_peer.AddrInfo, error) {
+	ais := make([]libp2p_peer.AddrInfo, 0, len(addrStrings))
+	for _, addrString := range addrStrings {
+		ma, err := ma.NewMultiaddr(addrString)
+		if err != nil {
+			return nil, err
+		}
+		ai, err := libp2p_peer.AddrInfoFromP2pAddr(ma)
+		if err != nil {
+			return nil, err
+		}
+		ais = append(ais, *ai)
+	}
+	return ais, nil
 }

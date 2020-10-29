@@ -26,7 +26,6 @@ import (
 	nodeconfig "github.com/harmony-one/harmony/internal/configs/node"
 	"github.com/harmony-one/harmony/internal/utils"
 	"github.com/harmony-one/harmony/p2p/discovery"
-	p2putils "github.com/harmony-one/harmony/p2p/utils"
 )
 
 // Host is the client + server in p2p network.
@@ -72,7 +71,7 @@ const (
 type HostConfig struct {
 	Self          *Peer
 	BLSKey        libp2p_crypto.PrivKey
-	BootNodes     p2putils.AddrList
+	BootNodes     []libp2p_peer.AddrInfo
 	DataStoreFile *string
 }
 
@@ -100,12 +99,8 @@ func NewHost(cfg HostConfig) (Host, error) {
 		return nil, errors.Wrapf(err, "cannot initialize libp2p host")
 	}
 
-	bootNodes, err := libp2p_peer.AddrInfosFromP2pAddrs(cfg.BootNodes...)
-	if err != nil {
-		return nil, errors.Wrap(err, "cannot parse boot nodes")
-	}
 	disc, err := discovery.NewDHTDiscovery(p2pHost, discovery.DHTOption{
-		BootNodes:     bootNodes,
+		BootNodes:     cfg.BootNodes,
 		DataStoreFile: cfg.DataStoreFile,
 	})
 	if err != nil {

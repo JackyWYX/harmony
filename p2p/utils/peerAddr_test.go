@@ -13,7 +13,7 @@ var testAddrs = []string{
 }
 
 func TestMultiAddressParsing(t *testing.T) {
-	multiAddresses, err := StringsToAddrs(testAddrs)
+	multiAddresses, err := StringsToMultiAddrs(testAddrs)
 	assert.NoError(t, err)
 	assert.Equal(t, len(testAddrs), len(multiAddresses))
 
@@ -23,7 +23,7 @@ func TestMultiAddressParsing(t *testing.T) {
 }
 
 func TestAddressListConversionToString(t *testing.T) {
-	multiAddresses, err := StringsToAddrs(testAddrs)
+	multiAddresses, err := StringsToMultiAddrs(testAddrs)
 	assert.NoError(t, err)
 	assert.Equal(t, len(testAddrs), len(multiAddresses))
 
@@ -33,7 +33,7 @@ func TestAddressListConversionToString(t *testing.T) {
 }
 
 func TestAddressListConversionFromString(t *testing.T) {
-	multiAddresses, err := StringsToAddrs(testAddrs)
+	multiAddresses, err := StringsToMultiAddrs(testAddrs)
 	assert.NoError(t, err)
 	assert.Equal(t, len(testAddrs), len(multiAddresses))
 
