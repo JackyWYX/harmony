@@ -8,12 +8,6 @@ import (
 	libp2p_dht "github.com/libp2p/go-libp2p-kad-dht"
 )
 
-const (
-	defaultDHTBucketSize  = 10
-	defaultDHTConcurrency = 5
-	defaultDHTResiliency  = 2
-)
-
 // DHTOption is the configurable DHT options.
 // For normal nodes, only BootNodes field need to be specified.
 type DHTOption struct {
