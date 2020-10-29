@@ -31,7 +31,7 @@ import (
 
 // Host is the client + server in p2p network.
 type Host interface {
-	Start()
+	Start() error
 	GetSelfPeer() Peer
 	AddPeer(*Peer) error
 	GetID() libp2p_peer.ID
@@ -100,8 +100,12 @@ func NewHost(cfg HostConfig) (Host, error) {
 		return nil, errors.Wrapf(err, "cannot initialize libp2p host")
 	}
 
+	bootNodes, err := libp2p_peer.AddrInfosFromP2pAddrs(cfg.BootNodes...)
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot parse boot nodes")
+	}
 	disc, err := discovery.NewDHTDiscovery(p2pHost, discovery.DHTOption{
-		BootNodes:     cfg.BootNodes,
+		BootNodes:     bootNodes,
 		DataStoreFile: cfg.DataStoreFile,
 	})
 	if err != nil {
@@ -191,10 +195,8 @@ func (host *HostV2) PubSub() *libp2p_pubsub.PubSub {
 
 // Start start the HostV2 discovery process
 // TODO: move PubSub start handling logic here
-// TODO: add stop logic with context control
-func (host *HostV2) Start() {
-	ctx := context.Background()
-	host.discovery.Start(ctx)
+func (host *HostV2) Start() error {
+	return host.discovery.Start()
 }
 
 // C .. -> (total known peers, connected, not connected)

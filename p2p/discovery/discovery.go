@@ -2,6 +2,7 @@ package discovery
 
 import (
 	"context"
+	"math/rand"
 	"time"
 
 	"github.com/libp2p/go-libp2p-core/discovery"
@@ -9,12 +10,16 @@ import (
 	libp2p_peer "github.com/libp2p/go-libp2p-core/peer"
 	libp2p_dis "github.com/libp2p/go-libp2p-discovery"
 	libp2p_dht "github.com/libp2p/go-libp2p-kad-dht"
+	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
+
+	"github.com/harmony-one/harmony/internal/utils"
 )
 
 // Discovery is the interface for the underlying peer discovery protocol.
 // The interface is implemented by dhtDiscovery
 type Discovery interface {
-	Start(ctx context.Context)
+	Start() error
 	Stop()
 	Advertise(ctx context.Context, ns string) (time.Duration, error)
 	FindPeers(ctx context.Context, ns string, peerLimit int) (<-chan libp2p_peer.AddrInfo, error)
@@ -26,7 +31,11 @@ type Discovery interface {
 type dhtDiscovery struct {
 	dht  *libp2p_dht.IpfsDHT
 	disc discovery.Discovery
+	host libp2p_host.Host
 
+	opt    DHTOption
+	logger zerolog.Logger
+	ctx    context.Context
 	cancel func()
 }
 
@@ -42,16 +51,25 @@ func NewDHTDiscovery(host libp2p_host.Host, opt DHTOption) (Discovery, error) {
 		return nil, err
 	}
 	d := libp2p_dis.NewRoutingDiscovery(dht)
+
+	logger := utils.Logger().With().Str("module", "discovery").Logger()
 	return &dhtDiscovery{
 		dht:    dht,
 		disc:   d,
+		host:   host,
+		opt:    opt,
+		logger: logger,
+		ctx:    ctx,
 		cancel: cancel,
 	}, nil
 }
 
 // Start bootstrap the dht discovery service.
-func (d *dhtDiscovery) Start(ctx context.Context) {
-	d.dht.Bootstrap(ctx)
+func (d *dhtDiscovery) Start() error {
+	if err := d.connectBootStrapPeers(); err != nil {
+		return err
+	}
+	return d.dht.Bootstrap(d.ctx)
 }
 
 // Stop stop the dhtDiscovery service
@@ -73,4 +91,34 @@ func (d *dhtDiscovery) FindPeers(ctx context.Context, ns string, peerLimit int) 
 // GetRawDiscovery get the raw discovery to be used for libp2p pubsub options
 func (d *dhtDiscovery) GetRawDiscovery() discovery.Discovery {
 	return d.disc
+}
+
+// maxNBoostrappers is the maximum bootstrap peers to connect initially.
+// github.com/libp2p/go-libp2p-kad-dht@v0.8.3/dht.go:428
+const maxNBoostrappers = 2
+
+// connectBootStrapPeers connect to bootstrap peers.
+// Currently, specifying bootstrap nodes in dht options does not connect to boot nodes
+// immediately (only after 2 min initial wait in fixLowPeersRoutine). Thus we need to
+// connect to bootstrap peers in this module. Hopefully this logic will be implemented
+// in libp2p naturally.
+func (d *dhtDiscovery) connectBootStrapPeers() error {
+	var found int
+
+	for _, i := range rand.Perm(len(d.opt.BootNodes)) {
+		bn := d.opt.BootNodes[i]
+		if err := d.host.Connect(d.ctx, bn); err == nil {
+			found++
+		} else {
+			d.logger.Warn().Err(err).Msg("failed connect boot node")
+		}
+		if found == maxNBoostrappers {
+			break
+		}
+	}
+
+	if found == 0 {
+		return errors.New("failed to connect to any bootstrap nodes")
+	}
+	return nil
 }

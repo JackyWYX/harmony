@@ -372,8 +372,6 @@ func setupNodeAndRun(hc harmonyConfig) {
 	currentNode.ServiceManagerSetup()
 	currentNode.RunServices()
 
-	myHost.Start()
-
 	if err := currentNode.StartRPC(); err != nil {
 		utils.Logger().Warn().
 			Err(err).
@@ -386,11 +384,10 @@ func setupNodeAndRun(hc harmonyConfig) {
 			Msg("Start Rosetta failed")
 	}
 
-	if err := currentNode.BootstrapConsensus(); err != nil {
-		fmt.Println("could not bootstrap consensus", err.Error())
-		if !currentNode.NodeConfig.IsOffline {
-			os.Exit(-1)
-		}
+	if err := myHost.Start(); err != nil {
+		utils.Logger().Fatal().
+			Err(err).
+			Msg("Start p2p host failed")
 	}
 
 	if err := currentNode.Start(); err != nil {

@@ -6,8 +6,6 @@ import (
 	badger "github.com/ipfs/go-ds-badger"
 	libp2p_peer "github.com/libp2p/go-libp2p-core/peer"
 	libp2p_dht "github.com/libp2p/go-libp2p-kad-dht"
-
-	p2putils "github.com/harmony-one/harmony/p2p/utils"
 )
 
 const (
@@ -19,7 +17,7 @@ const (
 // DHTOption is the configurable DHT options.
 // For normal nodes, only BootNodes field need to be specified.
 type DHTOption struct {
-	BootNodes     p2putils.AddrList
+	BootNodes     []libp2p_peer.AddrInfo
 	DataStoreFile *string // File path to store DHT data. Shall be only used for bootstrap nodes.
 }
 
@@ -44,12 +42,8 @@ func (opt DHTOption) getLibp2pRawOptions() ([]libp2p_dht.Option, error) {
 	return opts, nil
 }
 
-func getBootstrapOption(bootNodes p2putils.AddrList) (libp2p_dht.Option, error) {
-	bootPeers, err := libp2p_peer.AddrInfosFromP2pAddrs(bootNodes...)
-	if err != nil {
-		return nil, errors.Wrap(err, "cannot parse boot node")
-	}
-	return libp2p_dht.BootstrapPeers(bootPeers...), nil
+func getBootstrapOption(bootNodes []libp2p_peer.AddrInfo) (libp2p_dht.Option, error) {
+	return libp2p_dht.BootstrapPeers(bootNodes...), nil
 }
 
 func getDataStoreOption(dataStoreFile string) (libp2p_dht.Option, error) {
