@@ -1,8 +1,9 @@
 syntax = "proto3";
-package stMsg;
+package message ;
 
-option go_package = "google.golang.org/protobuf";
-
+message HandShakeMessage {
+  bytes genesis_hash = 4;
+}
 
 enum RequestType {
   GET_BLOCK_BY_NUM = 0;
@@ -26,7 +27,7 @@ enum ResponseType {
 }
 
 message Response {
-  RequestType ResponseType = 1;
+  RequestType response_type = 1;
   oneof response {
       GetBlockByNumResponse get_block_by_num_response = 2;
   }
