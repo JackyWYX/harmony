@@ -1,38 +1,37 @@
 syntax = "proto3";
 package message ;
 
-message HandShakeMessage {
-  bytes genesis_hash = 4;
-}
-
-enum RequestType {
-  GET_BLOCK_BY_NUM = 0;
-}
-
-message Request {
-  RequestType request_type = 1;
-  oneof request {
-    GetBlockByNumRequest get_block_by_num_request = 2;
+message Message {
+  oneof req_or_resp {
+    Request req = 1;
+    Response resp = 2;
   }
 }
 
-message GetBlockByNumRequest {
+message Request {
+  uint64 req_id = 1;
+  oneof request {
+    GetBlocksByNumRequest get_blocks_by_num_request = 2;
+  }
+}
+
+message GetBlocksByNumRequest {
   repeated int64 nums = 1 [packed=true];
 }
 
 
-enum ResponseType {
-  GET_BLOCK_BY_NUM_RES = 0;
-  ERROR_RES = 1;
-}
-
 message Response {
-  RequestType response_type = 1;
+  uint64 req_id = 1;
   oneof response {
-      GetBlockByNumResponse get_block_by_num_response = 2;
+      ErrorResponse error_response = 2;
+      GetBlocksByNumResponse get_blocks_by_num_response = 3;
   }
 }
 
-message GetBlockByNumResponse {
+message GetBlocksByNumResponse {
   repeated bytes blocks = 1;
+}
+
+message ErrorResponse {
+  string error = 1;
 }

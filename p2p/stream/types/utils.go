@@ -3,13 +3,14 @@ package sttypes
 // TODO: test this file
 
 import (
+	"crypto/rand"
+	"encoding/binary"
 	"fmt"
 
+	nodeconfig "github.com/harmony-one/harmony/internal/configs/node"
 	"github.com/hashicorp/go-version"
 	libp2p_proto "github.com/libp2p/go-libp2p-core/protocol"
 	"github.com/pkg/errors"
-
-	nodeconfig "github.com/harmony-one/harmony/internal/configs/node"
 )
 
 const (
@@ -67,4 +68,10 @@ func ProtoIDToProtoSpec(id ProtoID) (ProtoSpec, error) {
 		ShardID:     shardID,
 		Version:     version,
 	}, nil
+}
+
+func GenReqID() uint64 {
+	var rnd [8]byte
+	rand.Read(rnd[:])
+	return binary.BigEndian.Uint64(rnd[:])
 }

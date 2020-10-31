@@ -25,105 +25,19 @@ const (
 // of the legacy proto package is being used.
 const _ = proto.ProtoPackageIsVersion4
 
-type RequestType int32
-
-const (
-	RequestType_GET_BLOCK_BY_NUM RequestType = 0
-)
-
-// Enum value maps for RequestType.
-var (
-	RequestType_name = map[int32]string{
-		0: "GET_BLOCK_BY_NUM",
-	}
-	RequestType_value = map[string]int32{
-		"GET_BLOCK_BY_NUM": 0,
-	}
-)
-
-func (x RequestType) Enum() *RequestType {
-	p := new(RequestType)
-	*p = x
-	return p
-}
-
-func (x RequestType) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (RequestType) Descriptor() protoreflect.EnumDescriptor {
-	return file_message_proto_enumTypes[0].Descriptor()
-}
-
-func (RequestType) Type() protoreflect.EnumType {
-	return &file_message_proto_enumTypes[0]
-}
-
-func (x RequestType) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use RequestType.Descriptor instead.
-func (RequestType) EnumDescriptor() ([]byte, []int) {
-	return file_message_proto_rawDescGZIP(), []int{0}
-}
-
-type ResponseType int32
-
-const (
-	ResponseType_GET_BLOCK_BY_NUM_RES ResponseType = 0
-	ResponseType_ERROR_RES            ResponseType = 1
-)
-
-// Enum value maps for ResponseType.
-var (
-	ResponseType_name = map[int32]string{
-		0: "GET_BLOCK_BY_NUM_RES",
-		1: "ERROR_RES",
-	}
-	ResponseType_value = map[string]int32{
-		"GET_BLOCK_BY_NUM_RES": 0,
-		"ERROR_RES":            1,
-	}
-)
-
-func (x ResponseType) Enum() *ResponseType {
-	p := new(ResponseType)
-	*p = x
-	return p
-}
-
-func (x ResponseType) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (ResponseType) Descriptor() protoreflect.EnumDescriptor {
-	return file_message_proto_enumTypes[1].Descriptor()
-}
-
-func (ResponseType) Type() protoreflect.EnumType {
-	return &file_message_proto_enumTypes[1]
-}
-
-func (x ResponseType) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use ResponseType.Descriptor instead.
-func (ResponseType) EnumDescriptor() ([]byte, []int) {
-	return file_message_proto_rawDescGZIP(), []int{1}
-}
-
-type HandShakeMessage struct {
+type Message struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	GenesisHash []byte `protobuf:"bytes,4,opt,name=genesis_hash,json=genesisHash,proto3" json:"genesis_hash,omitempty"`
+	// Types that are assignable to ReqOrResp:
+	//	*Message_Req
+	//	*Message_Resp
+	ReqOrResp isMessage_ReqOrResp `protobuf_oneof:"req_or_resp"`
 }
 
-func (x *HandShakeMessage) Reset() {
-	*x = HandShakeMessage{}
+func (x *Message) Reset() {
+	*x = Message{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_message_proto_msgTypes[0]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -131,13 +45,13 @@ func (x *HandShakeMessage) Reset() {
 	}
 }
 
-func (x *HandShakeMessage) String() string {
+func (x *Message) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*HandShakeMessage) ProtoMessage() {}
+func (*Message) ProtoMessage() {}
 
-func (x *HandShakeMessage) ProtoReflect() protoreflect.Message {
+func (x *Message) ProtoReflect() protoreflect.Message {
 	mi := &file_message_proto_msgTypes[0]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -149,26 +63,56 @@ func (x *HandShakeMessage) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use HandShakeMessage.ProtoReflect.Descriptor instead.
-func (*HandShakeMessage) Descriptor() ([]byte, []int) {
+// Deprecated: Use Message.ProtoReflect.Descriptor instead.
+func (*Message) Descriptor() ([]byte, []int) {
 	return file_message_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *HandShakeMessage) GetGenesisHash() []byte {
-	if x != nil {
-		return x.GenesisHash
+func (m *Message) GetReqOrResp() isMessage_ReqOrResp {
+	if m != nil {
+		return m.ReqOrResp
 	}
 	return nil
 }
+
+func (x *Message) GetReq() *Request {
+	if x, ok := x.GetReqOrResp().(*Message_Req); ok {
+		return x.Req
+	}
+	return nil
+}
+
+func (x *Message) GetResp() *Response {
+	if x, ok := x.GetReqOrResp().(*Message_Resp); ok {
+		return x.Resp
+	}
+	return nil
+}
+
+type isMessage_ReqOrResp interface {
+	isMessage_ReqOrResp()
+}
+
+type Message_Req struct {
+	Req *Request `protobuf:"bytes,1,opt,name=req,proto3,oneof"`
+}
+
+type Message_Resp struct {
+	Resp *Response `protobuf:"bytes,2,opt,name=resp,proto3,oneof"`
+}
+
+func (*Message_Req) isMessage_ReqOrResp() {}
+
+func (*Message_Resp) isMessage_ReqOrResp() {}
 
 type Request struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	RequestType RequestType `protobuf:"varint,1,opt,name=request_type,json=requestType,proto3,enum=message.RequestType" json:"request_type,omitempty"`
+	ReqId uint64 `protobuf:"varint,1,opt,name=req_id,json=reqId,proto3" json:"req_id,omitempty"`
 	// Types that are assignable to Request:
-	//	*Request_GetBlockByNumRequest
+	//	*Request_GetBlocksByNumRequest
 	Request isRequest_Request `protobuf_oneof:"request"`
 }
 
@@ -204,11 +148,11 @@ func (*Request) Descriptor() ([]byte, []int) {
 	return file_message_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *Request) GetRequestType() RequestType {
+func (x *Request) GetReqId() uint64 {
 	if x != nil {
-		return x.RequestType
+		return x.ReqId
 	}
-	return RequestType_GET_BLOCK_BY_NUM
+	return 0
 }
 
 func (m *Request) GetRequest() isRequest_Request {
@@ -218,9 +162,9 @@ func (m *Request) GetRequest() isRequest_Request {
 	return nil
 }
 
-func (x *Request) GetGetBlockByNumRequest() *GetBlockByNumRequest {
-	if x, ok := x.GetRequest().(*Request_GetBlockByNumRequest); ok {
-		return x.GetBlockByNumRequest
+func (x *Request) GetGetBlocksByNumRequest() *GetBlocksByNumRequest {
+	if x, ok := x.GetRequest().(*Request_GetBlocksByNumRequest); ok {
+		return x.GetBlocksByNumRequest
 	}
 	return nil
 }
@@ -229,13 +173,13 @@ type isRequest_Request interface {
 	isRequest_Request()
 }
 
-type Request_GetBlockByNumRequest struct {
-	GetBlockByNumRequest *GetBlockByNumRequest `protobuf:"bytes,2,opt,name=get_block_by_num_request,json=getBlockByNumRequest,proto3,oneof"`
+type Request_GetBlocksByNumRequest struct {
+	GetBlocksByNumRequest *GetBlocksByNumRequest `protobuf:"bytes,2,opt,name=get_blocks_by_num_request,json=getBlocksByNumRequest,proto3,oneof"`
 }
 
-func (*Request_GetBlockByNumRequest) isRequest_Request() {}
+func (*Request_GetBlocksByNumRequest) isRequest_Request() {}
 
-type GetBlockByNumRequest struct {
+type GetBlocksByNumRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
@@ -243,8 +187,8 @@ type GetBlockByNumRequest struct {
 	Nums []int64 `protobuf:"varint,1,rep,packed,name=nums,proto3" json:"nums,omitempty"`
 }
 
-func (x *GetBlockByNumRequest) Reset() {
-	*x = GetBlockByNumRequest{}
+func (x *GetBlocksByNumRequest) Reset() {
+	*x = GetBlocksByNumRequest{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_message_proto_msgTypes[2]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -252,13 +196,13 @@ func (x *GetBlockByNumRequest) Reset() {
 	}
 }
 
-func (x *GetBlockByNumRequest) String() string {
+func (x *GetBlocksByNumRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GetBlockByNumRequest) ProtoMessage() {}
+func (*GetBlocksByNumRequest) ProtoMessage() {}
 
-func (x *GetBlockByNumRequest) ProtoReflect() protoreflect.Message {
+func (x *GetBlocksByNumRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_message_proto_msgTypes[2]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -270,12 +214,12 @@ func (x *GetBlockByNumRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use GetBlockByNumRequest.ProtoReflect.Descriptor instead.
-func (*GetBlockByNumRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use GetBlocksByNumRequest.ProtoReflect.Descriptor instead.
+func (*GetBlocksByNumRequest) Descriptor() ([]byte, []int) {
 	return file_message_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *GetBlockByNumRequest) GetNums() []int64 {
+func (x *GetBlocksByNumRequest) GetNums() []int64 {
 	if x != nil {
 		return x.Nums
 	}
@@ -287,9 +231,10 @@ type Response struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	ResponseType RequestType `protobuf:"varint,1,opt,name=response_type,json=responseType,proto3,enum=message.RequestType" json:"response_type,omitempty"`
+	ReqId uint64 `protobuf:"varint,1,opt,name=req_id,json=reqId,proto3" json:"req_id,omitempty"`
 	// Types that are assignable to Response:
-	//	*Response_GetBlockByNumResponse
+	//	*Response_GetBlocksByNumResponse
+	//	*Response_ErrorResponse
 	Response isResponse_Response `protobuf_oneof:"response"`
 }
 
@@ -325,11 +270,11 @@ func (*Response) Descriptor() ([]byte, []int) {
 	return file_message_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *Response) GetResponseType() RequestType {
+func (x *Response) GetReqId() uint64 {
 	if x != nil {
-		return x.ResponseType
+		return x.ReqId
 	}
-	return RequestType_GET_BLOCK_BY_NUM
+	return 0
 }
 
 func (m *Response) GetResponse() isResponse_Response {
@@ -339,9 +284,16 @@ func (m *Response) GetResponse() isResponse_Response {
 	return nil
 }
 
-func (x *Response) GetGetBlockByNumResponse() *GetBlockByNumResponse {
-	if x, ok := x.GetResponse().(*Response_GetBlockByNumResponse); ok {
-		return x.GetBlockByNumResponse
+func (x *Response) GetGetBlocksByNumResponse() *GetBlocksByNumResponse {
+	if x, ok := x.GetResponse().(*Response_GetBlocksByNumResponse); ok {
+		return x.GetBlocksByNumResponse
+	}
+	return nil
+}
+
+func (x *Response) GetErrorResponse() *ErrorResponse {
+	if x, ok := x.GetResponse().(*Response_ErrorResponse); ok {
+		return x.ErrorResponse
 	}
 	return nil
 }
@@ -350,13 +302,19 @@ type isResponse_Response interface {
 	isResponse_Response()
 }
 
-type Response_GetBlockByNumResponse struct {
-	GetBlockByNumResponse *GetBlockByNumResponse `protobuf:"bytes,2,opt,name=get_block_by_num_response,json=getBlockByNumResponse,proto3,oneof"`
+type Response_GetBlocksByNumResponse struct {
+	GetBlocksByNumResponse *GetBlocksByNumResponse `protobuf:"bytes,2,opt,name=get_blocks_by_num_response,json=getBlocksByNumResponse,proto3,oneof"`
 }
 
-func (*Response_GetBlockByNumResponse) isResponse_Response() {}
+type Response_ErrorResponse struct {
+	ErrorResponse *ErrorResponse `protobuf:"bytes,3,opt,name=error_response,json=errorResponse,proto3,oneof"`
+}
 
-type GetBlockByNumResponse struct {
+func (*Response_GetBlocksByNumResponse) isResponse_Response() {}
+
+func (*Response_ErrorResponse) isResponse_Response() {}
+
+type GetBlocksByNumResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
@@ -364,8 +322,8 @@ type GetBlockByNumResponse struct {
 	Blocks [][]byte `protobuf:"bytes,1,rep,name=blocks,proto3" json:"blocks,omitempty"`
 }
 
-func (x *GetBlockByNumResponse) Reset() {
-	*x = GetBlockByNumResponse{}
+func (x *GetBlocksByNumResponse) Reset() {
+	*x = GetBlocksByNumResponse{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_message_proto_msgTypes[4]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -373,13 +331,13 @@ func (x *GetBlockByNumResponse) Reset() {
 	}
 }
 
-func (x *GetBlockByNumResponse) String() string {
+func (x *GetBlocksByNumResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GetBlockByNumResponse) ProtoMessage() {}
+func (*GetBlocksByNumResponse) ProtoMessage() {}
 
-func (x *GetBlockByNumResponse) ProtoReflect() protoreflect.Message {
+func (x *GetBlocksByNumResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_message_proto_msgTypes[4]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -391,60 +349,107 @@ func (x *GetBlockByNumResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use GetBlockByNumResponse.ProtoReflect.Descriptor instead.
-func (*GetBlockByNumResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use GetBlocksByNumResponse.ProtoReflect.Descriptor instead.
+func (*GetBlocksByNumResponse) Descriptor() ([]byte, []int) {
 	return file_message_proto_rawDescGZIP(), []int{4}
 }
 
-func (x *GetBlockByNumResponse) GetBlocks() [][]byte {
+func (x *GetBlocksByNumResponse) GetBlocks() [][]byte {
 	if x != nil {
 		return x.Blocks
 	}
 	return nil
 }
 
+type ErrorResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Error string `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+}
+
+func (x *ErrorResponse) Reset() {
+	*x = ErrorResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_message_proto_msgTypes[5]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ErrorResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ErrorResponse) ProtoMessage() {}
+
+func (x *ErrorResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_message_proto_msgTypes[5]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ErrorResponse.ProtoReflect.Descriptor instead.
+func (*ErrorResponse) Descriptor() ([]byte, []int) {
+	return file_message_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *ErrorResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
 var File_message_proto protoreflect.FileDescriptor
 
 var file_message_proto_rawDesc = []byte{
 	0x0a, 0x0d, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x12,
-	0x07, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x22, 0x35, 0x0a, 0x10, 0x48, 0x61, 0x6e, 0x64,
-	0x53, 0x68, 0x61, 0x6b, 0x65, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x12, 0x21, 0x0a, 0x0c,
-	0x67, 0x65, 0x6e, 0x65, 0x73, 0x69, 0x73, 0x5f, 0x68, 0x61, 0x73, 0x68, 0x18, 0x04, 0x20, 0x01,
-	0x28, 0x0c, 0x52, 0x0b, 0x67, 0x65, 0x6e, 0x65, 0x73, 0x69, 0x73, 0x48, 0x61, 0x73, 0x68, 0x22,
-	0xa6, 0x01, 0x0a, 0x07, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x37, 0x0a, 0x0c, 0x72,
-	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x5f, 0x74, 0x79, 0x70, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28,
-	0x0e, 0x32, 0x14, 0x2e, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x2e, 0x52, 0x65, 0x71, 0x75,
-	0x65, 0x73, 0x74, 0x54, 0x79, 0x70, 0x65, 0x52, 0x0b, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
-	0x54, 0x79, 0x70, 0x65, 0x12, 0x57, 0x0a, 0x18, 0x67, 0x65, 0x74, 0x5f, 0x62, 0x6c, 0x6f, 0x63,
-	0x6b, 0x5f, 0x62, 0x79, 0x5f, 0x6e, 0x75, 0x6d, 0x5f, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
-	0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1d, 0x2e, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65,
-	0x2e, 0x47, 0x65, 0x74, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x42, 0x79, 0x4e, 0x75, 0x6d, 0x52, 0x65,
-	0x71, 0x75, 0x65, 0x73, 0x74, 0x48, 0x00, 0x52, 0x14, 0x67, 0x65, 0x74, 0x42, 0x6c, 0x6f, 0x63,
-	0x6b, 0x42, 0x79, 0x4e, 0x75, 0x6d, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x42, 0x09, 0x0a,
-	0x07, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x22, 0x2e, 0x0a, 0x14, 0x47, 0x65, 0x74, 0x42,
-	0x6c, 0x6f, 0x63, 0x6b, 0x42, 0x79, 0x4e, 0x75, 0x6d, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
-	0x12, 0x16, 0x0a, 0x04, 0x6e, 0x75, 0x6d, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x03, 0x42, 0x02,
-	0x10, 0x01, 0x52, 0x04, 0x6e, 0x75, 0x6d, 0x73, 0x22, 0xad, 0x01, 0x0a, 0x08, 0x52, 0x65, 0x73,
-	0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x39, 0x0a, 0x0d, 0x72, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
-	0x65, 0x5f, 0x74, 0x79, 0x70, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0e, 0x32, 0x14, 0x2e, 0x6d,
-	0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x2e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x54, 0x79,
-	0x70, 0x65, 0x52, 0x0c, 0x72, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x54, 0x79, 0x70, 0x65,
-	0x12, 0x5a, 0x0a, 0x19, 0x67, 0x65, 0x74, 0x5f, 0x62, 0x6c, 0x6f, 0x63, 0x6b, 0x5f, 0x62, 0x79,
-	0x5f, 0x6e, 0x75, 0x6d, 0x5f, 0x72, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x18, 0x02, 0x20,
-	0x01, 0x28, 0x0b, 0x32, 0x1e, 0x2e, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x2e, 0x47, 0x65,
-	0x74, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x42, 0x79, 0x4e, 0x75, 0x6d, 0x52, 0x65, 0x73, 0x70, 0x6f,
-	0x6e, 0x73, 0x65, 0x48, 0x00, 0x52, 0x15, 0x67, 0x65, 0x74, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x42,
-	0x79, 0x4e, 0x75, 0x6d, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x42, 0x0a, 0x0a, 0x08,
-	0x72, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x2f, 0x0a, 0x15, 0x47, 0x65, 0x74, 0x42,
-	0x6c, 0x6f, 0x63, 0x6b, 0x42, 0x79, 0x4e, 0x75, 0x6d, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
-	0x65, 0x12, 0x16, 0x0a, 0x06, 0x62, 0x6c, 0x6f, 0x63, 0x6b, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28,
-	0x0c, 0x52, 0x06, 0x62, 0x6c, 0x6f, 0x63, 0x6b, 0x73, 0x2a, 0x23, 0x0a, 0x0b, 0x52, 0x65, 0x71,
-	0x75, 0x65, 0x73, 0x74, 0x54, 0x79, 0x70, 0x65, 0x12, 0x14, 0x0a, 0x10, 0x47, 0x45, 0x54, 0x5f,
-	0x42, 0x4c, 0x4f, 0x43, 0x4b, 0x5f, 0x42, 0x59, 0x5f, 0x4e, 0x55, 0x4d, 0x10, 0x00, 0x2a, 0x37,
-	0x0a, 0x0c, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x54, 0x79, 0x70, 0x65, 0x12, 0x18,
-	0x0a, 0x14, 0x47, 0x45, 0x54, 0x5f, 0x42, 0x4c, 0x4f, 0x43, 0x4b, 0x5f, 0x42, 0x59, 0x5f, 0x4e,
-	0x55, 0x4d, 0x5f, 0x52, 0x45, 0x53, 0x10, 0x00, 0x12, 0x0d, 0x0a, 0x09, 0x45, 0x52, 0x52, 0x4f,
-	0x52, 0x5f, 0x52, 0x45, 0x53, 0x10, 0x01, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x07, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x22, 0x67, 0x0a, 0x07, 0x4d, 0x65, 0x73, 0x73,
+	0x61, 0x67, 0x65, 0x12, 0x24, 0x0a, 0x03, 0x72, 0x65, 0x71, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b,
+	0x32, 0x10, 0x2e, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x2e, 0x52, 0x65, 0x71, 0x75, 0x65,
+	0x73, 0x74, 0x48, 0x00, 0x52, 0x03, 0x72, 0x65, 0x71, 0x12, 0x27, 0x0a, 0x04, 0x72, 0x65, 0x73,
+	0x70, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x11, 0x2e, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67,
+	0x65, 0x2e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x48, 0x00, 0x52, 0x04, 0x72, 0x65,
+	0x73, 0x70, 0x42, 0x0d, 0x0a, 0x0b, 0x72, 0x65, 0x71, 0x5f, 0x6f, 0x72, 0x5f, 0x72, 0x65, 0x73,
+	0x70, 0x22, 0x87, 0x01, 0x0a, 0x07, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x15, 0x0a,
+	0x06, 0x72, 0x65, 0x71, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x04, 0x52, 0x05, 0x72,
+	0x65, 0x71, 0x49, 0x64, 0x12, 0x5a, 0x0a, 0x19, 0x67, 0x65, 0x74, 0x5f, 0x62, 0x6c, 0x6f, 0x63,
+	0x6b, 0x73, 0x5f, 0x62, 0x79, 0x5f, 0x6e, 0x75, 0x6d, 0x5f, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73,
+	0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1e, 0x2e, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67,
+	0x65, 0x2e, 0x47, 0x65, 0x74, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x73, 0x42, 0x79, 0x4e, 0x75, 0x6d,
+	0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x48, 0x00, 0x52, 0x15, 0x67, 0x65, 0x74, 0x42, 0x6c,
+	0x6f, 0x63, 0x6b, 0x73, 0x42, 0x79, 0x4e, 0x75, 0x6d, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
+	0x42, 0x09, 0x0a, 0x07, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x22, 0x2f, 0x0a, 0x15, 0x47,
+	0x65, 0x74, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x73, 0x42, 0x79, 0x4e, 0x75, 0x6d, 0x52, 0x65, 0x71,
+	0x75, 0x65, 0x73, 0x74, 0x12, 0x16, 0x0a, 0x04, 0x6e, 0x75, 0x6d, 0x73, 0x18, 0x01, 0x20, 0x03,
+	0x28, 0x03, 0x42, 0x02, 0x10, 0x01, 0x52, 0x04, 0x6e, 0x75, 0x6d, 0x73, 0x22, 0xcd, 0x01, 0x0a,
+	0x08, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x15, 0x0a, 0x06, 0x72, 0x65, 0x71,
+	0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x04, 0x52, 0x05, 0x72, 0x65, 0x71, 0x49, 0x64,
+	0x12, 0x5d, 0x0a, 0x1a, 0x67, 0x65, 0x74, 0x5f, 0x62, 0x6c, 0x6f, 0x63, 0x6b, 0x73, 0x5f, 0x62,
+	0x79, 0x5f, 0x6e, 0x75, 0x6d, 0x5f, 0x72, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x18, 0x02,
+	0x20, 0x01, 0x28, 0x0b, 0x32, 0x1f, 0x2e, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x2e, 0x47,
+	0x65, 0x74, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x73, 0x42, 0x79, 0x4e, 0x75, 0x6d, 0x52, 0x65, 0x73,
+	0x70, 0x6f, 0x6e, 0x73, 0x65, 0x48, 0x00, 0x52, 0x16, 0x67, 0x65, 0x74, 0x42, 0x6c, 0x6f, 0x63,
+	0x6b, 0x73, 0x42, 0x79, 0x4e, 0x75, 0x6d, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12,
+	0x3f, 0x0a, 0x0e, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x5f, 0x72, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
+	0x65, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x16, 0x2e, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67,
+	0x65, 0x2e, 0x45, 0x72, 0x72, 0x6f, 0x72, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x48,
+	0x00, 0x52, 0x0d, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65,
+	0x42, 0x0a, 0x0a, 0x08, 0x72, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x30, 0x0a, 0x16,
+	0x47, 0x65, 0x74, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x73, 0x42, 0x79, 0x4e, 0x75, 0x6d, 0x52, 0x65,
+	0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x16, 0x0a, 0x06, 0x62, 0x6c, 0x6f, 0x63, 0x6b, 0x73,
+	0x18, 0x01, 0x20, 0x03, 0x28, 0x0c, 0x52, 0x06, 0x62, 0x6c, 0x6f, 0x63, 0x6b, 0x73, 0x22, 0x25,
+	0x0a, 0x0d, 0x45, 0x72, 0x72, 0x6f, 0x72, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12,
+	0x14, 0x0a, 0x05, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05,
+	0x65, 0x72, 0x72, 0x6f, 0x72, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -459,27 +464,26 @@ func file_message_proto_rawDescGZIP() []byte {
 	return file_message_proto_rawDescData
 }
 
-var file_message_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_message_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_message_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_message_proto_goTypes = []interface{}{
-	(RequestType)(0),              // 0: message.RequestType
-	(ResponseType)(0),             // 1: message.ResponseType
-	(*HandShakeMessage)(nil),      // 2: message.HandShakeMessage
-	(*Request)(nil),               // 3: message.Request
-	(*GetBlockByNumRequest)(nil),  // 4: message.GetBlockByNumRequest
-	(*Response)(nil),              // 5: message.Response
-	(*GetBlockByNumResponse)(nil), // 6: message.GetBlockByNumResponse
+	(*Message)(nil),                // 0: message.Message
+	(*Request)(nil),                // 1: message.Request
+	(*GetBlocksByNumRequest)(nil),  // 2: message.GetBlocksByNumRequest
+	(*Response)(nil),               // 3: message.Response
+	(*GetBlocksByNumResponse)(nil), // 4: message.GetBlocksByNumResponse
+	(*ErrorResponse)(nil),          // 5: message.ErrorResponse
 }
 var file_message_proto_depIdxs = []int32{
-	0, // 0: message.Request.request_type:type_name -> message.RequestType
-	4, // 1: message.Request.get_block_by_num_request:type_name -> message.GetBlockByNumRequest
-	0, // 2: message.Response.response_type:type_name -> message.RequestType
-	6, // 3: message.Response.get_block_by_num_response:type_name -> message.GetBlockByNumResponse
-	4, // [4:4] is the sub-list for method output_type
-	4, // [4:4] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	1, // 0: message.Message.req:type_name -> message.Request
+	3, // 1: message.Message.resp:type_name -> message.Response
+	2, // 2: message.Request.get_blocks_by_num_request:type_name -> message.GetBlocksByNumRequest
+	4, // 3: message.Response.get_blocks_by_num_response:type_name -> message.GetBlocksByNumResponse
+	5, // 4: message.Response.error_response:type_name -> message.ErrorResponse
+	5, // [5:5] is the sub-list for method output_type
+	5, // [5:5] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_message_proto_init() }
@@ -489,7 +493,7 @@ func file_message_proto_init() {
 	}
 	if !protoimpl.UnsafeEnabled {
 		file_message_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*HandShakeMessage); i {
+			switch v := v.(*Message); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -513,7 +517,7 @@ func file_message_proto_init() {
 			}
 		}
 		file_message_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetBlockByNumRequest); i {
+			switch v := v.(*GetBlocksByNumRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -537,7 +541,19 @@ func file_message_proto_init() {
 			}
 		}
 		file_message_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetBlockByNumResponse); i {
+			switch v := v.(*GetBlocksByNumResponse); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_message_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*ErrorResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -549,25 +565,29 @@ func file_message_proto_init() {
 			}
 		}
 	}
+	file_message_proto_msgTypes[0].OneofWrappers = []interface{}{
+		(*Message_Req)(nil),
+		(*Message_Resp)(nil),
+	}
 	file_message_proto_msgTypes[1].OneofWrappers = []interface{}{
-		(*Request_GetBlockByNumRequest)(nil),
+		(*Request_GetBlocksByNumRequest)(nil),
 	}
 	file_message_proto_msgTypes[3].OneofWrappers = []interface{}{
-		(*Response_GetBlockByNumResponse)(nil),
+		(*Response_GetBlocksByNumResponse)(nil),
+		(*Response_ErrorResponse)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_message_proto_rawDesc,
-			NumEnums:      2,
-			NumMessages:   5,
+			NumEnums:      0,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_message_proto_goTypes,
 		DependencyIndexes: file_message_proto_depIdxs,
-		EnumInfos:         file_message_proto_enumTypes,
 		MessageInfos:      file_message_proto_msgTypes,
 	}.Build()
 	File_message_proto = out.File

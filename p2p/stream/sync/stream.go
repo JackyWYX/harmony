@@ -1,117 +1,128 @@
 package sync
 
 import (
-	"bytes"
 	"fmt"
-	"io/ioutil"
 
-	"github.com/pkg/errors"
-
-	protobuf "github.com/golang/protobuf/proto"
-
+	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/harmony-one/harmony/consensus/engine"
+	"github.com/harmony-one/harmony/core/types"
 	"github.com/harmony-one/harmony/p2p/stream/message"
 	sttypes "github.com/harmony-one/harmony/p2p/stream/types"
-	p2ptypes "github.com/harmony-one/harmony/p2p/types"
-	libp2p_network "github.com/libp2p/go-libp2p-core/network"
+	"github.com/pkg/errors"
 )
 
-// Stream is the structure for a stream to a peer running a single protocol
-type Stream struct {
-	st    libp2p_network.Stream // underlying libp2p stream
-	chain engine.ChainReader
-	// middleware
-	stManager   sttypes.StreamManager
-	rateLimiter sttypes.RateLimiter
-	// metadata
-	cMeta sttypes.Metadata
-	// cache
-	myHandshakeMsg *message.HandShakeMessage
-	// flow control
-	stop chan struct{}
+// SyncStream is the structure for a stream of a peer running a single protocol
+type SyncStream struct {
+	sttypes.BaseStream // extends the basic stream
+
+	chain engine.ChainReader // provide SYNC data
+
+	rl sttypes.RateLimiter // limit the incoming request rate
+
+	deliverer deliverer
+
+	stopCh chan struct{}
 }
 
-// PeerID returns the PeerID of the underlying stream connection
-func (st *Stream) PeerID() p2ptypes.PeerID {
-	return st.cMeta.PeerID
+type deliverer interface {
+	deliverBlocks(st *SyncStream, blocks []*types.Block)
 }
 
-// ProtoID returns the ProtoID of the stream connection
-func (st *Stream) ProtoID() sttypes.ProtoID {
-	return st.cMeta.ProtoID
-}
+func (st *SyncStream) run() {
+	var (
+		inMsgCh = make(chan *message.Message)
+	)
+	defer st.stop()
 
-// ProtoSpec return ProtoSpec of the stream connection
-func (st *Stream) ProtoSpec() sttypes.ProtoSpec {
-	return st.cMeta.ProtoSpec
-}
+	// convert read message to a channel
+	go func() {
+		for {
+			msg, err := st.ReadMsg()
+			if err != nil {
+				st.stop()
+			}
+			inMsgCh <- msg.(*message.Message)
+		}
+	}()
 
-// Direction return the direction of the stream connection
-func (st *Stream) Direction() sttypes.Direction {
-	return st.cMeta.Direction
-}
-
-// Close closes the stream
-func (st *Stream) Close() {
-	st.stop <- struct{}{}
-}
-
-func (st *Stream) handshake() error {
-	myHandshake := st.getHandshakeMessage()
-
-	if err := st.writeMsg(myHandshake); err != nil {
-		return errors.Wrap(err, "write my handshake")
+	for {
+		select {
+		case <-st.stopCh:
+			return
+		case msg := <-inMsgCh:
+			err := st.handleMsg(msg)
+			if err != nil {
+				return
+			}
+		}
 	}
-	other, err := st.readMsg()
-	if err != nil {
-		return errors.Wrap(err, "read handshake")
-	}
-	otherHandshake, ok := other.(*message.HandShakeMessage)
-	if !ok {
-		return errors.New("not hand shake message")
-	}
-	return st.checkHandshakeMessage(otherHandshake)
 }
 
-func (st *Stream) handleRequest()
-
-func (st *Stream) writeMsg(msg protobuf.Message) error {
-	b, err := protobuf.Marshal(msg)
-	if err != nil {
-		return err
-	}
-	_, err = st.st.Write(b)
-	return err
+func (st *SyncStream) stop() {
+	close(st.stopCh)
+	st.Close()
 }
 
-func (st *Stream) readMsg() (protobuf.Message, error) {
-	b, err := ioutil.ReadAll(st.st)
-	if err != nil {
-		return nil, err
+func (st *SyncStream) handleMsg(msg *message.Message) error {
+	if msg == nil {
+		return nil
 	}
-	var msg protobuf.Message
-	if err := protobuf.Unmarshal(b, msg); err != nil {
-		return nil, err
+	if req := msg.GetReq(); req != nil {
+		st.rl.LimitRequest(st, req)
+		return st.handleReq(req)
 	}
-	return msg, nil
-}
-
-func (st *Stream) getHandshakeMessage() *message.HandShakeMessage {
-	if st.myHandshakeMsg != nil {
-		return st.myHandshakeMsg
-	}
-	genesisHash := st.chain.GetHeaderByNumber(0).Hash()
-	msg := &message.HandShakeMessage{
-		GenesisHash: genesisHash[:],
-	}
-	st.myHandshakeMsg = msg
-	return msg
-}
-
-func (st *Stream) checkHandshakeMessage(target *message.HandShakeMessage) error {
-	self := st.myHandshakeMsg
-	if !bytes.Equal(target.GenesisHash, self.GenesisHash) {
-		return fmt.Errorf("unexpected genesis hash: %x / %x", target.GenesisHash, self.GenesisHash)
+	if resp := msg.GetResp(); resp != nil {
+		return st.handleResp(resp)
 	}
 	return nil
+}
+
+func (st *SyncStream) handleReq(req *message.Request) error {
+	if bnReq := req.GetGetBlocksByNumRequest(); bnReq != nil {
+		resp, err := st.getRespFromBlockNumber(req.ReqId, req.GetGetBlocksByNumRequest().Nums)
+		if err != nil {
+			return errors.Wrap(err, "[GetBlocksByNumber]")
+		}
+		return st.WriteMsg(resp)
+	}
+	return nil
+}
+
+func (st *SyncStream) handleResp(resp *message.Response) error {
+	if errResp := resp.GetErrorResponse(); errResp != nil {
+		return errors.New(errResp.Error)
+	}
+	if gbResp := resp.GetGetBlocksByNumResponse(); gbResp != nil {
+		blocks := make([]*types.Block, 0, len(gbResp.Blocks))
+		for _, bb := range gbResp.Blocks {
+			var block *types.Block
+			if err := rlp.DecodeBytes(bb, &block); err != nil {
+				return errors.Wrap(err, "[GetBlocksByNumResponse]")
+			}
+			blocks = append(blocks, block)
+		}
+		st.deliverer.deliverBlocks(st, blocks)
+	}
+	return nil
+}
+
+const (
+	// GetBlocksByNumAmountCap is the cap of request of a single GetBlocksByNum request
+	GetBlocksByNumAmountCap = 10
+)
+
+func (st *SyncStream) getRespFromBlockNumber(rid uint64, bns []int64) (*message.Message, error) {
+	if len(bns) > GetBlocksByNumAmountCap {
+		return nil, fmt.Errorf("GetBlocksByNum amount exceed cap: %v/%v", len(bns), GetBlocksByNumAmountCap)
+	}
+	blocks := make([]*types.Block, 0, len(bns))
+	for _, bn := range bns {
+		var block *types.Block
+		header := st.chain.GetHeaderByNumber(uint64(bn))
+		if header != nil {
+			block = st.chain.GetBlock(header.Hash(), header.Number().Uint64())
+		}
+		blocks = append(blocks, block)
+	}
+	return message.MakeGetBlocksByNumResponse(rid, blocks)
 }
