@@ -9,6 +9,7 @@ import (
 	"github.com/harmony-one/harmony/p2p/stream/message"
 	sttypes "github.com/harmony-one/harmony/p2p/stream/types"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 )
 
 // SyncStream is the structure for a stream of a peer running a single protocol
@@ -22,6 +23,8 @@ type SyncStream struct {
 	deliverer deliverer
 
 	stopCh chan struct{}
+
+	logger zerolog.Logger
 }
 
 type deliverer interface {
@@ -32,14 +35,18 @@ func (st *SyncStream) run() {
 	var (
 		inMsgCh = make(chan *message.Message)
 	)
-	defer st.stop()
+	defer st.Close()
 
 	// convert read message to a channel
 	go func() {
 		for {
 			msg, err := st.ReadMsg()
 			if err != nil {
-				st.stop()
+				// err from read message can happen two cases:
+				// 1. The stream is terminated by the other side and got EOF.
+				// 2. The stream is terminated by this side because an error
+				//    happens when handling message
+				st.Close()
 			}
 			inMsgCh <- msg.(*message.Message)
 		}
@@ -52,15 +59,21 @@ func (st *SyncStream) run() {
 		case msg := <-inMsgCh:
 			err := st.handleMsg(msg)
 			if err != nil {
+				st.logger.Err(err).Msg("handle request")
 				return
 			}
 		}
 	}
 }
 
-func (st *SyncStream) stop() {
-	close(st.stopCh)
-	st.Close()
+// Close stops the stream handling and closes the underlying stream
+func (st *SyncStream) Close() error {
+	select {
+	case st.stopCh <- struct{}{}:
+	default:
+	}
+
+	return st.BaseStream.Close()
 }
 
 func (st *SyncStream) handleMsg(msg *message.Message) error {

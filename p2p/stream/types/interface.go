@@ -19,13 +19,27 @@ type RateLimiter interface {
 	LimitRequest(stream Stream, request *message.Request)
 }
 
-// RequestManager manages over the requests
-type RequestManager interface {
-	DoRequest(request message.Request) (<-chan message.Response, error)
+// Request is the interface of a single request.
+type Request interface {
+	ReqID() uint64
+	SetReqID(rid uint64)
+
+	ValidateResponse(resp *message.Response) error
+	EstimateCost() uint64 // TODO: Implement this to load balance the requests
 }
 
-// StreamManager handle new stream and closed stream events
-type StreamManager interface {
-	HandleNewStream(stream Stream) error
-	HandleStreamErr(stream Stream, err error)
+// Requester is the interface to do request
+type Requester interface {
+	DoRequest(request Request) (<-chan *message.Response, error)
+}
+
+// Deliverer is the interface to deliver a response
+type Deliverer interface {
+	DeliverResponse(response *message.Response)
+}
+
+// RequestManager manages over the requests
+type RequestManager interface {
+	Requester
+	Deliverer
 }

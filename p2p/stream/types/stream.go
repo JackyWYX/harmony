@@ -11,38 +11,38 @@ import (
 // Stream is the interface for streams implemented in each service.
 // The stream interface is used for stream management as well as rate limiters
 type Stream interface {
+	ID() StreamID
 	PeerID() p2ptypes.PeerID
 	ProtoID() ProtoID
-	ProtoSpec() ProtoSpec
 	Close() error
 }
 
 // BaseStream is the wrapper around
 type BaseStream struct {
-	meta Metadata
-	st   libp2p_network.Stream
+	id StreamID
+	st libp2p_network.Stream
 }
 
-// Metadata contains the necessary information for stream management
-type Metadata struct {
-	PeerID    p2ptypes.PeerID
-	ProtoID   ProtoID
-	ProtoSpec ProtoSpec
+// StreamID contains the necessary information for identifyign a stream.
+// Currently, it consist of peer ID and proto ID
+type StreamID struct {
+	PeerID  p2ptypes.PeerID
+	ProtoID ProtoID
 }
 
-// PeerID return the peer ID of the stream
+// Meta return the StreamID of the stream
+func (st *BaseStream) ID() StreamID {
+	return st.id
+}
+
+// PeerID return the peer id of the stream
 func (st *BaseStream) PeerID() p2ptypes.PeerID {
-	return st.meta.PeerID
+	return st.id.PeerID
 }
 
-// ProtoID return the protocol ID of the stream
+// ProtoID return the remote protocol ID of the stream
 func (st *BaseStream) ProtoID() ProtoID {
-	return st.meta.ProtoID
-}
-
-// ProtoSpec return the ProtoSpec of the stream
-func (st *BaseStream) ProtoSpec() ProtoSpec {
-	return st.meta.ProtoSpec
+	return st.id.ProtoID
 }
 
 // Close close the stream on both sides.
