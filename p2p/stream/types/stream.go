@@ -1,6 +1,7 @@
 package sttypes
 
 import (
+	"fmt"
 	"io/ioutil"
 
 	protobuf "github.com/golang/protobuf/proto"
@@ -28,6 +29,11 @@ type BaseStream struct {
 type StreamID struct {
 	PeerID  p2ptypes.PeerID
 	ProtoID ProtoID
+}
+
+// String returns the string format of StreamID
+func (id StreamID) String() string {
+	return fmt.Sprintf("%s:%s", id.PeerID, id.ProtoID)
 }
 
 // Meta return the StreamID of the stream

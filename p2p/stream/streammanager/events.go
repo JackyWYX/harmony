@@ -6,14 +6,16 @@ import (
 )
 
 // EvtStreamAdded is the event of adding a new stream
-type EvtStreamAdded struct {
-	id sttypes.StreamID
-}
+type (
+	EvtStreamAdded struct {
+		id sttypes.StreamID
+	}
 
-// EvtStreamRemoved is an event of stream removed
-type EvtStreamRemoved struct {
-	id sttypes.StreamID
-}
+	// EvtStreamRemoved is an event of stream removed
+	EvtStreamRemoved struct {
+		id sttypes.StreamID
+	}
+)
 
 // SubscribeAddStreamEvent subscribe the add stream event
 func (sm *streamManager) SubscribeAddStreamEvent(ch chan<- EvtStreamAdded) event.Subscription {

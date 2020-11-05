@@ -7,11 +7,13 @@ const (
 	defSoftLoCap = 16 // discovery trigger for routine check
 	defHiCap     = 64 // Hard cap of the stream number
 	defDiscBatch = 16 // batch size for discovery
-)
 
-const (
-	checkInterval  = 5 * time.Minute // interval for checking peer number
-	discTimeout    = 60 * time.Second
+	// checkInterval is the default interval for checking stream number. If the stream
+	// number is smaller than softLoCap, an active discover through DHT will be triggered.
+	checkInterval = 5 * time.Minute
+	// discTimeout is the timeout for one batch of discovery
+	discTimeout = 60 * time.Second
+	// connectTimeout is the timeout for setting up a stream with a discovered peer
 	connectTimeout = 60 * time.Second
 )
 

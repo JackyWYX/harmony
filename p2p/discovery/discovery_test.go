@@ -1,5 +1,7 @@
 package discovery
 
+// TODO: test this module
+
 import (
 	"context"
 	"testing"
