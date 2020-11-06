@@ -37,10 +37,11 @@ type streamManager struct {
 	stopCh      chan stopTask
 	discCh      chan discTask
 	// utils
-	event  event.Feed
-	logger zerolog.Logger
-	ctx    context.Context
-	cancel func()
+	addStreamFeed    event.Feed
+	removeStreamFeed event.Feed
+	logger           zerolog.Logger
+	ctx              context.Context
+	cancel           func()
 }
 
 // NewStreamManager creates a new stream manager
@@ -198,7 +199,7 @@ func (sm *streamManager) handleAddStream(st sttypes.Stream) error {
 
 	sm.streams.addStream(st)
 
-	sm.event.Send(EvtStreamAdded{id})
+	sm.addStreamFeed.Send(EvtStreamAdded{id})
 	return nil
 }
 
@@ -216,6 +217,7 @@ func (sm *streamManager) handleRemoveStream(id sttypes.StreamID) error {
 		default:
 		}
 	}
+	sm.removeStreamFeed.Send(EvtStreamRemoved{id})
 	return st.Close()
 }
 

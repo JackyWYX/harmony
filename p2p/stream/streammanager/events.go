@@ -19,10 +19,10 @@ type (
 
 // SubscribeAddStreamEvent subscribe the add stream event
 func (sm *streamManager) SubscribeAddStreamEvent(ch chan<- EvtStreamAdded) event.Subscription {
-	return sm.event.Subscribe(ch)
+	return sm.addStreamFeed.Subscribe(ch)
 }
 
-// SubscribeRmStreamEvent subscribe the remove stream event
-func (sm *streamManager) SubscribeRmStreamEvent(ch chan<- EvtStreamRemoved) event.Subscription {
-	return sm.event.Subscribe(ch)
+// SubscribeRemoveStreamEvent subscribe the remove stream event
+func (sm *streamManager) SubscribeRemoveStreamEvent(ch chan<- EvtStreamRemoved) event.Subscription {
+	return sm.removeStreamFeed.Subscribe(ch)
 }

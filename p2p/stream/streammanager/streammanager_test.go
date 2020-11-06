@@ -153,7 +153,7 @@ func TestStreamManager_HandleNewStream(t *testing.T) {
 	}
 }
 
-func TestStreamManager_HandleRemoteStream(t *testing.T) {
+func TestStreamManager_HandleRemoveStream(t *testing.T) {
 	tests := []struct {
 		id      sttypes.StreamID
 		expSize int
@@ -191,6 +191,32 @@ func TestStreamManager_HandleRemoteStream(t *testing.T) {
 				test.expSize)
 		}
 	}
+}
+
+// When number of streams is smaller than hard low limit, discover will be triggered
+func TestStreamManager_HandleRemoveStream_Disc(t *testing.T) {
+	sm := newTestStreamManager()
+	sm.Start()
+	time.Sleep(defTestWait)
+
+	// Remove DiscBatch - HardLoCap + 1 streams
+	num := 0
+	for _, st := range sm.streams.slice() {
+		if err := sm.RemoveStream(context.Background(), st.ID()); err != nil {
+			t.Error(err)
+		}
+		num++
+		if num == sm.config.DiscBatch-sm.config.HardLoCap+1 {
+			break
+		}
+	}
+
+	// Last remove stream will also trigger discover
+	time.Sleep(defTestWait)
+	if sm.streams.size() != sm.config.HardLoCap+sm.config.DiscBatch-1 {
+		t.Errorf("unexpected stream number %v / %v", sm.streams.size(), sm.config.HardLoCap+sm.config.DiscBatch-1)
+	}
+
 }
 
 func assertError(got, exp error) error {

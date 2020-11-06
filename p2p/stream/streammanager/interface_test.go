@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strconv"
 	"sync"
+	"sync/atomic"
 
 	sttypes "github.com/harmony-one/harmony/p2p/stream/types"
 	p2ptypes "github.com/harmony-one/harmony/p2p/types"
@@ -119,7 +120,7 @@ func makeRemotePeers(size int) []libp2p_peer.ID {
 
 type testPeerFinder struct {
 	peerIDs  []libp2p_peer.ID
-	curIndex int
+	curIndex int32
 	fpHook   delayFunc
 }
 
@@ -151,15 +152,17 @@ func (pf *testPeerFinder) FindPeers(ctx context.Context, ns string, peerLimit in
 		defer close(resC)
 
 		for i := 0; i != peerLimit; i++ {
-			pid := pf.peerIDs[pf.curIndex]
+			// hack to prevent race
+			curIndex := atomic.LoadInt32(&pf.curIndex)
+			pid := pf.peerIDs[curIndex]
 			select {
 			case <-ctx.Done():
 				return
 			case <-pf.fpHook(pid):
 			}
 			resC <- libp2p_peer.AddrInfo{ID: pid}
-			pf.curIndex++
-			if pf.curIndex == len(pf.peerIDs) {
+			atomic.AddInt32(&pf.curIndex, 1)
+			if int(atomic.LoadInt32(&pf.curIndex)) == len(pf.peerIDs) {
 				pf.curIndex = 0
 			}
 		}
