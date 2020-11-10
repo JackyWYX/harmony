@@ -8,12 +8,12 @@ import (
 // EvtStreamAdded is the event of adding a new stream
 type (
 	EvtStreamAdded struct {
-		id sttypes.StreamID
+		Stream sttypes.Stream
 	}
 
 	// EvtStreamRemoved is an event of stream removed
 	EvtStreamRemoved struct {
-		id sttypes.StreamID
+		ID sttypes.StreamID
 	}
 )
 

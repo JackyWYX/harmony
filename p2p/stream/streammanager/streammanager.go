@@ -2,6 +2,7 @@ package streammanager
 
 import (
 	"context"
+	"io"
 	"sync"
 	"time"
 
@@ -24,9 +25,9 @@ type streamManager struct {
 	// streamManager only manages streams on one protocol.
 	protoID sttypes.ProtoID
 	config  Config
-	// streams is the map of peer id to stream
+	// streams is the map of peer ID to stream
 	// Note that it could happen that remote node does not share exactly the same
-	// protocol id (e.g. different version)
+	// protocol ID (e.g. different version)
 	streams *streamSet
 	// libp2p utilities
 	host host
@@ -145,8 +146,8 @@ func (sm *streamManager) loop() {
 	}
 }
 
-// HandleNewStream handles a new stream from stream handler protocol
-func (sm *streamManager) HandleNewStream(ctx context.Context, stream sttypes.Stream) error {
+// NewStream handles a new stream from stream handler protocol
+func (sm *streamManager) NewStream(ctx context.Context, stream sttypes.Stream) error {
 	task := addStreamTask{
 		ctx:  ctx,
 		st:   stream,
@@ -199,7 +200,7 @@ func (sm *streamManager) handleAddStream(st sttypes.Stream) error {
 
 	sm.streams.addStream(st)
 
-	sm.addStreamFeed.Send(EvtStreamAdded{id})
+	sm.addStreamFeed.Send(EvtStreamAdded{st})
 	return nil
 }
 
@@ -218,7 +219,9 @@ func (sm *streamManager) handleRemoveStream(id sttypes.StreamID) error {
 		}
 	}
 	sm.removeStreamFeed.Send(EvtStreamRemoved{id})
-	return st.Close()
+	// Hack here. We shall not add Closer interface to the Stream interface. stream manager
+	// is the only module that can close the stream.
+	return st.(io.Closer).Close()
 }
 
 func (sm *streamManager) removeAllStreamOnClose() {
@@ -228,8 +231,8 @@ func (sm *streamManager) removeAllStreamOnClose() {
 		wg.Add(1)
 		go func(st sttypes.Stream) {
 			defer wg.Done()
-
-			err := st.Close()
+			// Close hack here.
+			err := st.(io.Closer).Close()
 			if err != nil {
 				sm.logger.Warn().Err(err).Str("stream ID", st.ID().String()).
 					Msg("failed to close stream")

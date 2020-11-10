@@ -7,6 +7,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/harmony-one/harmony/p2p/stream/message"
 	sttypes "github.com/harmony-one/harmony/p2p/stream/types"
 	p2ptypes "github.com/harmony-one/harmony/p2p/types"
 	"github.com/libp2p/go-libp2p-core/network"
@@ -50,6 +51,10 @@ func (st *testStream) PeerID() p2ptypes.PeerID {
 
 func (st *testStream) ProtoID() sttypes.ProtoID {
 	return st.id.ProtoID
+}
+
+func (st *testStream) SendRequest(*message.Request) error {
+	return nil
 }
 
 func (st *testStream) Close() error {
@@ -102,7 +107,7 @@ func (h *testHost) NewStream(ctx context.Context, p libp2p_peer.ID, pids ...prot
 	h.streams[stid] = st
 	h.lock.Unlock()
 
-	err = h.sm.HandleNewStream(ctx, st)
+	err = h.sm.NewStream(ctx, st)
 	return nil, err
 }
 

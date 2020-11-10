@@ -3,7 +3,9 @@ package streammanager
 import (
 	"context"
 
+	"github.com/ethereum/go-ethereum/event"
 	sttypes "github.com/harmony-one/harmony/p2p/stream/types"
+	p2ptypes "github.com/harmony-one/harmony/p2p/types"
 	"github.com/libp2p/go-libp2p-core/network"
 	libp2p_peer "github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/protocol"
@@ -11,11 +13,21 @@ import (
 
 // StreamManager handle new stream and closed stream events.
 type StreamManager interface {
-	Start()
-	Close()
+	p2ptypes.LifeCycle
+	StreamHandler
+	Subscriber
+}
 
-	HandleNewStream(ctx context.Context, stream sttypes.Stream) error
+// StreamHandler handles new stream or remove stream
+type StreamHandler interface {
+	NewStream(ctx context.Context, stream sttypes.Stream) error
 	RemoveStream(ctx context.Context, stID sttypes.StreamID) error
+}
+
+// Subscriber is the interface to support stream event subscription
+type Subscriber interface {
+	SubscribeAddStreamEvent(ch chan<- EvtStreamAdded) event.Subscription
+	SubscribeRemoveStreamEvent(ch chan<- EvtStreamRemoved) event.Subscription
 }
 
 // host is the adapter interface of the libp2p host implementation.

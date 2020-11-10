@@ -26,7 +26,7 @@ func TestStreamManager_BootstrapDisc(t *testing.T) {
 	}
 
 	// After bootstrap, stream manager shall discover streams and setup connection
-	// Note host will mock the upper code logic to call sm.HandleNewStream in this case
+	// Note host will mock the upper code logic to call sm.NewStream in this case
 	sm.Start()
 	time.Sleep(defTestWait)
 	if gotSize := sm.streams.size(); gotSize != sm.config.DiscBatch {
@@ -141,7 +141,7 @@ func TestStreamManager_HandleNewStream(t *testing.T) {
 		sm.Start()
 		time.Sleep(defTestWait)
 
-		err := sm.HandleNewStream(context.Background(), test.stream)
+		err := sm.NewStream(context.Background(), test.stream)
 		if assErr := assertError(err, test.expErr); assErr != nil {
 			t.Errorf("Test %v: %v", i, assErr)
 		}
