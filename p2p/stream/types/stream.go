@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 
 	protobuf "github.com/golang/protobuf/proto"
+	"github.com/harmony-one/harmony/p2p/stream/message"
 	p2ptypes "github.com/harmony-one/harmony/p2p/types"
 	libp2p_network "github.com/libp2p/go-libp2p-core/network"
 )
@@ -15,7 +16,7 @@ type Stream interface {
 	ID() StreamID
 	PeerID() p2ptypes.PeerID
 	ProtoID() ProtoID
-	Close() error
+	SendRequest(req *message.Request) error
 }
 
 // BaseStream is the wrapper around
@@ -54,6 +55,11 @@ func (st *BaseStream) ProtoID() ProtoID {
 // Close close the stream on both sides.
 func (st *BaseStream) Close() error {
 	return st.st.Reset()
+}
+
+// SendRequest send a request to the stream
+func (st *BaseStream) SendRequest(req *message.Request) error {
+	return st.WriteMsg(req)
 }
 
 // WriteMsg write the protobuf message to the stream

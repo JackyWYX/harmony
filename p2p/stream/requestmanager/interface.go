@@ -1,18 +1,20 @@
 package requestmanager
 
 import (
+	"context"
+
 	"github.com/harmony-one/harmony/p2p/stream/message"
 	sttypes "github.com/harmony-one/harmony/p2p/stream/types"
 )
 
 // Requester is the interface to do request
 type Requester interface {
-	DoRequest(request sttypes.Request) (<-chan *message.Response, error)
+	DoRequest(ctx context.Context, request sttypes.Request) (<-chan response, error)
 }
 
 // Deliverer is the interface to deliver a response
 type Deliverer interface {
-	DeliverResponse(response *message.Response)
+	DeliverResponse(stID sttypes.StreamID, resp *message.Response)
 }
 
 // RequestManager manages over the requests

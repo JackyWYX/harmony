@@ -23,23 +23,8 @@ type RateLimiter interface {
 type Request interface {
 	ReqID() uint64
 	SetReqID(rid uint64)
+	String() string
 
+	GetRequestMessage() *message.Request
 	ValidateResponse(resp *message.Response) error
-	EstimateCost() uint64 // TODO: Implement this to load balance the requests
-}
-
-// Requester is the interface to do request
-type Requester interface {
-	DoRequest(request Request) (<-chan *message.Response, error)
-}
-
-// Deliverer is the interface to deliver a response
-type Deliverer interface {
-	DeliverResponse(response *message.Response)
-}
-
-// RequestManager manages over the requests
-type RequestManager interface {
-	Requester
-	Deliverer
 }
