@@ -3,6 +3,7 @@ package requestmanager
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/event"
@@ -21,7 +22,7 @@ import (
 type requestManager struct {
 	streams   map[sttypes.StreamID]*stream  // All streams
 	available map[sttypes.StreamID]struct{} // Streams that are available for request
-	pendings  map[uint64]*request           //requests that
+	pendings  map[uint64]*request           // requests that are sent but not received response
 	waitings  requestQueue                  // double linked list of requests that are on the waiting list
 
 	// Stream events
@@ -36,6 +37,11 @@ type requestManager struct {
 	subs   []event.Subscription
 	logger zerolog.Logger
 	stopC  chan struct{}
+	lock   sync.Mutex
+}
+
+func NewRequestManager(sm streammanager.Subscriber) RequestManager {
+	return newRequestManager(sm)
 }
 
 func newRequestManager(sm streammanager.Subscriber) *requestManager {
@@ -49,7 +55,10 @@ func newRequestManager(sm streammanager.Subscriber) *requestManager {
 	logger := utils.Logger().With().Str("module", "request manager").Logger()
 
 	return &requestManager{
-		streams: make(map[sttypes.StreamID]*stream),
+		streams:   make(map[sttypes.StreamID]*stream),
+		available: make(map[sttypes.StreamID]struct{}),
+		pendings:  make(map[uint64]*request),
+		waitings:  newRequestQueue(),
 
 		newStreamC:  newStreamC,
 		rmStreamC:   rmStreamC,
@@ -73,28 +82,30 @@ func (rm *requestManager) Close() {
 }
 
 func (rm *requestManager) DoRequest(ctx context.Context, raw sttypes.Request) (*message.Response, error) {
-	resp := <-rm.doRequestAsync(ctx, raw)
-	return resp.resp, resp.err
+	resp := <-rm.DoRequestAsync(ctx, raw)
+	return resp.Raw, resp.Err
 }
 
-func (rm *requestManager) doRequestAsync(ctx context.Context, raw sttypes.Request) <-chan response {
+func (rm *requestManager) DoRequestAsync(ctx context.Context, raw sttypes.Request) <-chan Response {
 	req := &request{
 		Request: raw,
 		respC:   make(chan *message.Response),
 		waitCh:  make(chan struct{}),
 	}
+	ctx, _ = context.WithTimeout(ctx, reqTimeOut)
 	rm.newRequestC <- req
 
-	resC := make(chan response, 1)
+	resC := make(chan Response, 1)
+
 	go func() {
 		defer close(req.waitCh)
 		select {
 		case <-ctx.Done(): // canceled or timeout in upper function calls
 			rm.cancelReqC <- req.ReqID()
-			resC <- response{err: ctx.Err()}
+			resC <- Response{Err: ctx.Err()}
 
 		case resp := <-req.respC:
-			resC <- response{resp: resp, err: req.err}
+			resC <- Response{Raw: resp, Err: req.err}
 		}
 	}()
 	return resC
@@ -150,8 +161,8 @@ func (rm *requestManager) loop() {
 					}
 					go func() {
 						select {
-						case <-time.After(reqTimeOut):
-							// request still not received after reqTimeOut, try again.
+						case <-time.After(reqRetryTimeOut):
+							// request still not received after reqRetryTimeOut, try again.
 							rm.retryReqC <- reqID
 						case <-req.waitCh:
 							// request cancelled or response received. Do nothing and return
@@ -198,6 +209,9 @@ func (rm *requestManager) loop() {
 }
 
 func (rm *requestManager) handleNewRequest(req *request) bool {
+	rm.lock.Lock()
+	defer rm.lock.Unlock()
+
 	err := rm.addNewRequestToWaitings(req, reqPriorityLow)
 	if err != nil {
 		rm.logger.Warn().Err(err).Msg("failed to add new request to waitings")
@@ -209,10 +223,13 @@ func (rm *requestManager) handleNewRequest(req *request) bool {
 }
 
 func (rm *requestManager) handleDeliverData(data deliverData) {
+	rm.lock.Lock()
+	defer rm.lock.Unlock()
+
 	if err := rm.validateDelivery(data); err != nil {
 		// if error happens in delivery, most likely it's a stale delivery. No action needed
 		// and return
-		rm.logger.Warn().Err(err).Interface("response", data.resp).Msg("unable to validate deliver")
+		rm.logger.Info().Err(err).Interface("response", data.resp).Msg("unable to validate deliver")
 		return
 	}
 	// req and st is ensured not to be empty in validateDelivery
@@ -241,6 +258,9 @@ func (rm *requestManager) validateDelivery(data deliverData) error {
 }
 
 func (rm *requestManager) handleCancelRequest(reqID uint64) {
+	rm.lock.Lock()
+	defer rm.lock.Unlock()
+
 	req, ok := rm.pendings[reqID]
 	if !ok {
 		return
@@ -249,6 +269,9 @@ func (rm *requestManager) handleCancelRequest(reqID uint64) {
 }
 
 func (rm *requestManager) handleRetryRequest(reqID uint64) bool {
+	rm.lock.Lock()
+	defer rm.lock.Unlock()
+
 	req, ok := rm.pendings[reqID]
 	if !ok {
 		return false
@@ -265,12 +288,16 @@ func (rm *requestManager) handleRetryRequest(reqID uint64) bool {
 }
 
 func (rm *requestManager) getNextRequest() (*request, *stream) {
+	rm.lock.Lock()
+	defer rm.lock.Unlock()
+
 	req := rm.waitings.pop()
 	if req == nil {
 		return nil, nil
 	}
 	st, err := rm.pickAvailableStream()
 	if err != nil {
+		rm.logger.Debug().Msg("No available streams.")
 		rm.addNewRequestToWaitings(req, reqPriorityHigh)
 		return nil, nil
 	}
@@ -287,6 +314,9 @@ func (rm *requestManager) genReqID() uint64 {
 }
 
 func (rm *requestManager) addPendingRequest(req *request, st *stream) {
+	rm.lock.Lock()
+	defer rm.lock.Unlock()
+
 	reqID := rm.genReqID()
 	req.SetReqID(reqID)
 
@@ -302,6 +332,7 @@ func (rm *requestManager) removePendingRequest(req *request) {
 
 	if st := req.owner; st != nil {
 		st.clearPendingRequest()
+		req.clearOwner()
 		rm.available[st.ID()] = struct{}{}
 	}
 }
@@ -321,6 +352,9 @@ func (rm *requestManager) pickAvailableStream() (*stream, error) {
 }
 
 func (rm *requestManager) addNewStream(st sttypes.Stream) {
+	rm.lock.Lock()
+	defer rm.lock.Unlock()
+
 	if _, ok := rm.streams[st.ID()]; !ok {
 		rm.streams[st.ID()] = &stream{Stream: st}
 		rm.available[st.ID()] = struct{}{}
@@ -330,6 +364,9 @@ func (rm *requestManager) addNewStream(st sttypes.Stream) {
 // removeStream remove the stream from request manager, clear the pending request
 // of the stream. Return whether a pending request is canceled in the stream,
 func (rm *requestManager) removeStream(id sttypes.StreamID) bool {
+	rm.lock.Lock()
+	defer rm.lock.Unlock()
+
 	st, ok := rm.streams[id]
 	if !ok {
 		return false
@@ -339,6 +376,7 @@ func (rm *requestManager) removeStream(id sttypes.StreamID) bool {
 
 	cleared := st.clearPendingRequest()
 	if cleared != nil {
+		cleared.clearOwner()
 		if err := rm.addNewRequestToWaitings(cleared, reqPriorityHigh); err != nil {
 			rm.logger.Err(err).Msg("cannot add new request to waitings in removeStream")
 			return false
@@ -349,13 +387,20 @@ func (rm *requestManager) removeStream(id sttypes.StreamID) bool {
 }
 
 func (rm *requestManager) close() {
+	rm.lock.Lock()
+	defer rm.lock.Unlock()
+
 	for _, sub := range rm.subs {
 		sub.Unsubscribe()
 	}
 	for _, req := range rm.pendings {
 		req.err = errors.New("request manager module closed")
-		req.respC <- nil
+		select {
+		case req.respC <- nil:
+		default:
+		}
 	}
+	rm.pendings = nil
 	close(rm.stopC)
 }
 

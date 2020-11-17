@@ -28,6 +28,11 @@ type request struct {
 	owner *stream // Current owner
 	// utils
 	lock sync.RWMutex
+	raw  *interface{}
+}
+
+func (req *request) clearOwner() {
+	req.owner = nil
 }
 
 func (req *request) ReqID() uint64 {
@@ -49,7 +54,6 @@ func (st *stream) clearPendingRequest() *request {
 	if req == nil {
 		return nil
 	}
-	req.owner = nil
 	st.req = nil
 	return req
 }
@@ -59,10 +63,10 @@ type deliverData struct {
 	stID sttypes.StreamID
 }
 
-// response is the response for stream requests
-type response struct {
-	resp *message.Response
-	err  error
+// Response is the wrapped response for stream requests
+type Response struct {
+	Raw *message.Response
+	Err error
 }
 
 // requestQueue is a wrapper of double linked list with Request as type
@@ -71,11 +75,17 @@ type requestQueue struct {
 	lock sync.Mutex
 }
 
+func newRequestQueue() requestQueue {
+	return requestQueue{
+		reqs: list.New(),
+	}
+}
+
 func (q *requestQueue) pushBack(req *request) error {
 	q.lock.Lock()
 	defer q.lock.Unlock()
 
-	if q.reqs.Len() > maxWaitingSize {
+	if q.reqs.Len() >= maxWaitingSize {
 		return fmt.Errorf("waiting request queue size exceeding %v", maxWaitingSize)
 	}
 	q.reqs.PushBack(req)
@@ -86,7 +96,7 @@ func (q *requestQueue) pushFront(req *request) error {
 	q.lock.Lock()
 	defer q.lock.Unlock()
 
-	if q.reqs.Len() > maxWaitingSize {
+	if q.reqs.Len() >= maxWaitingSize {
 		return fmt.Errorf("waiting request queue size exceeding %v", maxWaitingSize)
 	}
 	q.reqs.PushFront(req)

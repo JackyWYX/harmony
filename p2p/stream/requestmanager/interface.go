@@ -9,7 +9,7 @@ import (
 
 // Requester is the interface to do request
 type Requester interface {
-	DoRequest(ctx context.Context, request sttypes.Request) (<-chan response, error)
+	DoRequest(ctx context.Context, request sttypes.Request) (*message.Response, error)
 }
 
 // Deliverer is the interface to deliver a response
@@ -21,9 +21,4 @@ type Deliverer interface {
 type RequestManager interface {
 	Requester
 	Deliverer
-}
-
-// streamManager is the adapter interface for stream manager which supports stream event
-// notification.
-type streamManager interface {
 }

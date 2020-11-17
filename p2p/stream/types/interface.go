@@ -26,5 +26,4 @@ type Request interface {
 	String() string
 
 	GetRequestMessage() *message.Request
-	ValidateResponse(resp *message.Response) error
 }
