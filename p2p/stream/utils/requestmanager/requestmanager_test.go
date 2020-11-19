@@ -321,7 +321,7 @@ func (ts *testSuite) pickOneOccupiedStream() sttypes.StreamID {
 	for _, req := range ts.rm.pendings {
 		return req.owner.ID()
 	}
-	return sttypes.StreamID{}
+	return ""
 }
 
 type (

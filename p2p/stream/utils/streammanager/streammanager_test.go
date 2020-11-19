@@ -10,7 +10,6 @@ import (
 	"time"
 
 	sttypes "github.com/harmony-one/harmony/p2p/stream/types"
-	p2ptypes "github.com/harmony-one/harmony/p2p/types"
 	libp2p_peer "github.com/libp2p/go-libp2p-core/peer"
 )
 
@@ -120,18 +119,12 @@ func TestStreamManager_HandleNewStream(t *testing.T) {
 		expErr  error
 	}{
 		{
-			stream: newTestStream(sttypes.StreamID{
-				PeerID:  p2ptypes.PeerID(makePeerID(100)),
-				ProtoID: testProtoID,
-			}),
+			stream:  newTestStream(makeStreamID(100), testProtoID),
 			expSize: defDiscBatch + 1,
 			expErr:  nil,
 		},
 		{
-			stream: newTestStream(sttypes.StreamID{
-				PeerID:  p2ptypes.PeerID(makePeerID(1)),
-				ProtoID: testProtoID,
-			}),
+			stream:  newTestStream(makeStreamID(1), testProtoID),
 			expSize: defDiscBatch,
 			expErr:  errors.New("stream already exist"),
 		},
@@ -160,18 +153,12 @@ func TestStreamManager_HandleRemoveStream(t *testing.T) {
 		expErr  error
 	}{
 		{
-			id: sttypes.StreamID{
-				PeerID:  p2ptypes.PeerID(makePeerID(1)),
-				ProtoID: testProtoID,
-			},
+			id:      makeStreamID(1),
 			expSize: defDiscBatch - 1,
 			expErr:  nil,
 		},
 		{
-			id: sttypes.StreamID{
-				PeerID:  p2ptypes.PeerID(makePeerID(100)),
-				ProtoID: testProtoID,
-			},
+			id:      makeStreamID(100),
 			expSize: defDiscBatch,
 			expErr:  errors.New("stream not exist in manager"),
 		},
@@ -216,7 +203,31 @@ func TestStreamManager_HandleRemoveStream_Disc(t *testing.T) {
 	if sm.streams.size() != sm.config.HardLoCap+sm.config.DiscBatch-1 {
 		t.Errorf("unexpected stream number %v / %v", sm.streams.size(), sm.config.HardLoCap+sm.config.DiscBatch-1)
 	}
+}
 
+func TestStreamSet_numStreamsWithMinProtoID(t *testing.T) {
+	var (
+		pid1    = testProtoID
+		numPid1 = 5
+
+		pid2    = sttypes.ProtoID("harmony/sync/unitest/0/1.0.1")
+		numPid2 = 10
+	)
+
+	ss := newStreamSet()
+
+	for i := 0; i != numPid1; i++ {
+		ss.addStream(newTestStream(makeStreamID(i), pid1))
+	}
+	for i := 0; i != numPid2; i++ {
+		ss.addStream(newTestStream(makeStreamID(i), pid2))
+	}
+
+	minSpec, _ := sttypes.ProtoIDToProtoSpec(pid2)
+	num := ss.numStreamsWithMinProtoSpec(minSpec)
+	if num != numPid2 {
+		t.Errorf("unexpected result: %v/%v", num, numPid2)
+	}
 }
 
 func assertError(got, exp error) error {

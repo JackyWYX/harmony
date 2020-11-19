@@ -2,6 +2,12 @@ package sync
 
 import (
 	"fmt"
+	"sync"
+
+	"github.com/harmony-one/harmony/p2p/stream/utils/requestmanager"
+
+	"github.com/harmony-one/harmony/p2p/stream/utils/ratelimiter"
+	"github.com/harmony-one/harmony/p2p/stream/utils/streammanager"
 
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/harmony-one/harmony/consensus/engine"
@@ -12,23 +18,25 @@ import (
 	"github.com/rs/zerolog"
 )
 
-// SyncStream is the structure for a stream of a peer running a single protocol
+// SyncStream is the structure for a stream of a peer running sync protocol
 type SyncStream struct {
-	sttypes.BaseStream // extends the basic stream
+	// Basic stream
+	sttypes.BaseStream
 
-	chain engine.ChainReader // provide SYNC data
+	chain engine.ChainReader          // provide SYNC data
+	rl    ratelimiter.RateLimiter     // limit the incoming request rate
+	sm    streammanager.StreamManager // stream management
+	rm    requestmanager.Deliverer    // deliver the response from stream
 
-	rl sttypes.RateLimiter // limit the incoming request rate
+	// pipeline channels
+	msgC chan *message.Message
 
-	deliverer deliverer
-
-	stopCh chan struct{}
+	// close related fields. Multiple call of close is expected.
+	closeC    chan struct{}
+	closeOnce sync.Once
+	closeErr  error
 
 	logger zerolog.Logger
-}
-
-type deliverer interface {
-	deliverBlocks(st *SyncStream, blocks []*types.Block)
 }
 
 func (st *SyncStream) run() {
@@ -54,7 +62,7 @@ func (st *SyncStream) run() {
 
 	for {
 		select {
-		case <-st.stopCh:
+		case <-st.closeC:
 			return
 		case msg := <-inMsgCh:
 			err := st.handleMsg(msg)
@@ -68,12 +76,12 @@ func (st *SyncStream) run() {
 
 // Close stops the stream handling and closes the underlying stream
 func (st *SyncStream) Close() error {
-	select {
-	case st.stopCh <- struct{}{}:
-	default:
-	}
-
-	return st.BaseStream.Close()
+	st.closeOnce.Do(func() {
+		st.closeC <- struct{}{}
+		close(st.closeC)
+		st.closeErr = st.BaseStream.Close()
+	})
+	return st.closeErr
 }
 
 func (st *SyncStream) handleMsg(msg *message.Message) error {

@@ -2,6 +2,7 @@ package streammanager
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"sync"
 	"time"
@@ -23,8 +24,9 @@ import (
 // 4. emit stream events.
 type streamManager struct {
 	// streamManager only manages streams on one protocol.
-	protoID sttypes.ProtoID
-	config  Config
+	myProtoID   sttypes.ProtoID
+	myProtoSpec sttypes.ProtoSpec
+	config      Config
 	// streams is the map of peer ID to stream
 	// Note that it could happen that remote node does not share exactly the same
 	// protocol ID (e.g. different version)
@@ -60,8 +62,11 @@ func newStreamManager(pid sttypes.ProtoID, host host, pf peerFinder, opts ...Opt
 	logger := utils.Logger().With().Str("module", "stream manager").
 		Str("protocol ID", string(pid)).Logger()
 
+	protoSpec, _ := sttypes.ProtoIDToProtoSpec(pid)
+
 	return &streamManager{
-		protoID:     pid,
+		myProtoID:   pid,
+		myProtoSpec: protoSpec,
 		config:      c,
 		streams:     newStreamSet(),
 		host:        host,
@@ -148,6 +153,9 @@ func (sm *streamManager) loop() {
 
 // NewStream handles a new stream from stream handler protocol
 func (sm *streamManager) NewStream(ctx context.Context, stream sttypes.Stream) error {
+	if err := sm.sanityCheckStream(stream); err != nil {
+		return errors.Wrap(err, "stream sanity check failed")
+	}
 	task := addStreamTask{
 		ctx:  ctx,
 		st:   stream,
@@ -189,6 +197,25 @@ type (
 	}
 )
 
+// sanity checks the service, network and shard ID
+func (sm *streamManager) sanityCheckStream(st sttypes.Stream) error {
+	mySpec := sm.myProtoSpec
+	rmSpec, err := st.ProtoSpec()
+	if err != nil {
+		return err
+	}
+	if mySpec.Service != rmSpec.Service {
+		return fmt.Errorf("unexpected service: %v/%v", rmSpec.Service, mySpec.Service)
+	}
+	if mySpec.NetworkType != rmSpec.NetworkType {
+		return fmt.Errorf("unexpected network: %v/%v", rmSpec.NetworkType, mySpec.NetworkType)
+	}
+	if mySpec.ShardID != rmSpec.ShardID {
+		return fmt.Errorf("unexpected shard ID: %v/%v", rmSpec.ShardID, mySpec.ShardID)
+	}
+	return nil
+}
+
 func (sm *streamManager) handleAddStream(st sttypes.Stream) error {
 	id := st.ID()
 	if sm.streams.size() >= sm.config.HiCap {
@@ -210,7 +237,7 @@ func (sm *streamManager) handleRemoveStream(id sttypes.StreamID) error {
 		return errors.New("stream not exist in manager")
 	}
 
-	sm.streams.deleteStream(id)
+	sm.streams.deleteStream(st)
 	// if stream number is smaller than HardLoCap, spin up the discover
 	if !sm.hardHaveEnoughStream() {
 		select {
@@ -219,9 +246,9 @@ func (sm *streamManager) handleRemoveStream(id sttypes.StreamID) error {
 		}
 	}
 	sm.removeStreamFeed.Send(EvtStreamRemoved{id})
-	// Hack here. We shall not add Closer interface to the Stream interface. stream manager
-	// is the only module that can close the stream.
-	return st.(io.Closer).Close()
+	// Note: st.Close might be called multiple times. Make sure streams can handle
+	//  multiple closes.
+	return st.Close()
 }
 
 func (sm *streamManager) removeAllStreamOnClose() {
@@ -234,7 +261,7 @@ func (sm *streamManager) removeAllStreamOnClose() {
 			// Close hack here.
 			err := st.(io.Closer).Close()
 			if err != nil {
-				sm.logger.Warn().Err(err).Str("stream ID", st.ID().String()).
+				sm.logger.Warn().Err(err).Str("stream ID", string(st.ID())).
 					Msg("failed to close stream")
 			}
 		}(st)
@@ -267,7 +294,7 @@ func (sm *streamManager) discoverAndSetupStream(discCtx context.Context) error {
 }
 
 func (sm *streamManager) discover(ctx context.Context) (<-chan libp2p_peer.AddrInfo, error) {
-	protoID := string(sm.protoID)
+	protoID := string(sm.myProtoID)
 	discBatch := sm.config.DiscBatch
 	if sm.config.HiCap-sm.streams.size() < sm.config.DiscBatch {
 		discBatch = sm.config.HiCap - sm.streams.size()
@@ -283,28 +310,31 @@ func (sm *streamManager) discover(ctx context.Context) (<-chan libp2p_peer.AddrI
 func (sm *streamManager) setupStreamWithPeer(ctx context.Context, pid libp2p_peer.ID) error {
 	ctx, _ = context.WithTimeout(ctx, connectTimeout)
 
-	_, err := sm.host.NewStream(ctx, pid, protocol.ID(sm.protoID))
+	_, err := sm.host.NewStream(ctx, pid, protocol.ID(sm.myProtoID))
 	return err
 }
 
 func (sm *streamManager) softHaveEnoughStreams() bool {
-	return sm.streams.size() >= sm.config.SoftLoCap
+	availStreams := sm.streams.numStreamsWithMinProtoSpec(sm.myProtoSpec)
+	return availStreams >= sm.config.SoftLoCap
 }
 
 func (sm *streamManager) hardHaveEnoughStream() bool {
-	return sm.streams.size() >= sm.config.HardLoCap
+	availStreams := sm.streams.numStreamsWithMinProtoSpec(sm.myProtoSpec)
+	return availStreams >= sm.config.HardLoCap
 }
 
-// streamSet is the concurrency safe stream set, basically a map plus a mutex
-// DO NOT ACCESS member field of this struct!!
+// streamSet is the concurrency safe stream set.
 type streamSet struct {
-	streams map[sttypes.StreamID]sttypes.Stream
-	lock    sync.RWMutex
+	streams    map[sttypes.StreamID]sttypes.Stream
+	numByProto map[sttypes.ProtoSpec]int
+	lock       sync.RWMutex
 }
 
 func newStreamSet() *streamSet {
 	return &streamSet{
-		streams: make(map[sttypes.StreamID]sttypes.Stream),
+		streams:    make(map[sttypes.StreamID]sttypes.Stream),
+		numByProto: make(map[sttypes.ProtoSpec]int),
 	}
 }
 
@@ -328,13 +358,21 @@ func (ss *streamSet) addStream(st sttypes.Stream) {
 	defer ss.lock.Unlock()
 
 	ss.streams[st.ID()] = st
+	spec, _ := st.ProtoSpec()
+	ss.numByProto[spec]++
 }
 
-func (ss *streamSet) deleteStream(id sttypes.StreamID) {
+func (ss *streamSet) deleteStream(st sttypes.Stream) {
 	ss.lock.Lock()
 	defer ss.lock.Unlock()
 
-	delete(ss.streams, id)
+	delete(ss.streams, st.ID())
+
+	spec, _ := st.ProtoSpec()
+	ss.numByProto[spec]--
+	if ss.numByProto[spec] == 0 {
+		delete(ss.numByProto, spec)
+	}
 }
 
 func (ss *streamSet) slice() []sttypes.Stream {
@@ -346,4 +384,17 @@ func (ss *streamSet) slice() []sttypes.Stream {
 		sts = append(sts, st)
 	}
 	return sts
+}
+
+func (ss *streamSet) numStreamsWithMinProtoSpec(minSpec sttypes.ProtoSpec) int {
+	ss.lock.RLock()
+	defer ss.lock.RUnlock()
+
+	var res int
+	for spec, num := range ss.numByProto {
+		if !spec.Version.LessThan(minSpec.Version) {
+			res += num
+		}
+	}
+	return res
 }

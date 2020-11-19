@@ -6,9 +6,8 @@ import (
 
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/harmony-one/harmony/p2p/stream/message"
-	"github.com/harmony-one/harmony/p2p/stream/streammanager"
 	sttypes "github.com/harmony-one/harmony/p2p/stream/types"
-	p2ptypes "github.com/harmony-one/harmony/p2p/types"
+	"github.com/harmony-one/harmony/p2p/stream/utils/streammanager"
 )
 
 var testProtoID = sttypes.ProtoID("harmony/sync/unitest/0/1.0.0")
@@ -48,12 +47,8 @@ func (st *testStream) ID() sttypes.StreamID {
 	return st.id
 }
 
-func (st *testStream) PeerID() p2ptypes.PeerID {
-	return st.id.PeerID
-}
-
 func (st *testStream) ProtoID() sttypes.ProtoID {
-	return st.id.ProtoID
+	return testProtoID
 }
 
 func (st *testStream) SendRequest(req *message.Request) error {
@@ -63,15 +58,16 @@ func (st *testStream) SendRequest(req *message.Request) error {
 	return nil
 }
 
-func makeStreamID(index int) sttypes.StreamID {
-	return sttypes.StreamID{
-		PeerID:  makePeerID(index),
-		ProtoID: testProtoID,
-	}
+func (st *testStream) ProtoSpec() (sttypes.ProtoSpec, error) {
+	return sttypes.ProtoIDToProtoSpec(testProtoID)
 }
 
-func makePeerID(index int) p2ptypes.PeerID {
-	return p2ptypes.PeerID(strconv.Itoa(index))
+func (st *testStream) Close() error {
+	return nil
+}
+
+func makeStreamID(index int) sttypes.StreamID {
+	return sttypes.StreamID(strconv.Itoa(index))
 }
 
 type testRequest struct {
@@ -108,4 +104,8 @@ func (req *testRequest) getResponse() *message.Response {
 	return &message.Response{
 		ReqId: req.reqID,
 	}
+}
+
+func (req *testRequest) IsSupportedByProto(spec sttypes.ProtoSpec) bool {
+	return true
 }

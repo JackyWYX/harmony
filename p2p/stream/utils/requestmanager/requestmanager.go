@@ -9,8 +9,8 @@ import (
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/harmony-one/harmony/internal/utils"
 	"github.com/harmony-one/harmony/p2p/stream/message"
-	"github.com/harmony-one/harmony/p2p/stream/streammanager"
 	sttypes "github.com/harmony-one/harmony/p2p/stream/types"
+	"github.com/harmony-one/harmony/p2p/stream/utils/streammanager"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 )
@@ -155,8 +155,9 @@ func (rm *requestManager) loop() {
 
 				go func(reqID uint64, reqMsg *message.Request) {
 					if err := st.SendRequest(reqMsg); err != nil {
-						rm.logger.Warn().Str("streamID", st.ID().String()).Err(err).
+						rm.logger.Warn().Str("streamID", string(st.ID())).Err(err).
 							Msg("failed to send request")
+						// TODO: Shall we also need to close the stream here?
 						rm.retryReqC <- reqID
 					}
 					go func() {
@@ -190,11 +191,11 @@ func (rm *requestManager) loop() {
 			rm.handleCancelRequest(reqID)
 
 		case evt := <-rm.newStreamC:
-			rm.logger.Info().Str("streamID", evt.Stream.ID().String()).Msg("add new stream")
+			rm.logger.Info().Str("streamID", string(evt.Stream.ID())).Msg("add new stream")
 			rm.addNewStream(evt.Stream)
 
 		case evt := <-rm.rmStreamC:
-			rm.logger.Info().Str("streamID", evt.ID.String()).Msg("remove stream")
+			rm.logger.Info().Str("streamID", string(evt.ID)).Msg("remove stream")
 			reqCanceled := rm.removeStream(evt.ID)
 			if reqCanceled {
 				throttle()
@@ -295,7 +296,7 @@ func (rm *requestManager) getNextRequest() (*request, *stream) {
 	if req == nil {
 		return nil, nil
 	}
-	st, err := rm.pickAvailableStream()
+	st, err := rm.pickAvailableStream(req)
 	if err != nil {
 		rm.logger.Debug().Msg("No available streams.")
 		rm.addNewRequestToWaitings(req, reqPriorityHigh)
@@ -337,7 +338,7 @@ func (rm *requestManager) removePendingRequest(req *request) {
 	}
 }
 
-func (rm *requestManager) pickAvailableStream() (*stream, error) {
+func (rm *requestManager) pickAvailableStream(req *request) (*stream, error) {
 	for id := range rm.available {
 		st, ok := rm.streams[id]
 		if !ok {
@@ -346,7 +347,10 @@ func (rm *requestManager) pickAvailableStream() (*stream, error) {
 		if st.req != nil {
 			return nil, errors.New("sanity error: available stream has pending requests")
 		}
-		return st, nil
+		spec, _ := st.ProtoSpec()
+		if req.Request.IsSupportedByProto(spec) {
+			return st, nil
+		}
 	}
 	return nil, errors.New("no more available streams")
 }
@@ -400,7 +404,10 @@ func (rm *requestManager) close() {
 		default:
 		}
 	}
-	rm.pendings = nil
+	rm.pendings = make(map[uint64]*request)
+	rm.available = make(map[sttypes.StreamID]struct{})
+	rm.streams = make(map[sttypes.StreamID]*stream)
+	rm.waitings = newRequestQueue()
 	close(rm.stopC)
 }
 

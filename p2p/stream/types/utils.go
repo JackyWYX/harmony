@@ -6,6 +6,8 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
+	"strconv"
+	"strings"
 
 	nodeconfig "github.com/harmony-one/harmony/internal/configs/node"
 	"github.com/hashicorp/go-version"
@@ -30,6 +32,8 @@ const (
 type ProtoID libp2p_proto.ID
 
 // ProtoSpec is the un-serialized stream proto id specification
+// TODO: move this to service wise module since different protocol might have different
+//   protoID information
 type ProtoSpec struct {
 	Service     string
 	NetworkType nodeconfig.NetworkType
@@ -46,15 +50,19 @@ func (spec ProtoSpec) ToProtoID() ProtoID {
 
 // ProtoIDToProtoSpec converts a ProtoID to ProtoSpec
 func ProtoIDToProtoSpec(id ProtoID) (ProtoSpec, error) {
-	var (
-		prefix, service, versionStr string
-		networkType                 nodeconfig.NetworkType
-		shardID                     nodeconfig.ShardID
-	)
-	_, err := fmt.Sscanf(string(id), ProtoIDFormat, prefix, service, networkType, shardID, versionStr)
-	if err != nil {
-		return ProtoSpec{}, errors.Wrap(err, "failed to parse ProtoID")
+	comps := strings.Split(string(id), "/")
+	if len(comps) != 5 {
+		return ProtoSpec{}, errors.New("unexpected protocol size")
 	}
+	var (
+		prefix      = comps[0]
+		service     = comps[1]
+		networkType = comps[2]
+		shardIDStr  = comps[3]
+		versionStr  = comps[4]
+	)
+	shardID, err := strconv.Atoi(shardIDStr)
+
 	if prefix != ProtoIDCommonPrefix {
 		return ProtoSpec{}, errors.New("unexpected prefix")
 	}
@@ -64,8 +72,8 @@ func ProtoIDToProtoSpec(id ProtoID) (ProtoSpec, error) {
 	}
 	return ProtoSpec{
 		Service:     service,
-		NetworkType: networkType,
-		ShardID:     shardID,
+		NetworkType: nodeconfig.NetworkType(networkType),
+		ShardID:     nodeconfig.ShardID(uint32(shardID)),
 		Version:     version,
 	}, nil
 }

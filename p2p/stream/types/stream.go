@@ -1,12 +1,11 @@
 package sttypes
 
 import (
-	"fmt"
 	"io/ioutil"
+	"sync"
 
 	protobuf "github.com/golang/protobuf/proto"
 	"github.com/harmony-one/harmony/p2p/stream/message"
-	p2ptypes "github.com/harmony-one/harmony/p2p/types"
 	libp2p_network "github.com/libp2p/go-libp2p-core/network"
 )
 
@@ -14,47 +13,54 @@ import (
 // The stream interface is used for stream management as well as rate limiters
 type Stream interface {
 	ID() StreamID
-	PeerID() p2ptypes.PeerID
 	ProtoID() ProtoID
+	ProtoSpec() (ProtoSpec, error)
 	SendRequest(req *message.Request) error
+	Close() error // Make sure streams can handle multiple calls of Close
 }
 
 // BaseStream is the wrapper around
 type BaseStream struct {
-	id StreamID
-	st libp2p_network.Stream
+	raw libp2p_network.Stream
+
+	// parse protocol spec fields
+	spec     ProtoSpec
+	specErr  error
+	specOnce sync.Once
 }
 
-// StreamID contains the necessary information for identifyign a stream.
-// Currently, it consist of peer ID and proto ID
-type StreamID struct {
-	PeerID  p2ptypes.PeerID
-	ProtoID ProtoID
+// NewBaseStream creates BaseStream as the wrapper of libp2p Stream
+func NewBaseStream(st libp2p_network.Stream) *BaseStream {
+	return &BaseStream{
+		raw: st,
+	}
 }
 
-// String returns the string format of StreamID
-func (id StreamID) String() string {
-	return fmt.Sprintf("%s:%s", id.PeerID, id.ProtoID)
-}
+// StreamID is the unique identifier for the stream. It has the value of
+// libp2p_network.Stream.ID()
+type StreamID string
 
 // Meta return the StreamID of the stream
 func (st *BaseStream) ID() StreamID {
-	return st.id
-}
-
-// PeerID return the peer id of the stream
-func (st *BaseStream) PeerID() p2ptypes.PeerID {
-	return st.id.PeerID
+	return StreamID(st.raw.ID())
 }
 
 // ProtoID return the remote protocol ID of the stream
 func (st *BaseStream) ProtoID() ProtoID {
-	return st.id.ProtoID
+	return ProtoID(st.raw.Protocol())
+}
+
+// ProtoSpec get the parsed protocol Specifier of the stream
+func (st *BaseStream) ProtoSpec() (ProtoSpec, error) {
+	st.specOnce.Do(func() {
+		st.spec, st.specErr = ProtoIDToProtoSpec(st.ProtoID())
+	})
+	return st.spec, st.specErr
 }
 
 // Close close the stream on both sides.
 func (st *BaseStream) Close() error {
-	return st.st.Reset()
+	return st.raw.Reset()
 }
 
 // SendRequest send a request to the stream
@@ -68,13 +74,13 @@ func (st *BaseStream) WriteMsg(msg protobuf.Message) error {
 	if err != nil {
 		return err
 	}
-	_, err = st.st.Write(b)
+	_, err = st.raw.Write(b)
 	return err
 }
 
 // ReadMsg read the protobuf message from the stream
 func (st *BaseStream) ReadMsg() (protobuf.Message, error) {
-	b, err := ioutil.ReadAll(st.st)
+	b, err := ioutil.ReadAll(st.raw)
 	if err != nil {
 		return nil, err
 	}

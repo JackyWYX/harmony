@@ -9,7 +9,6 @@ import (
 
 	"github.com/harmony-one/harmony/p2p/stream/message"
 	sttypes "github.com/harmony-one/harmony/p2p/stream/types"
-	p2ptypes "github.com/harmony-one/harmony/p2p/types"
 	"github.com/libp2p/go-libp2p-core/network"
 	libp2p_peer "github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/protocol"
@@ -34,23 +33,20 @@ func newTestStreamManager() *streamManager {
 
 type testStream struct {
 	id     sttypes.StreamID
+	proto  sttypes.ProtoID
 	closed bool
 }
 
-func newTestStream(id sttypes.StreamID) *testStream {
-	return &testStream{id: id}
+func newTestStream(id sttypes.StreamID, proto sttypes.ProtoID) *testStream {
+	return &testStream{id: id, proto: proto}
 }
 
 func (st *testStream) ID() sttypes.StreamID {
 	return st.id
 }
 
-func (st *testStream) PeerID() p2ptypes.PeerID {
-	return st.id.PeerID
-}
-
 func (st *testStream) ProtoID() sttypes.ProtoID {
-	return st.id.ProtoID
+	return st.proto
 }
 
 func (st *testStream) SendRequest(*message.Request) error {
@@ -63,6 +59,10 @@ func (st *testStream) Close() error {
 	}
 	st.closed = true
 	return nil
+}
+
+func (st *testStream) ProtoSpec() (sttypes.ProtoSpec, error) {
+	return sttypes.ProtoIDToProtoSpec(st.ProtoID())
 }
 
 type testHost struct {
@@ -92,23 +92,24 @@ func (h *testHost) NewStream(ctx context.Context, p libp2p_peer.ID, pids ...prot
 		return nil, errors.New("nil protocol ids")
 	}
 	var err error
-	stid := sttypes.StreamID{
-		PeerID:  p2ptypes.PeerID(p),
-		ProtoID: sttypes.ProtoID(pids[0]),
-	}
+	stid := sttypes.StreamID(p)
 	defer func() {
 		if err != nil && h.errHook != nil {
 			h.errHook(stid, err)
 		}
 	}()
 
-	st := newTestStream(stid)
+	st := newTestStream(stid, sttypes.ProtoID(pids[0]))
 	h.lock.Lock()
 	h.streams[stid] = st
 	h.lock.Unlock()
 
 	err = h.sm.NewStream(ctx, st)
 	return nil, err
+}
+
+func makeStreamID(index int) sttypes.StreamID {
+	return sttypes.StreamID(strconv.Itoa(index))
 }
 
 func makePeerID(index int) libp2p_peer.ID {

@@ -5,9 +5,6 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
-
-	sttypes "github.com/harmony-one/harmony/p2p/stream/types"
-	p2ptypes "github.com/harmony-one/harmony/p2p/types"
 )
 
 func TestStreamManager_SubscribeAddStreamEvent(t *testing.T) {
@@ -63,10 +60,7 @@ func TestStreamManager_SubscribeRemoveStreamEvent(t *testing.T) {
 	sm.Start()
 	time.Sleep(defTestWait)
 
-	err := sm.RemoveStream(context.Background(), sttypes.StreamID{
-		ProtoID: testProtoID,
-		PeerID:  p2ptypes.PeerID(makePeerID(1)),
-	})
+	err := sm.RemoveStream(context.Background(), makeStreamID(1))
 	if err != nil {
 		t.Fatal(err)
 	}

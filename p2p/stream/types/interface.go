@@ -14,16 +14,12 @@ type Protocol interface {
 	HandleStream(st libp2p_network.Stream)
 }
 
-// RateLimiter is the adapter interface to limit the incoming request
-type RateLimiter interface {
-	LimitRequest(stream Stream, request *message.Request)
-}
-
 // Request is the interface of a single request.
 type Request interface {
 	ReqID() uint64
 	SetReqID(rid uint64)
 	String() string
 
+	IsSupportedByProto(ProtoSpec) bool
 	GetRequestMessage() *message.Request
 }
