@@ -1,7 +1,6 @@
 package streammanager
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -134,7 +133,7 @@ func TestStreamManager_HandleNewStream(t *testing.T) {
 		sm.Start()
 		time.Sleep(defTestWait)
 
-		err := sm.NewStream(context.Background(), test.stream)
+		err := sm.NewStream(test.stream)
 		if assErr := assertError(err, test.expErr); assErr != nil {
 			t.Errorf("Test %v: %v", i, assErr)
 		}
@@ -168,7 +167,7 @@ func TestStreamManager_HandleRemoveStream(t *testing.T) {
 		sm.Start()
 		time.Sleep(defTestWait)
 
-		err := sm.RemoveStream(context.Background(), test.id)
+		err := sm.RemoveStream(test.id)
 		if assErr := assertError(err, test.expErr); assErr != nil {
 			t.Errorf("Test %v: %v", i, assErr)
 		}
@@ -189,7 +188,7 @@ func TestStreamManager_HandleRemoveStream_Disc(t *testing.T) {
 	// Remove DiscBatch - HardLoCap + 1 streams
 	num := 0
 	for _, st := range sm.streams.slice() {
-		if err := sm.RemoveStream(context.Background(), st.ID()); err != nil {
+		if err := sm.RemoveStream(st.ID()); err != nil {
 			t.Error(err)
 		}
 		num++

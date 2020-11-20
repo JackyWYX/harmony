@@ -1,7 +1,6 @@
 package streammanager
 
 import (
-	"context"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -60,11 +59,11 @@ func TestStreamManager_SubscribeRemoveStreamEvent(t *testing.T) {
 	sm.Start()
 	time.Sleep(defTestWait)
 
-	err := sm.RemoveStream(context.Background(), makeStreamID(1))
+	err := sm.RemoveStream(makeStreamID(1))
 	if err != nil {
 		t.Fatal(err)
 	}
-
+	time.Sleep(defTestWait)
 	close(stopC)
 	sm.Close()
 

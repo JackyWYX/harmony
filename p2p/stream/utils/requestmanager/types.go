@@ -2,11 +2,19 @@ package requestmanager
 
 import (
 	"container/list"
-	"fmt"
 	"sync"
 
 	"github.com/harmony-one/harmony/p2p/stream/message"
 	sttypes "github.com/harmony-one/harmony/p2p/stream/types"
+	"github.com/pkg/errors"
+)
+
+var (
+	// ErrQueueFull is the error happens when the waiting queue is already full
+	ErrQueueFull = errors.New("waiting request queue already full")
+
+	// ErrClosed is request error that the module is closed during request
+	ErrClosed = errors.New("request manager module closed")
 )
 
 // stream is the wrapped version of sttypes.Stream.
@@ -20,7 +28,7 @@ type stream struct {
 type request struct {
 	sttypes.Request // underlying request
 	// result field
-	respC chan *message.Response // channel to receive response from delivered message
+	respC chan deliverData // channel to receive response from delivered message
 	err   error
 	// concurrency control
 	waitCh chan struct{} // channel to wait for the request to be canceled or answered
@@ -65,8 +73,9 @@ type deliverData struct {
 
 // Response is the wrapped response for stream requests
 type Response struct {
-	Raw *message.Response
-	Err error
+	Raw  *message.Response
+	StID sttypes.StreamID
+	Err  error
 }
 
 // requestQueue is a wrapper of double linked list with Request as type
@@ -86,7 +95,7 @@ func (q *requestQueue) pushBack(req *request) error {
 	defer q.lock.Unlock()
 
 	if q.reqs.Len() >= maxWaitingSize {
-		return fmt.Errorf("waiting request queue size exceeding %v", maxWaitingSize)
+		return ErrQueueFull
 	}
 	q.reqs.PushBack(req)
 	return nil
@@ -97,7 +106,7 @@ func (q *requestQueue) pushFront(req *request) error {
 	defer q.lock.Unlock()
 
 	if q.reqs.Len() >= maxWaitingSize {
-		return fmt.Errorf("waiting request queue size exceeding %v", maxWaitingSize)
+		return ErrQueueFull
 	}
 	q.reqs.PushFront(req)
 	return nil

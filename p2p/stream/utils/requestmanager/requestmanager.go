@@ -81,15 +81,17 @@ func (rm *requestManager) Close() {
 	rm.stopC <- struct{}{}
 }
 
-func (rm *requestManager) DoRequest(ctx context.Context, raw sttypes.Request) (*message.Response, error) {
-	resp := <-rm.DoRequestAsync(ctx, raw)
-	return resp.Raw, resp.Err
+// DoRequest do the given request with a stream picked randomly. Return the response, stream id that
+// is responsible for response, delivery and error.
+func (rm *requestManager) DoRequest(ctx context.Context, raw sttypes.Request) (*message.Response, sttypes.StreamID, error) {
+	resp := <-rm.doRequestAsync(ctx, raw)
+	return resp.Raw, resp.StID, resp.Err
 }
 
-func (rm *requestManager) DoRequestAsync(ctx context.Context, raw sttypes.Request) <-chan Response {
+func (rm *requestManager) doRequestAsync(ctx context.Context, raw sttypes.Request) <-chan Response {
 	req := &request{
 		Request: raw,
-		respC:   make(chan *message.Response),
+		respC:   make(chan deliverData),
 		waitCh:  make(chan struct{}),
 	}
 	ctx, _ = context.WithTimeout(ctx, reqTimeOut)
@@ -104,8 +106,8 @@ func (rm *requestManager) DoRequestAsync(ctx context.Context, raw sttypes.Reques
 			rm.cancelReqC <- req.ReqID()
 			resC <- Response{Err: ctx.Err()}
 
-		case resp := <-req.respC:
-			resC <- Response{Raw: resp, Err: req.err}
+		case data := <-req.respC:
+			resC <- Response{Raw: data.resp, StID: data.stID, Err: req.err}
 		}
 	}()
 	return resC
@@ -217,7 +219,7 @@ func (rm *requestManager) handleNewRequest(req *request) bool {
 	if err != nil {
 		rm.logger.Warn().Err(err).Msg("failed to add new request to waitings")
 		req.err = errors.Wrap(err, "failed to add new request to waitings")
-		req.respC <- nil
+		req.respC <- deliverData{}
 		return false
 	}
 	return true
@@ -235,7 +237,7 @@ func (rm *requestManager) handleDeliverData(data deliverData) {
 	}
 	// req and st is ensured not to be empty in validateDelivery
 	req := rm.pendings[data.resp.ReqId]
-	req.respC <- data.resp
+	req.respC <- data
 	rm.removePendingRequest(req)
 }
 
@@ -282,7 +284,7 @@ func (rm *requestManager) handleRetryRequest(reqID uint64) bool {
 	if err := rm.addNewRequestToWaitings(req, reqPriorityHigh); err != nil {
 		rm.logger.Warn().Err(err).Msg("cannot add request to waitings during retry")
 		req.err = errors.Wrap(err, "cannot add request to waitings during retry")
-		req.respC <- nil
+		req.respC <- deliverData{}
 		return false
 	}
 	return true
@@ -398,9 +400,9 @@ func (rm *requestManager) close() {
 		sub.Unsubscribe()
 	}
 	for _, req := range rm.pendings {
-		req.err = errors.New("request manager module closed")
+		req.err = ErrClosed
 		select {
-		case req.respC <- nil:
+		case req.respC <- deliverData{}:
 		default:
 		}
 	}

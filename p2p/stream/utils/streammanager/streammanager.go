@@ -47,7 +47,8 @@ type streamManager struct {
 	cancel           func()
 }
 
-// NewStreamManager creates a new stream manager
+// NewStreamManager creates a new stream manager for the given proto ID
+// TODO: make stream manager global for all protocol IDs
 func NewStreamManager(pid sttypes.ProtoID, host host, pf peerFinder, opts ...Option) StreamManager {
 	return newStreamManager(pid, host, pf, opts...)
 }
@@ -125,20 +126,10 @@ func (sm *streamManager) loop() {
 			}()
 
 		case addStream := <-sm.addStreamCh:
-			select {
-			case <-addStream.ctx.Done():
-				addStream.errC <- addStream.ctx.Err()
-			default:
-			}
 			err := sm.handleAddStream(addStream.st)
 			addStream.errC <- err
 
 		case rmStream := <-sm.rmStreamCh:
-			select {
-			case <-rmStream.ctx.Done():
-				rmStream.errC <- rmStream.ctx.Err()
-			default:
-			}
 			err := sm.handleRemoveStream(rmStream.id)
 			rmStream.errC <- err
 
@@ -152,12 +143,11 @@ func (sm *streamManager) loop() {
 }
 
 // NewStream handles a new stream from stream handler protocol
-func (sm *streamManager) NewStream(ctx context.Context, stream sttypes.Stream) error {
+func (sm *streamManager) NewStream(stream sttypes.Stream) error {
 	if err := sm.sanityCheckStream(stream); err != nil {
 		return errors.Wrap(err, "stream sanity check failed")
 	}
 	task := addStreamTask{
-		ctx:  ctx,
 		st:   stream,
 		errC: make(chan error),
 	}
@@ -166,9 +156,8 @@ func (sm *streamManager) NewStream(ctx context.Context, stream sttypes.Stream) e
 }
 
 // RemoveStream close and remove a stream from stream manager
-func (sm *streamManager) RemoveStream(ctx context.Context, stID sttypes.StreamID) error {
+func (sm *streamManager) RemoveStream(stID sttypes.StreamID) error {
 	task := rmStreamTask{
-		ctx:  ctx,
 		id:   stID,
 		errC: make(chan error),
 	}
@@ -178,19 +167,16 @@ func (sm *streamManager) RemoveStream(ctx context.Context, stID sttypes.StreamID
 
 type (
 	addStreamTask struct {
-		ctx  context.Context
 		st   sttypes.Stream
 		errC chan error
 	}
 
 	rmStreamTask struct {
-		ctx  context.Context
 		id   sttypes.StreamID
 		errC chan error
 	}
 
-	discTask struct {
-	}
+	discTask struct{}
 
 	stopTask struct {
 		done chan struct{}
@@ -246,8 +232,6 @@ func (sm *streamManager) handleRemoveStream(id sttypes.StreamID) error {
 		}
 	}
 	sm.removeStreamFeed.Send(EvtStreamRemoved{id})
-	// Note: st.Close might be called multiple times. Make sure streams can handle
-	//  multiple closes.
 	return st.Close()
 }
 

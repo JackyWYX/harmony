@@ -16,7 +16,7 @@ message Request {
 }
 
 message GetBlocksByNumRequest {
-  repeated int64 nums = 1 [packed=true];
+  repeated uint64 nums = 1 [packed=true];
 }
 
 

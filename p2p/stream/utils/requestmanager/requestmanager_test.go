@@ -26,7 +26,7 @@ func TestRequestManager_Request_Normal(t *testing.T) {
 	defer ts.Close()
 
 	ctx, _ := context.WithTimeout(context.Background(), 1*time.Second)
-	res := <-ts.rm.DoRequestAsync(ctx, makeTestRequest(0))
+	res := <-ts.rm.doRequestAsync(ctx, makeTestRequest(0))
 
 	if res.Err != nil {
 		t.Errorf("unexpected error: %v", res.Err)
@@ -34,6 +34,9 @@ func TestRequestManager_Request_Normal(t *testing.T) {
 	}
 	if err := checkResponseMessage(res.Raw, testMsg); err != nil {
 		t.Error(err)
+	}
+	if res.StID == "" {
+		t.Errorf("unexpected stid")
 	}
 }
 
@@ -46,7 +49,7 @@ func TestRequestManager_Request_Cancel(t *testing.T) {
 	defer ts.Close()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	resC := ts.rm.DoRequestAsync(ctx, makeTestRequest(0))
+	resC := ts.rm.doRequestAsync(ctx, makeTestRequest(0))
 
 	time.Sleep(defTestSleep)
 	cancel()
@@ -54,7 +57,9 @@ func TestRequestManager_Request_Cancel(t *testing.T) {
 	res := <-resC
 	if res.Err != context.Canceled {
 		t.Errorf("unexpected error: %v", res.Err)
-		return
+	}
+	if res.StID != "" {
+		t.Errorf("unexpected stid")
 	}
 }
 
@@ -69,7 +74,7 @@ func TestRequestManager_Request_Retry(t *testing.T) {
 	defer ts.Close()
 
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-	resC := ts.rm.DoRequestAsync(ctx, makeTestRequest(0))
+	resC := ts.rm.doRequestAsync(ctx, makeTestRequest(0))
 
 	time.Sleep(defTestSleep)
 
@@ -79,6 +84,9 @@ func TestRequestManager_Request_Retry(t *testing.T) {
 	}
 	if err := checkResponseMessage(res.Raw, testMsg); err != nil {
 		t.Error(err)
+	}
+	if res.StID == "" {
+		t.Errorf("unexpected stid")
 	}
 }
 
@@ -110,7 +118,7 @@ func TestRequestManager_RemoveStream(t *testing.T) {
 	defer ts.Close()
 
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-	resC := ts.rm.DoRequestAsync(ctx, makeTestRequest(0))
+	resC := ts.rm.doRequestAsync(ctx, makeTestRequest(0))
 	time.Sleep(defTestSleep)
 
 	// remove the stream which is responsible for the request
@@ -124,6 +132,9 @@ func TestRequestManager_RemoveStream(t *testing.T) {
 	}
 	if err := checkResponseMessage(res.Raw, testMsg); err != nil {
 		t.Error(err)
+	}
+	if res.StID == "" {
+		t.Errorf("unexpected stid")
 	}
 
 	ts.rm.lock.Lock()
@@ -151,7 +162,7 @@ func TestRequestManager_UnknownDelivery(t *testing.T) {
 	defer ts.Close()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	resC := ts.rm.DoRequestAsync(ctx, makeTestRequest(0))
+	resC := ts.rm.doRequestAsync(ctx, makeTestRequest(0))
 	time.Sleep(6 * time.Second)
 	cancel()
 
@@ -172,7 +183,7 @@ func TestRequestManager_StaleDelivery(t *testing.T) {
 	defer ts.Close()
 
 	ctx, _ := context.WithTimeout(context.Background(), 100*time.Millisecond)
-	resC := ts.rm.DoRequestAsync(ctx, makeTestRequest(0))
+	resC := ts.rm.doRequestAsync(ctx, makeTestRequest(0))
 	time.Sleep(2 * time.Second)
 
 	// Since the reqID is not delivered, the result is not delivered to the request
@@ -191,7 +202,7 @@ func TestRequestManager_Close(t *testing.T) {
 	ts.Start()
 
 	ctx, _ := context.WithTimeout(context.Background(), 2*time.Second)
-	resC := ts.rm.DoRequestAsync(ctx, makeTestRequest(0))
+	resC := ts.rm.doRequestAsync(ctx, makeTestRequest(0))
 	time.Sleep(100 * time.Millisecond)
 	ts.Close()
 
@@ -225,7 +236,7 @@ func TestRequestManager_Concurrency(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for {
-				resC := ts.rm.DoRequestAsync(context.Background(), makeTestRequest(1000))
+				resC := ts.rm.doRequestAsync(context.Background(), makeTestRequest(1000))
 				select {
 				case res := <-resC:
 					if res.Err == nil {

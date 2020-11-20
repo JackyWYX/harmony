@@ -8,22 +8,19 @@ import (
 //go:generate protoc message.proto --go_out=.
 
 // MakeGetBlocksByNumRequest makes the GetBlockByNumber request message
-func MakeGetBlocksByNumRequest(rid uint64, bns []int64) *Message {
-	req := &Request{
-		ReqId: rid,
+func MakeGetBlocksByNumRequest(bns []uint64) *Request {
+	return &Request{
 		Request: &Request_GetBlocksByNumRequest{
 			&GetBlocksByNumRequest{
 				Nums: bns,
 			},
 		},
 	}
-	return makeMessageFromRequest(req)
 }
 
 // MakeErrorResponse makes the error response
-func MakeErrorResponseMessage(rid uint64, err error) *Message {
+func MakeErrorResponseMessage(err error) *Message {
 	resp := &Response{
-		ReqId: rid,
 		Response: &Response_ErrorResponse{
 			&ErrorResponse{
 				Error: err.Error(),

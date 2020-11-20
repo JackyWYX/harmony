@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/harmony-one/harmony/internal/utils"
 	"github.com/libp2p/go-libp2p-core/discovery"
 	libp2p_host "github.com/libp2p/go-libp2p-core/host"
 	libp2p_peer "github.com/libp2p/go-libp2p-core/peer"
@@ -12,8 +13,6 @@ import (
 	libp2p_dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
-
-	"github.com/harmony-one/harmony/internal/utils"
 )
 
 // Discovery is the interface for the underlying peer discovery protocol.

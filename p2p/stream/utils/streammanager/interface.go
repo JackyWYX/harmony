@@ -14,14 +14,14 @@ import (
 // StreamManager handle new stream and closed stream events.
 type StreamManager interface {
 	p2ptypes.LifeCycle
-	StreamHandler
+	StreamOperator
 	Subscriber
 }
 
-// StreamHandler handles new stream or remove stream
-type StreamHandler interface {
-	NewStream(ctx context.Context, stream sttypes.Stream) error
-	RemoveStream(ctx context.Context, stID sttypes.StreamID) error
+// StreamOperator handles new stream or remove stream
+type StreamOperator interface {
+	NewStream(stream sttypes.Stream) error
+	RemoveStream(stID sttypes.StreamID) error
 }
 
 // Subscriber is the interface to support stream event subscription
