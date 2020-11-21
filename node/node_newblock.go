@@ -6,13 +6,12 @@ import (
 	"strings"
 	"time"
 
-	staking "github.com/harmony-one/harmony/staking/types"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/harmony-one/harmony/core/rawdb"
 	"github.com/harmony-one/harmony/core/types"
 	"github.com/harmony-one/harmony/internal/utils"
 	"github.com/harmony-one/harmony/shard"
+	staking "github.com/harmony-one/harmony/staking/types"
 )
 
 // Constants of proposing a new block
@@ -31,7 +30,13 @@ func (node *Node) WaitForConsensusReadyV2(readySignal chan struct{}, stopChan ch
 		utils.Logger().Debug().
 			Msg("Waiting for Consensus ready")
 		// TODO: make local net start faster
-		time.Sleep(30 * time.Second) // Wait for other nodes to be ready (test-only)
+		select {
+		case <-time.After(30 * time.Second): // Wait for other nodes to be ready (test-only)
+		case <-stopChan:
+			utils.Logger().Debug().
+				Msg("Consensus new block proposal: STOPPED!")
+			return
+		}
 
 		for {
 			// keep waiting for Consensus ready

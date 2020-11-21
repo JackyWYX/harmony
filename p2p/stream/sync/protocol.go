@@ -2,6 +2,7 @@ package sync
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	"github.com/harmony-one/harmony/consensus/engine"
@@ -84,11 +85,17 @@ func (p *Protocol) Start() {
 	go p.advertiseLoop()
 }
 
+// Close close the protocol
 func (p *Protocol) Close() {
 	p.rm.Close()
 	p.sm.Close()
 	p.cancel()
 	close(p.closeC)
+}
+
+// Specifier return the specifier for the protocol
+func (p *Protocol) Specifier() string {
+	return serviceSpecifier + "/" + strconv.Itoa(int(p.config.ShardID))
 }
 
 // ProtoID return the ProtoID of the sync protocol

@@ -16,8 +16,6 @@ import (
 	"syscall"
 	"time"
 
-	p2putils "github.com/harmony-one/harmony/p2p/utils"
-
 	ethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/harmony-one/bls/ffi/go/bls"
@@ -38,6 +36,7 @@ import (
 	"github.com/harmony-one/harmony/node"
 	"github.com/harmony-one/harmony/numeric"
 	"github.com/harmony-one/harmony/p2p"
+	p2putils "github.com/harmony-one/harmony/p2p/utils"
 	"github.com/harmony-one/harmony/shard"
 	"github.com/harmony-one/harmony/webhooks"
 	"github.com/pkg/errors"
@@ -390,10 +389,12 @@ func setupNodeAndRun(hc harmonyConfig) {
 			Msg("Start p2p host failed")
 	}
 
-	if err := currentNode.Start(); err != nil {
+	if err := currentNode.StartPubSub(); err != nil {
 		fmt.Println("could not begin network message handling for node", err.Error())
 		os.Exit(-1)
 	}
+
+	select {}
 }
 
 func nodeconfigSetShardSchedule(config harmonyConfig) {

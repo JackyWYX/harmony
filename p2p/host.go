@@ -11,7 +11,9 @@ import (
 	"sync"
 
 	"github.com/harmony-one/bls/ffi/go/bls"
-
+	nodeconfig "github.com/harmony-one/harmony/internal/configs/node"
+	"github.com/harmony-one/harmony/internal/utils"
+	"github.com/harmony-one/harmony/p2p/discovery"
 	"github.com/libp2p/go-libp2p"
 	libp2p_crypto "github.com/libp2p/go-libp2p-core/crypto"
 	libp2p_host "github.com/libp2p/go-libp2p-core/host"
@@ -22,19 +24,17 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
-
-	nodeconfig "github.com/harmony-one/harmony/internal/configs/node"
-	"github.com/harmony-one/harmony/internal/utils"
-	"github.com/harmony-one/harmony/p2p/discovery"
 )
 
 // Host is the client + server in p2p network.
 type Host interface {
 	Start() error
+	Close() error
 	GetSelfPeer() Peer
 	AddPeer(*Peer) error
 	GetID() libp2p_peer.ID
 	GetP2PHost() libp2p_host.Host
+	GetDiscovery() discovery.Discovery
 	GetPeerCount() int
 	ConnectHostPeer(Peer) error
 	// SendMessageToGroups sends a message to one or more multicast groups.
@@ -88,7 +88,7 @@ func NewHost(cfg HostConfig) (Host, error) {
 		return nil, errors.Wrapf(err,
 			"cannot create listen multiaddr from port %#v", self.Port)
 	}
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
 	p2pHost, err := libp2p.New(ctx,
 		libp2p.ListenAddrs(listenAddr),
 		libp2p.Identity(key),
@@ -157,8 +157,9 @@ func NewHost(cfg HostConfig) (Host, error) {
 		priKey:    key,
 		discovery: disc,
 		logger:    &subLogger,
+		ctx:       ctx,
+		cancel:    cancel,
 	}
-
 	if err != nil {
 		return nil, err
 	}
@@ -181,6 +182,8 @@ type HostV2 struct {
 	lock      sync.Mutex
 	discovery discovery.Discovery
 	logger    *zerolog.Logger
+	ctx       context.Context
+	cancel    func()
 }
 
 // PubSub ..
@@ -192,6 +195,13 @@ func (host *HostV2) PubSub() *libp2p_pubsub.PubSub {
 // TODO: move PubSub start handling logic here
 func (host *HostV2) Start() error {
 	return host.discovery.Start()
+}
+
+// Close close the HostV2
+func (host *HostV2) Close() error {
+	host.discovery.Close()
+	host.cancel()
+	return host.h.Close()
 }
 
 // C .. -> (total known peers, connected, not connected)
@@ -294,6 +304,11 @@ func (host *HostV2) GetSelfPeer() Peer {
 // GetP2PHost returns the p2p.Host
 func (host *HostV2) GetP2PHost() libp2p_host.Host {
 	return host.h
+}
+
+// GetDiscovery returns the underlying discovery
+func (host *HostV2) GetDiscovery() discovery.Discovery {
+	return host.discovery
 }
 
 // ListTopic returns the list of topic the node subscribed

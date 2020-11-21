@@ -40,6 +40,7 @@ type requestManager struct {
 	lock   sync.Mutex
 }
 
+// NewRequestManager creates a new request manager
 func NewRequestManager(sm streammanager.Subscriber) RequestManager {
 	return newRequestManager(sm)
 }

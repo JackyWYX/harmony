@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+// GetBlocksByNumber get the block by number from sync protocols
 func (p *Protocol) GetBlocksByNumber(ctx context.Context, bns []uint64) ([]*types.Block, error) {
 	req := newGetBlocksByNumberRequest(bns)
 

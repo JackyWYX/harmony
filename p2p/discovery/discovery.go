@@ -19,7 +19,7 @@ import (
 // The interface is implemented by dhtDiscovery
 type Discovery interface {
 	Start() error
-	Stop()
+	Close() error
 	Advertise(ctx context.Context, ns string) (time.Duration, error)
 	FindPeers(ctx context.Context, ns string, peerLimit int) (<-chan libp2p_peer.AddrInfo, error)
 	GetRawDiscovery() discovery.Discovery
@@ -72,8 +72,9 @@ func (d *dhtDiscovery) Start() error {
 }
 
 // Stop stop the dhtDiscovery service
-func (d *dhtDiscovery) Stop() {
+func (d *dhtDiscovery) Close() error {
 	d.cancel()
+	return nil
 }
 
 // Advertise advertises a service

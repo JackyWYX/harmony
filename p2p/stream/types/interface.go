@@ -2,12 +2,16 @@ package sttypes
 
 import (
 	"github.com/harmony-one/harmony/p2p/stream/message"
+	p2ptypes "github.com/harmony-one/harmony/p2p/types"
 	"github.com/hashicorp/go-version"
 	libp2p_network "github.com/libp2p/go-libp2p-core/network"
 )
 
 // Protocol is the interface of protocol to be registered to libp2p.
 type Protocol interface {
+	p2ptypes.LifeCycle
+
+	Specifier() string
 	Version() *version.Version
 	ProtoID() ProtoID
 	Match(string) bool

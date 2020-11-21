@@ -18,7 +18,7 @@ var (
 )
 
 // stream is the wrapped version of sttypes.Stream.
-// TODO: enable stream handle multiple requests
+// TODO: enable stream handle multiple pending requests at the same time
 type stream struct {
 	sttypes.Stream
 	req *request // currently one stream is dealing with one request
