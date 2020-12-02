@@ -250,7 +250,7 @@ func (consensus *Consensus) startViewChange() {
 		nextViewID,
 		consensus.blockNum,
 		consensus.priKey); err != nil {
-		consensus.getLogger().Error().Err(err).Msg("[startViewChange] Init Payload Error")
+		consensus.getLogger().Error().Err(err).Msg("[startViewChange] init Payload Error")
 	}
 
 	// for view change, send separate view change per public key
@@ -369,7 +369,7 @@ func (consensus *Consensus) onViewChange(msg *msg_pb.Message) {
 		recvMsg.ViewID,
 		recvMsg.BlockNum,
 		consensus.priKey); err != nil {
-		consensus.getLogger().Error().Err(err).Msg("[onViewChange] Init Payload Error")
+		consensus.getLogger().Error().Err(err).Msg("[onViewChange] init Payload Error")
 		return
 	}
 

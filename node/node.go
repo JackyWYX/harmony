@@ -25,6 +25,7 @@ import (
 	"github.com/harmony-one/harmony/core/rawdb"
 	"github.com/harmony-one/harmony/core/types"
 	"github.com/harmony-one/harmony/crypto/bls"
+	stdownloader "github.com/harmony-one/harmony/hmy/downloader"
 	"github.com/harmony-one/harmony/internal/chain"
 	common2 "github.com/harmony-one/harmony/internal/common"
 	nodeconfig "github.com/harmony-one/harmony/internal/configs/node"
@@ -42,9 +43,8 @@ import (
 	libp2p_peer "github.com/libp2p/go-libp2p-core/peer"
 	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/pkg/errors"
-	"golang.org/x/sync/semaphore"
-
 	"github.com/rcrowley/go-metrics"
+	"golang.org/x/sync/semaphore"
 )
 
 const (
@@ -70,6 +70,7 @@ type syncConfig struct {
 // Node represents a protocol-participating node in the network
 type Node struct {
 	Consensus             *consensus.Consensus              // Consensus object containing all Consensus related data (e.g. committee members, signatures, commits)
+	Downloader            *stdownloader.Downloader          // Downloader to download blocks through streaming protocol
 	BlockChannel          chan *types.Block                 // The channel to send newly proposed blocks
 	ConfirmedBlockChannel chan *types.Block                 // The channel to send confirmed blocks
 	BeaconBlockChannel    chan *types.Block                 // The channel to send beacon blocks for non-beaconchain nodes
@@ -921,8 +922,12 @@ func New(
 	node.IsInSync = abool.NewBool(false)
 
 	if host != nil && consensusObj != nil {
+		downloader := stdownloader.NewDownloader(host, node.Blockchain(), node.NodeConfig.GetNetworkType())
+		node.Downloader = downloader
+
 		// Consensus and associated channel to communicate blocks
 		node.Consensus = consensusObj
+		consensusObj.Downloader = downloader
 
 		// Load the chains.
 		blockchain := node.Blockchain() // this also sets node.isFirstTime if the DB is fresh
@@ -973,6 +978,7 @@ func New(
 	// Setup initial state of syncing.
 	node.peerRegistrationRecord = map[string]*syncConfig{}
 	node.startConsensus = make(chan struct{})
+
 	// Broadcast double-signers reported by consensus
 	if node.Consensus != nil {
 		go func() {
@@ -1185,6 +1191,9 @@ func (node *Node) ShutDown() {
 
 	utils.Logger().Info().Msg("stopping pub-sub")
 	node.StopPubSub()
+
+	utils.Logger().Info().Msg("stopping downloader")
+	node.StopDownloader()
 
 	utils.Logger().Info().Msg("stopping host")
 	if err := node.host.Close(); err != nil {

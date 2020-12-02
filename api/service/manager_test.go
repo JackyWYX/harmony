@@ -3,15 +3,12 @@ package service
 import (
 	"testing"
 
-	msg_pb "github.com/harmony-one/harmony/api/proto/message"
 	nodeconfig "github.com/harmony-one/harmony/internal/configs/node"
 )
 
-func TestMessageChan(t *testing.T) {
+func TestSetupServiceManager(t *testing.T) {
 	m := &Manager{}
 	m.SetupServiceManager()
-	msgChans := make(map[Type]chan *msg_pb.Message)
-	m.SetupServiceMessageChan(msgChans)
 }
 
 func TestInit(t *testing.T) {

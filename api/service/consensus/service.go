@@ -8,6 +8,8 @@ import (
 	"github.com/harmony-one/harmony/internal/utils"
 )
 
+const cscSpec = "Consensus"
+
 // Service is the consensus service.
 type Service struct {
 	blockChannel chan *types.Block // The channel to receive new blocks from Node
@@ -20,7 +22,16 @@ type Service struct {
 
 // New returns consensus service.
 func New(blockChannel chan *types.Block, consensus *consensus.Consensus, startChan chan struct{}) *Service {
-	return &Service{blockChannel: blockChannel, consensus: consensus, startChan: startChan}
+	return &Service{
+		blockChannel: blockChannel,
+		consensus:    consensus,
+		startChan:    startChan,
+	}
+}
+
+// Specifier return the specifier of the service
+func (s *Service) Specifier() string {
+	return cscSpec
 }
 
 // StartService starts consensus service.
@@ -38,14 +49,6 @@ func (s *Service) StopService() {
 	s.stopChan <- struct{}{}
 	<-s.stoppedChan
 	utils.Logger().Info().Msg("Consensus service stopped.")
-}
-
-// NotifyService notify service
-func (s *Service) NotifyService(params map[string]interface{}) {}
-
-// SetMessageChan sets up message channel to service.
-func (s *Service) SetMessageChan(messageChan chan *msg_pb.Message) {
-	s.messageChan = messageChan
 }
 
 // APIs for the services.

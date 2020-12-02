@@ -51,7 +51,7 @@ func GetStorageInstance(ip, port string) *Storage {
 	return storage
 }
 
-// Init initializes the block update.
+// init initializes the block update.
 func (storage *Storage) Init(ip, port string) {
 	dbFileName := path.Join(nodeconfig.GetDefaultConfig().DBDir, "explorer_storage_"+ip+"_"+port)
 	utils.Logger().Info().Msg("explorer storage folder: " + dbFileName)

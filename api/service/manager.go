@@ -2,7 +2,6 @@ package service
 
 import (
 	"github.com/ethereum/go-ethereum/rpc"
-	msg_pb "github.com/harmony-one/harmony/api/proto/message"
 	"github.com/harmony-one/harmony/internal/utils"
 )
 
@@ -13,7 +12,6 @@ type ActionType byte
 const (
 	Start ActionType = iota
 	Stop
-	Notify
 )
 
 // Type is service type.
@@ -54,13 +52,10 @@ type Action struct {
 
 // Interface is the collection of functions any service needs to implement.
 type Interface interface {
+	Specifier() string
 	StartService()
-	SetMessageChan(msgChan chan *msg_pb.Message)
 	StopService()
-	NotifyService(map[string]interface{})
-
-	// APIs retrieves the list of RPC descriptors the service provides
-	APIs() []rpc.API
+	APIs() []rpc.API // the list of RPC descriptors the service provides
 }
 
 // Manager stores all services for service manager.
@@ -115,8 +110,6 @@ func (m *Manager) TakeAction(action *Action) {
 			service.StartService()
 		case Stop:
 			service.StopService()
-		case Notify:
-			service.NotifyService(action.Params)
 		}
 	}
 }
@@ -143,16 +136,6 @@ func (m *Manager) RunServices() {
 			ServiceType: serviceType,
 		}
 		m.TakeAction(action)
-	}
-}
-
-// SetupServiceMessageChan sets up message channel to services.
-func (m *Manager) SetupServiceMessageChan(
-	mapServiceTypeChan map[Type]chan *msg_pb.Message,
-) {
-	for serviceType, service := range m.services {
-		mapServiceTypeChan[serviceType] = make(chan *msg_pb.Message)
-		service.SetMessageChan(mapServiceTypeChan[serviceType])
 	}
 }
 

@@ -5,6 +5,8 @@ import (
 	"sync"
 	"time"
 
+	stdownloader "github.com/harmony-one/harmony/hmy/downloader"
+
 	"github.com/harmony-one/harmony/crypto/bls"
 
 	"github.com/harmony-one/abool"
@@ -56,6 +58,8 @@ type Consensus struct {
 
 	// The chain reader for the blockchain this consensus is working on
 	ChainReader *core.BlockChain
+	// Downloader module to download blocks
+	Downloader *stdownloader.Downloader
 	// Minimal number of peers in the shard
 	// If the number of validators is less than minPeers, the consensus won't start
 	MinPeers   int

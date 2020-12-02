@@ -1,3 +1,5 @@
+// TODO: remove this module
+
 package networkinfo
 
 import (
@@ -114,18 +116,18 @@ func MustNew(
 func (s *Service) StartService() {
 	err := s.Init()
 	if err != nil {
-		utils.Logger().Error().Err(err).Msg("Service Init Failed")
+		utils.Logger().Error().Err(err).Msg("Service init Failed")
 		return
 	}
 	s.Run()
 	s.started = true
 }
 
-// Init initializes role conversion service.
+// init initializes role conversion service.
 func (s *Service) Init() error {
 	ctx, cancel := context.WithTimeout(context.Background(), connectionTimeout)
 	defer cancel()
-	utils.Logger().Info().Msg("Init networkinfo service")
+	utils.Logger().Info().Msg("init networkinfo service")
 
 	// Bootstrap the DHT. In the default configuration, this spawns a Background
 	// thread that will refresh the peer table every five minutes.

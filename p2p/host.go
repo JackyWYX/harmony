@@ -10,6 +10,8 @@ import (
 	"strings"
 	"sync"
 
+	sttypes "github.com/harmony-one/harmony/p2p/stream/types"
+
 	"github.com/harmony-one/bls/ffi/go/bls"
 	nodeconfig "github.com/harmony-one/harmony/internal/configs/node"
 	"github.com/harmony-one/harmony/internal/utils"
@@ -37,6 +39,8 @@ type Host interface {
 	GetDiscovery() discovery.Discovery
 	GetPeerCount() int
 	ConnectHostPeer(Peer) error
+	// AddStreamProtocol add the given protocol
+	AddStreamProtocol(protocols ...sttypes.Protocol)
 	// SendMessageToGroups sends a message to one or more multicast groups.
 	SendMessageToGroups(groups []nodeconfig.GroupID, msg []byte) error
 	PubSub() *libp2p_pubsub.PubSub
@@ -142,7 +146,7 @@ func NewHost(cfg HostConfig) (Host, error) {
 	}
 	pubsub, err := libp2p_pubsub.NewGossipSub(ctx, p2pHost, options...)
 	if err != nil {
-		return nil, errors.Wrapf(err, "cannot initialize libp2p pubsub")
+		return nil, errors.Wrapf(err, "cannot initialize libp2p pubSub")
 	}
 
 	self.PeerID = p2pHost.ID()
@@ -151,7 +155,7 @@ func NewHost(cfg HostConfig) (Host, error) {
 	// has to save the private key for host
 	h := &HostV2{
 		h:         p2pHost,
-		pubsub:    pubsub,
+		pubSub:    pubsub,
 		joined:    map[string]*libp2p_pubsub.Topic{},
 		self:      *self,
 		priKey:    key,
@@ -174,31 +178,46 @@ func NewHost(cfg HostConfig) (Host, error) {
 
 // HostV2 is the version 2 p2p host
 type HostV2 struct {
-	h         libp2p_host.Host
-	pubsub    *libp2p_pubsub.PubSub
-	joined    map[string]*libp2p_pubsub.Topic
-	self      Peer
-	priKey    libp2p_crypto.PrivKey
-	lock      sync.Mutex
-	discovery discovery.Discovery
-	logger    *zerolog.Logger
-	ctx       context.Context
-	cancel    func()
+	h            libp2p_host.Host
+	pubSub       *libp2p_pubsub.PubSub
+	joined       map[string]*libp2p_pubsub.Topic
+	streamProtos []sttypes.Protocol
+	self         Peer
+	priKey       libp2p_crypto.PrivKey
+	lock         sync.Mutex
+	discovery    discovery.Discovery
+	logger       *zerolog.Logger
+	ctx          context.Context
+	cancel       func()
 }
 
 // PubSub ..
 func (host *HostV2) PubSub() *libp2p_pubsub.PubSub {
-	return host.pubsub
+	return host.pubSub
+}
+
+// AddStreamProtocol adds the stream protocols to the host to be started and closed
+// when the host starts or close
+func (host *HostV2) AddStreamProtocol(protocols ...sttypes.Protocol) {
+	for _, protocol := range protocols {
+		host.streamProtos = append(host.streamProtos, protocol)
+	}
 }
 
 // Start start the HostV2 discovery process
 // TODO: move PubSub start handling logic here
 func (host *HostV2) Start() error {
+	for _, proto := range host.streamProtos {
+		proto.Start()
+	}
 	return host.discovery.Start()
 }
 
 // Close close the HostV2
 func (host *HostV2) Close() error {
+	for _, proto := range host.streamProtos {
+		proto.Close()
+	}
 	host.discovery.Close()
 	host.cancel()
 	return host.h.Close()
@@ -225,8 +244,8 @@ func (host *HostV2) GetOrJoin(topic string) (*libp2p_pubsub.Topic, error) {
 	defer host.lock.Unlock()
 	if t, ok := host.joined[topic]; ok {
 		return t, nil
-	} else if t, err := host.pubsub.Join(topic); err != nil {
-		return nil, errors.Wrapf(err, "cannot join pubsub topic %x", topic)
+	} else if t, err := host.pubSub.Join(topic); err != nil {
+		return nil, errors.Wrapf(err, "cannot join pubSub topic %x", topic)
 	} else {
 		host.joined[topic] = t
 		return t, nil
@@ -363,7 +382,7 @@ func (host *HostV2) ConnectHostPeer(peer Peer) error {
 	return nil
 }
 
-// NamedTopic represents pubsub topic
+// NamedTopic represents pubSub topic
 // Name is the human readable topic, groupID
 type NamedTopic struct {
 	Name  string

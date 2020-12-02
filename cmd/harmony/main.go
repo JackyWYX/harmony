@@ -389,6 +389,9 @@ func setupNodeAndRun(hc harmonyConfig) {
 			Msg("Start p2p host failed")
 	}
 
+	// Start downloader
+	currentNode.Downloader.Start()
+
 	if err := currentNode.StartPubSub(); err != nil {
 		fmt.Println("could not begin network message handling for node", err.Error())
 		os.Exit(-1)
@@ -654,7 +657,7 @@ func setupConsensusAndNode(hc harmonyConfig, nodeConfig *nodeconfig.ConfigType) 
 	currentConsensus.SetViewIDs(viewID + 1)
 	utils.Logger().Info().
 		Uint64("viewID", viewID).
-		Msg("Init Blockchain")
+		Msg("init Blockchain")
 
 	// Assign closure functions to the consensus object
 	currentConsensus.SetBlockVerifier(currentNode.VerifyNewBlock)

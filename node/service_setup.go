@@ -44,7 +44,6 @@ func (node *Node) ServiceManagerSetup() {
 	case nodeconfig.ExplorerNode:
 		node.setupForExplorerNode()
 	}
-	node.serviceManager.SetupServiceMessageChan(node.serviceMessageChan)
 }
 
 // RunServices runs registered services.

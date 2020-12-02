@@ -22,6 +22,8 @@ import (
 
 // Constants for explorer service.
 const (
+	expSpec = "SupportExplorer"
+
 	explorerPortDifference = 4000
 	defaultPageSize        = "1000"
 	maxAddresses           = 100000
@@ -51,11 +53,16 @@ func New(selfPeer *p2p.Peer, ss *syncing.StateSync, bc *core.BlockChain) *Servic
 	return &Service{IP: selfPeer.IP, Port: selfPeer.Port, stateSync: ss, blockchain: bc}
 }
 
+// Specifier return the specifier of the service
+func (s *Service) Specifier() string {
+	return expSpec
+}
+
 // StartService starts explorer service.
 func (s *Service) StartService() {
 	utils.Logger().Info().Msg("Starting explorer service.")
-	s.Init()
-	s.server = s.Run()
+	s.init()
+	s.server = s.run()
 }
 
 // StopService shutdowns explorer service.
@@ -77,14 +84,14 @@ func GetExplorerPort(nodePort string) string {
 	return ""
 }
 
-// Init is to initialize for ExplorerService.
-func (s *Service) Init() {
+// init is to initialize for ExplorerService.
+func (s *Service) init() {
 	s.Storage = GetStorageInstance(s.IP, s.Port)
 }
 
 // Run is to run serving explorer.
-func (s *Service) Run() *http.Server {
-	// Init address.
+func (s *Service) run() *http.Server {
+	// init address.
 	addr := net.JoinHostPort("", GetExplorerPort(s.Port))
 
 	s.router = mux.NewRouter()
@@ -184,14 +191,6 @@ func (s *Service) GetNodeSync(w http.ResponseWriter, r *http.Request) {
 		utils.Logger().Warn().Msg("cannot JSON-encode total supply")
 		w.WriteHeader(http.StatusInternalServerError)
 	}
-}
-
-// NotifyService notify service.
-func (s *Service) NotifyService(params map[string]interface{}) {}
-
-// SetMessageChan sets up message channel to service.
-func (s *Service) SetMessageChan(messageChan chan *msg_pb.Message) {
-	s.messageChan = messageChan
 }
 
 // APIs for the services.
