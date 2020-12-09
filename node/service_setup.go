@@ -1,25 +1,22 @@
 package node
 
 import (
-	"fmt"
-
 	msg_pb "github.com/harmony-one/harmony/api/proto/message"
 	"github.com/harmony-one/harmony/api/service"
 	"github.com/harmony-one/harmony/api/service/blockproposal"
 	"github.com/harmony-one/harmony/api/service/consensus"
 	"github.com/harmony-one/harmony/api/service/explorer"
 	nodeconfig "github.com/harmony-one/harmony/internal/configs/node"
-	"github.com/harmony-one/harmony/internal/utils"
 )
 
 func (node *Node) setupForValidator() {
 	// Register consensus service.
-	node.serviceManager.RegisterService(
+	node.serviceManager.Register(
 		service.Consensus,
 		consensus.New(node.BlockChannel, node.Consensus, node.startConsensus),
 	)
 	// Register new block service.
-	node.serviceManager.RegisterService(
+	node.serviceManager.Register(
 		service.BlockProposal,
 		blockproposal.New(node.Consensus.ReadySignal, node.WaitForConsensusReadyV2),
 	)
@@ -29,7 +26,7 @@ func (node *Node) setupForExplorerNode() {
 	node.initNodeConfiguration()
 
 	// Register explorer service.
-	node.serviceManager.RegisterService(
+	node.serviceManager.Register(
 		service.SupportExplorer, explorer.New(&node.SelfPeer, node.stateSync, node.Blockchain()),
 	)
 }
@@ -48,26 +45,10 @@ func (node *Node) ServiceManagerSetup() {
 
 // RunServices runs registered services.
 func (node *Node) RunServices() {
-	if node.serviceManager == nil {
-		utils.Logger().Info().Msg("Service manager is not set up yet.")
-		return
-	}
-	node.serviceManager.RunServices()
+	node.serviceManager.StartServices()
 }
 
 // StopServices runs registered services.
 func (node *Node) StopServices() {
-	if node.serviceManager == nil {
-		utils.Logger().Info().Msg("Service manager is not set up yet.")
-		return
-	}
-	node.serviceManager.StopServicesByRole([]service.Type{})
-}
-
-func (node *Node) networkInfoDHTPath() string {
-	return fmt.Sprintf(".dht-%s-%s-c%s",
-		node.SelfPeer.IP,
-		node.SelfPeer.Port,
-		node.chainConfig.ChainID,
-	)
+	node.serviceManager.StopServices()
 }

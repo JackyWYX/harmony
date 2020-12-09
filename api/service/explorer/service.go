@@ -22,8 +22,6 @@ import (
 
 // Constants for explorer service.
 const (
-	expSpec = "SupportExplorer"
-
 	explorerPortDifference = 4000
 	defaultPageSize        = "1000"
 	maxAddresses           = 100000
@@ -53,20 +51,15 @@ func New(selfPeer *p2p.Peer, ss *syncing.StateSync, bc *core.BlockChain) *Servic
 	return &Service{IP: selfPeer.IP, Port: selfPeer.Port, stateSync: ss, blockchain: bc}
 }
 
-// Specifier return the specifier of the service
-func (s *Service) Specifier() string {
-	return expSpec
-}
-
 // StartService starts explorer service.
-func (s *Service) StartService() {
+func (s *Service) Start() {
 	utils.Logger().Info().Msg("Starting explorer service.")
 	s.init()
 	s.server = s.run()
 }
 
 // StopService shutdowns explorer service.
-func (s *Service) StopService() {
+func (s *Service) Stop() {
 	utils.Logger().Info().Msg("Shutting down explorer service.")
 	if err := s.server.Shutdown(context.Background()); err != nil {
 		utils.Logger().Error().Err(err).Msg("Error when shutting down explorer server")

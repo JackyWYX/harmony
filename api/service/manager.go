@@ -5,15 +5,6 @@ import (
 	"github.com/harmony-one/harmony/internal/utils"
 )
 
-// ActionType is the input for Service Manager to operate.
-type ActionType byte
-
-// Constants for Action Type.
-const (
-	Start ActionType = iota
-	Stop
-)
-
 // Type is service type.
 type Type byte
 
@@ -26,6 +17,7 @@ const (
 	NetworkInfo
 )
 
+// String return the string representation of the service type
 func (t Type) String() string {
 	switch t {
 	case SupportExplorer:
@@ -43,119 +35,58 @@ func (t Type) String() string {
 	}
 }
 
-// Action is type of service action.
-type Action struct {
-	Action      ActionType
-	ServiceType Type
-	Params      map[string]interface{}
-}
-
-// Interface is the collection of functions any service needs to implement.
-type Interface interface {
-	Specifier() string
-	StartService()
-	StopService()
+// Service is the collection of functions any service needs to implement.
+type Service interface {
+	Start()
+	Stop()
 	APIs() []rpc.API // the list of RPC descriptors the service provides
 }
 
 // Manager stores all services for service manager.
 type Manager struct {
-	services      map[Type]Interface
-	actionChannel chan *Action
+	services   []Service
+	serviceMap map[Type]Service
 }
 
-// GetServices returns all registered services.
-func (m *Manager) GetServices() map[Type]Interface {
-	return m.services
+func NewManager() *Manager {
+	return &Manager{
+		services:   nil,
+		serviceMap: make(map[Type]Service),
+	}
 }
 
 // Register registers new service to service store.
-func (m *Manager) Register(t Type, service Interface) {
+func (m *Manager) Register(t Type, service Service) {
 	utils.Logger().Info().Int("service", int(t)).Msg("Register Service")
-	if m.services == nil {
-		m.services = make(map[Type]Interface)
-	}
-	if _, ok := m.services[t]; ok {
+	if _, ok := m.serviceMap[t]; ok {
 		utils.Logger().Error().Int("servie", int(t)).Msg("This service is already included")
 		return
 	}
-	m.services[t] = service
+	m.services = append(m.services, service)
+	m.serviceMap[t] = service
 }
 
-// SetupServiceManager inits service map and start service manager.
-func (m *Manager) SetupServiceManager() {
-	m.InitServiceMap()
-	m.actionChannel = m.StartServiceManager()
+// GetServices returns all registered services.
+func (m *Manager) GetServices() []Service {
+	return m.services
 }
 
-// RegisterService is used for testing.
-func (m *Manager) RegisterService(t Type, service Interface) {
-	m.Register(t, service)
+// GetService return the service of the given service type
+func (m *Manager) GetService(t Type) Service {
+	return m.serviceMap[t]
 }
 
-// InitServiceMap initializes service map.
-func (m *Manager) InitServiceMap() {
-	m.services = make(map[Type]Interface)
-}
-
-// TakeAction is how service manager handles the action.
-func (m *Manager) TakeAction(action *Action) {
-	if m.services == nil {
-		utils.Logger().Error().Msg("Service store is not initialized")
-		return
-	}
-	if service, ok := m.services[action.ServiceType]; ok {
-		switch action.Action {
-		case Start:
-			service.StartService()
-		case Stop:
-			service.StopService()
-		}
+// StartServices run all registered services.
+func (m *Manager) StartServices() {
+	for _, service := range m.services {
+		service.Start()
 	}
 }
 
-// StartServiceManager starts service manager.
-func (m *Manager) StartServiceManager() chan *Action {
-	ch := make(chan *Action)
-	go func() {
-		for {
-			select {
-			case action := <-ch:
-				m.TakeAction(action)
-			}
-		}
-	}()
-	return ch
-}
-
-// RunServices run registered services.
-func (m *Manager) RunServices() {
-	for serviceType := range m.services {
-		action := &Action{
-			Action:      Start,
-			ServiceType: serviceType,
-		}
-		m.TakeAction(action)
-	}
-}
-
-// StopService stops service with type t.
-func (m *Manager) StopService(t Type) {
-	if service, ok := m.services[t]; ok {
-		service.StopService()
-	}
-}
-
-// StopServicesByRole stops all service of the given role.
-func (m *Manager) StopServicesByRole(liveServices []Type) {
-	marked := make(map[Type]bool)
-	for _, s := range liveServices {
-		marked[s] = true
-	}
-
-	for t := range m.GetServices() {
-		if _, ok := marked[t]; !ok {
-			m.StopService(t)
-		}
+// StopServices stops all services in the reverse order as the start order.
+func (m *Manager) StopServices() {
+	size := len(m.services)
+	for i := size - 1; i >= 0; i-- {
+		m.services[i].Stop()
 	}
 }

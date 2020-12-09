@@ -113,7 +113,7 @@ func MustNew(
 }
 
 // StartService starts network info service.
-func (s *Service) StartService() {
+func (s *Service) Start() {
 	err := s.Init()
 	if err != nil {
 		utils.Logger().Error().Err(err).Msg("Service init Failed")
@@ -263,7 +263,7 @@ func (s *Service) findPeers(ctx context.Context) {
 }
 
 // StopService stops network info service.
-func (s *Service) StopService() {
+func (s *Service) Stop() {
 	utils.Logger().Info().Msg("Stopping network info service")
 	defer s.cancel()
 

@@ -6,8 +6,6 @@ import (
 	"github.com/harmony-one/harmony/internal/utils"
 )
 
-const bpSpec = "BlockProposal"
-
 // Service is a block proposal service.
 type Service struct {
 	stopChan              chan struct{}
@@ -25,13 +23,8 @@ func New(readySignal chan struct{}, waitForConsensusReady func(readySignal chan 
 	}
 }
 
-// Specifier return the specifier for the service
-func (s *Service) Specifier() string {
-	return bpSpec
-}
-
 // StartService starts block proposal service.
-func (s *Service) StartService() {
+func (s *Service) Start() {
 	s.stopChan = make(chan struct{})
 	s.stoppedChan = make(chan struct{})
 
@@ -44,7 +37,7 @@ func (s *Service) run(stopChan chan struct{}, stoppedChan chan struct{}) {
 }
 
 // StopService stops block proposal service.
-func (s *Service) StopService() {
+func (s *Service) Stop() {
 	utils.Logger().Info().Msg("Stopping block proposal service.")
 	s.stopChan <- struct{}{}
 	<-s.stoppedChan
