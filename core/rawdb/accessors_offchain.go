@@ -312,12 +312,12 @@ func WriteBlockCommitSig(db DatabaseWriter, blockNum uint64, sigAndBitmap []byte
 	return db.Put(blockCommitSigKey(blockNum), sigAndBitmap)
 }
 
-//// Resharding ////
-
 // ReadEpochBlockNumber retrieves the epoch block number for the given epoch,
 // or nil if the given epoch is not found in the database.
-func ReadEpochBlockNumber(db DatabaseReader, epoch *big.Int) (*big.Int, error) {
-	data, err := db.Get(epochBlockNumberKey(epoch))
+// Epoch block of a certain epoch is defined as the last block of last epoch. The block contains
+// the state shard for the next epoch.
+func ReadEpochBlockNumber(db DatabaseReader, epoch *big.Int, shardID uint32) (*big.Int, error) {
+	data, err := db.Get(epochBlockNumberKey(epoch, shardID))
 	if err != nil {
 		return nil, err
 	}
@@ -325,9 +325,11 @@ func ReadEpochBlockNumber(db DatabaseReader, epoch *big.Int) (*big.Int, error) {
 }
 
 // WriteEpochBlockNumber stores the given epoch-number-to-epoch-block-number in the database.
-func WriteEpochBlockNumber(db DatabaseWriter, epoch, blockNum *big.Int) error {
-	return db.Put(epochBlockNumberKey(epoch), blockNum.Bytes())
+func WriteEpochBlockNumber(db DatabaseWriter, epoch *big.Int, shardID uint32, blockNum *big.Int) error {
+	return db.Put(epochBlockNumberKey(epoch, shardID), blockNum.Bytes())
 }
+
+//// Resharding ////
 
 // ReadEpochVrfBlockNums retrieves the VRF block numbers for the given epoch
 func ReadEpochVrfBlockNums(db DatabaseReader, epoch *big.Int) ([]byte, error) {

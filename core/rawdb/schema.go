@@ -153,8 +153,15 @@ func shardStateKey(epoch *big.Int) []byte {
 	return append(shardStatePrefix, epoch.Bytes()...)
 }
 
-func epochBlockNumberKey(epoch *big.Int) []byte {
-	return append(epochBlockNumberPrefix, epoch.Bytes()...)
+func epochBlockNumberKey(epoch *big.Int, shardID uint32) []byte {
+	shardBytes := make([]byte, 4)
+	binary.LittleEndian.PutUint32(shardBytes, shardID)
+
+	var res []byte
+	res = append(epochBlockNumberPrefix, shardBytes...)
+	res = append(res, epoch.Bytes())
+
+	return res
 }
 
 func epochVrfBlockNumbersKey(epoch *big.Int) []byte {
