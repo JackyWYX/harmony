@@ -7,13 +7,21 @@ import (
 	"strings"
 
 	"github.com/ethereum/go-ethereum/rlp"
+	protobuf "github.com/golang/protobuf/proto"
 	"github.com/harmony-one/harmony/core/types"
-	"github.com/harmony-one/harmony/p2p/stream/message"
+	"github.com/harmony-one/harmony/p2p/stream/sync/syncpb"
 	sttypes "github.com/harmony-one/harmony/p2p/stream/types"
 	"github.com/pkg/errors"
 )
 
-// GetBlocksByNumber get the block by number from sync protocols
+// getBlocksByNumberRequest is the request for get block by numbers which implements
+// sttypes.Request interface
+type getBlocksByNumberRequest struct {
+	bns []uint64
+	msg *syncpb.Request
+}
+
+// GetBlocksByNumber do getBlocksByNumberRequest
 func (p *Protocol) GetBlocksByNumber(ctx context.Context, bns []uint64) ([]*types.Block, error) {
 	req := newGetBlocksByNumberRequest(bns)
 
@@ -37,15 +45,8 @@ func (p *Protocol) GetBlocksByNumber(ctx context.Context, bns []uint64) ([]*type
 	return blocks, nil
 }
 
-// getBlocksByNumberRequest is the request for get block by numbers which implements
-// Request interface
-type getBlocksByNumberRequest struct {
-	bns []uint64
-	msg *message.Request
-}
-
 func newGetBlocksByNumberRequest(bns []uint64) *getBlocksByNumberRequest {
-	msg := message.MakeGetBlocksByNumRequest(bns)
+	msg := syncpb.MakeGetBlocksByNumRequest(bns)
 	return &getBlocksByNumberRequest{
 		bns: bns,
 		msg: msg,
@@ -78,15 +79,19 @@ func (req *getBlocksByNumberRequest) IsSupportedByProto(target sttypes.ProtoSpec
 }
 
 // GetRequestMessage get the raw protobuf message ready for send
-func (req *getBlocksByNumberRequest) GetRequestMessage() *message.Request {
+func (req *getBlocksByNumberRequest) GetProtobufMsg() protobuf.Message {
 	return req.msg
 }
 
-func (req *getBlocksByNumberRequest) getBlocksFromResponse(resp *message.Response) ([]*types.Block, error) {
-	if errResp := resp.GetErrorResponse(); errResp != nil {
+func (req *getBlocksByNumberRequest) getBlocksFromResponse(resp sttypes.Response) ([]*types.Block, error) {
+	pbResp, ok := resp.GetProtobufMsg().(*syncpb.Response)
+	if !ok || pbResp == nil {
+		return nil, errors.New("[GetBlocksByNumResponse] got request instead of response")
+	}
+	if errResp := pbResp.GetErrorResponse(); errResp != nil {
 		return nil, errors.New(errResp.Error)
 	}
-	gbResp := resp.GetGetBlocksByNumResponse()
+	gbResp := pbResp.GetGetBlocksByNumResponse()
 	if gbResp == nil {
 		return nil, fmt.Errorf("[GetBlocksByNumResponse] unexpected response type: %v", gbResp)
 	}
@@ -111,4 +116,21 @@ func (req *getBlocksByNumberRequest) validateBlocks(blocks []*types.Block) error
 		}
 	}
 	return nil
+}
+
+// syncResponse is the sync protocol response which implements sttypes.Response
+type syncResponse struct {
+	pb *syncpb.Response
+}
+
+func (resp *syncResponse) ReqID() uint64 {
+	return resp.pb.ReqId
+}
+
+func (resp *syncResponse) GetProtobufMsg() protobuf.Message {
+	return resp.pb
+}
+
+func (resp *syncResponse) String() string {
+	return fmt.Sprintf("[SyncResponse] %v", resp.String())
 }

@@ -20,7 +20,7 @@ func TestRequestQueue_pushBack(t *testing.T) {
 		},
 		{
 			initSize: maxWaitingSize,
-			expErr:   errors.New("queue size exceeding"),
+			expErr:   ErrQueueFull,
 		},
 	}
 	for i, test := range tests {
@@ -59,7 +59,7 @@ func TestRequestQueue_pushFront(t *testing.T) {
 		},
 		{
 			initSize: maxWaitingSize,
-			expErr:   errors.New("queue size exceeding"),
+			expErr:   ErrQueueFull,
 		},
 	}
 	for i, test := range tests {

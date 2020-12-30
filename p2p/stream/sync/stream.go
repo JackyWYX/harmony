@@ -5,14 +5,14 @@ import (
 	"sync/atomic"
 
 	"github.com/harmony-one/harmony/core/types"
-	"github.com/harmony-one/harmony/p2p/stream/message"
+	"github.com/harmony-one/harmony/p2p/stream/sync/syncpb"
 	sttypes "github.com/harmony-one/harmony/p2p/stream/types"
 	libp2p_network "github.com/libp2p/go-libp2p-core/network"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 )
 
-// syncStream is the structure for a stream of a peer running sync protocol.
+// syncStream is the structure for a stream running sync protocol.
 type syncStream struct {
 	// Basic stream
 	sttypes.BaseStream
@@ -20,7 +20,7 @@ type syncStream struct {
 	protocol *Protocol
 
 	// pipeline channels
-	msgC chan *message.Message
+	msgC chan *syncpb.Message
 
 	// close related fields. Concurrent call of close is possible.
 	closeC    chan struct{}
@@ -32,16 +32,18 @@ type syncStream struct {
 // wrapStream wraps the raw libp2p stream to syncStream
 func (p *Protocol) wrapStream(raw libp2p_network.Stream) *syncStream {
 	bs := sttypes.NewBaseStream(raw)
+	logger := p.logger.With().
+		Str("ID", string(bs.ID())).
+		Str("Remote Protocol", string(bs.ProtoID())).
+		Logger()
+
 	return &syncStream{
 		BaseStream: *bs,
 		protocol:   p,
-		msgC:       make(chan *message.Message),
+		msgC:       make(chan *syncpb.Message),
 		closeC:     make(chan struct{}),
 		closeStat:  0,
-		logger: p.logger.With().
-			Str("ID", string(bs.ID())).
-			Str("Remote Protocol", string(bs.ProtoID())).
-			Logger(),
+		logger:     logger,
 	}
 }
 
@@ -59,7 +61,7 @@ func (st *syncStream) readMsgLoop() {
 			}
 		}
 		select {
-		case st.msgC <- msg.(*message.Message):
+		case st.msgC <- msg.(*syncpb.Message):
 		case <-st.closeC:
 			return
 		}
@@ -99,12 +101,15 @@ func (st *syncStream) Close() error {
 		return nil
 	}
 	err := st.BaseStream.Close()
-	st.protocol.sm.RemoveStream(st.ID())
+	if err := st.protocol.sm.RemoveStream(st.ID()); err != nil {
+		st.logger.Err(err).Str("stream ID", string(st.ID())).
+			Msg("failed to remove sync stream on close")
+	}
 	close(st.closeC)
 	return err
 }
 
-func (st *syncStream) handleMsg(msg *message.Message) error {
+func (st *syncStream) handleMsg(msg *syncpb.Message) error {
 	if msg == nil {
 		return nil
 	}
@@ -119,7 +124,7 @@ func (st *syncStream) handleMsg(msg *message.Message) error {
 	return nil
 }
 
-func (st *syncStream) handleReq(req *message.Request) error {
+func (st *syncStream) handleReq(req *syncpb.Request) error {
 	if bnReq := req.GetGetBlocksByNumRequest(); bnReq != nil {
 		bns := req.GetGetBlocksByNumRequest().Nums
 		resp, err := st.getRespFromBlockNumber(req.ReqId, bns)
@@ -129,12 +134,12 @@ func (st *syncStream) handleReq(req *message.Request) error {
 		return st.WriteMsg(resp)
 	}
 	// unsupported request type
-	resp := message.MakeErrorResponseMessage(errUnknownReqType)
+	resp := syncpb.MakeErrorResponseMessage(errUnknownReqType)
 	return st.WriteMsg(resp)
 }
 
-func (st *syncStream) handleResp(resp *message.Response) {
-	st.protocol.rm.DeliverResponse(st.ID(), resp)
+func (st *syncStream) handleResp(resp *syncpb.Response) {
+	st.protocol.rm.DeliverResponse(st.ID(), &syncResponse{resp})
 }
 
 const (
@@ -142,7 +147,7 @@ const (
 	GetBlocksByNumAmountCap = 10
 )
 
-func (st *syncStream) getRespFromBlockNumber(rid uint64, bns []int64) (*message.Message, error) {
+func (st *syncStream) getRespFromBlockNumber(rid uint64, bns []uint64) (*syncpb.Message, error) {
 	if len(bns) > GetBlocksByNumAmountCap {
 		return nil, fmt.Errorf("GetBlocksByNum amount exceed cap: %v/%v", len(bns), GetBlocksByNumAmountCap)
 	}
@@ -155,5 +160,5 @@ func (st *syncStream) getRespFromBlockNumber(rid uint64, bns []int64) (*message.
 		}
 		blocks = append(blocks, block)
 	}
-	return message.MakeGetBlocksByNumResponse(rid, blocks)
+	return syncpb.MakeGetBlocksByNumResponse(rid, blocks)
 }

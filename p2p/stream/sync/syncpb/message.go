@@ -1,4 +1,4 @@
-package message
+package syncpb
 
 import (
 	"github.com/ethereum/go-ethereum/rlp"

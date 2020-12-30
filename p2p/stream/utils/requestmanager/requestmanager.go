@@ -6,9 +6,10 @@ import (
 	"sync"
 	"time"
 
+	protobuf "github.com/golang/protobuf/proto"
+
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/harmony-one/harmony/internal/utils"
-	"github.com/harmony-one/harmony/p2p/stream/message"
 	sttypes "github.com/harmony-one/harmony/p2p/stream/types"
 	"github.com/harmony-one/harmony/p2p/stream/utils/streammanager"
 	"github.com/pkg/errors"
@@ -84,7 +85,7 @@ func (rm *requestManager) Close() {
 
 // DoRequest do the given request with a stream picked randomly. Return the response, stream id that
 // is responsible for response, delivery and error.
-func (rm *requestManager) DoRequest(ctx context.Context, raw sttypes.Request) (*message.Response, sttypes.StreamID, error) {
+func (rm *requestManager) DoRequest(ctx context.Context, raw sttypes.Request) (sttypes.Response, sttypes.StreamID, error) {
 	resp := <-rm.doRequestAsync(ctx, raw)
 	return resp.Raw, resp.StID, resp.Err
 }
@@ -116,7 +117,7 @@ func (rm *requestManager) doRequestAsync(ctx context.Context, raw sttypes.Reques
 
 // DeliverResponse delivers the response to the corresponding request.
 // The function behaves non-block
-func (rm *requestManager) DeliverResponse(stID sttypes.StreamID, resp *message.Response) {
+func (rm *requestManager) DeliverResponse(stID sttypes.StreamID, resp sttypes.Response) {
 	dlv := deliverData{
 		resp: resp,
 		stID: stID,
@@ -156,11 +157,12 @@ func (rm *requestManager) loop() {
 				}
 				rm.addPendingRequest(req, st)
 
-				go func(reqID uint64, reqMsg *message.Request) {
-					if err := st.SendRequest(reqMsg); err != nil {
+				go func(reqID uint64, reqMsg protobuf.Message) {
+					if err := st.WriteMsg(reqMsg); err != nil {
 						rm.logger.Warn().Str("streamID", string(st.ID())).Err(err).
 							Msg("failed to send request")
-						// TODO: Shall we also need to close the stream here?
+						// TODO: Decide whether we also need to close the stream here based
+						//   on the error and retry times.
 						rm.retryReqC <- reqID
 					}
 					go func() {
@@ -172,7 +174,7 @@ func (rm *requestManager) loop() {
 							// request cancelled or response received. Do nothing and return
 						}
 					}()
-				}(req.ReqID(), req.GetRequestMessage())
+				}(req.ReqID(), req.GetProtobufMsg())
 			}
 
 		case req := <-rm.newRequestC:
@@ -233,11 +235,11 @@ func (rm *requestManager) handleDeliverData(data deliverData) {
 	if err := rm.validateDelivery(data); err != nil {
 		// if error happens in delivery, most likely it's a stale delivery. No action needed
 		// and return
-		rm.logger.Info().Err(err).Interface("response", data.resp).Msg("unable to validate deliver")
+		rm.logger.Info().Err(err).Str("response", data.resp.String()).Msg("unable to validate deliver")
 		return
 	}
 	// req and st is ensured not to be empty in validateDelivery
-	req := rm.pendings[data.resp.ReqId]
+	req := rm.pendings[data.resp.ReqID()]
 	req.respC <- data
 	rm.removePendingRequest(req)
 }
@@ -247,14 +249,14 @@ func (rm *requestManager) validateDelivery(data deliverData) error {
 	if st == nil {
 		return fmt.Errorf("data delivered from dead stream: %v", data.stID)
 	}
-	req := rm.pendings[data.resp.ReqId]
+	req := rm.pendings[data.resp.ReqID()]
 	if req == nil {
 		return fmt.Errorf("stale p2p response delivery")
 	}
 	if req.owner == nil || req.owner.ID() != data.stID {
 		return fmt.Errorf("unexpected delivery stream")
 	}
-	if st.req == nil || st.req.ReqID() != data.resp.ReqId {
+	if st.req == nil || st.req.ReqID() != data.resp.ReqID() {
 		// Possible when request is canceled
 		return fmt.Errorf("unexpected deliver request")
 	}

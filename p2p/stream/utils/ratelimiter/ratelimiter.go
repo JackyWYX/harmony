@@ -1,7 +1,7 @@
 package ratelimiter
 
 import (
-	"github.com/harmony-one/harmony/p2p/stream/message"
+	"github.com/harmony-one/harmony/p2p/stream/sync/syncpb"
 	sttypes "github.com/harmony-one/harmony/p2p/stream/types"
 	"go.uber.org/ratelimit"
 )
@@ -11,7 +11,7 @@ import (
 // for consensus on DDoS attacks.
 // TODO: research, test and implement the better rate limiter algorithm
 type RateLimiter interface {
-	LimitRequest(stid sttypes.StreamID, request *message.Request)
+	LimitRequest(stid sttypes.StreamID, request *syncpb.Request)
 }
 
 // rateLimiter is the implementation of RateLimiter which only blocks for the global
@@ -28,6 +28,6 @@ func NewRateLimiter() RateLimiter {
 	}
 }
 
-func (rl *rateLimiter) LimitRequest(stid sttypes.StreamID, request *message.Request) {
+func (rl *rateLimiter) LimitRequest(stid sttypes.StreamID, request *syncpb.Request) {
 	rl.globalLimiter.Take()
 }

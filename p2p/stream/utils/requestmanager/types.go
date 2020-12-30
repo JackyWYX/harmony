@@ -4,7 +4,6 @@ import (
 	"container/list"
 	"sync"
 
-	"github.com/harmony-one/harmony/p2p/stream/message"
 	sttypes "github.com/harmony-one/harmony/p2p/stream/types"
 	"github.com/pkg/errors"
 )
@@ -67,13 +66,13 @@ func (st *stream) clearPendingRequest() *request {
 }
 
 type deliverData struct {
-	resp *message.Response
+	resp sttypes.Response
 	stID sttypes.StreamID
 }
 
 // Response is the wrapped response for stream requests
 type Response struct {
-	Raw  *message.Response
+	Raw  sttypes.Response
 	StID sttypes.StreamID
 	Err  error
 }

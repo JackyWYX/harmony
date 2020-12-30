@@ -8,7 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/harmony-one/harmony/p2p/stream/message"
+	protobuf "github.com/golang/protobuf/proto"
+
+	"github.com/harmony-one/harmony/p2p/stream/sync/syncpb"
 	sttypes "github.com/harmony-one/harmony/p2p/stream/types"
 	"github.com/pkg/errors"
 )
@@ -147,12 +149,12 @@ func TestRequestManager_RemoveStream(t *testing.T) {
 // stream delivers an unknown request ID
 func TestRequestManager_UnknownDelivery(t *testing.T) {
 	delayF := makeDefaultDelayFunc(150 * time.Millisecond)
-	respF := func(req *message.Request) *message.Response {
+	respF := func(req *syncpb.Request) *syncpb.Response {
 		var rid uint64
 		for rid == req.ReqId {
 			rid++
 		}
-		return &message.Response{
+		return &syncpb.Response{
 			ReqId:    rid,
 			Response: nil,
 		}
@@ -337,7 +339,7 @@ func (ts *testSuite) pickOneOccupiedStream() sttypes.StreamID {
 
 type (
 	// responseFunc is the function to compose a response
-	responseFunc func(request *message.Request) *message.Response
+	responseFunc func(request *syncpb.Request) *syncpb.Response
 
 	// delayFunc is the function to determine the delay to deliver a response
 	delayFunc func() time.Duration
@@ -346,11 +348,11 @@ type (
 const testMsg = "test message"
 
 func makeDefaultResponseFunc(msg string) responseFunc {
-	return func(request *message.Request) *message.Response {
-		resp := &message.Response{
+	return func(request *syncpb.Request) *syncpb.Response {
+		resp := &syncpb.Response{
 			ReqId: request.ReqId,
-			Response: &message.Response_ErrorResponse{
-				ErrorResponse: &message.ErrorResponse{
+			Response: &syncpb.Response_ErrorResponse{
+				ErrorResponse: &syncpb.ErrorResponse{
 					Error: msg,
 				},
 			},
@@ -359,8 +361,12 @@ func makeDefaultResponseFunc(msg string) responseFunc {
 	}
 }
 
-func checkResponseMessage(resp *message.Response, expStr string) error {
-	errResp, ok := resp.Response.(*message.Response_ErrorResponse)
+func checkResponseMessage(resp sttypes.Response, expStr string) error {
+	raw, ok := resp.GetProtobufMsg().(*syncpb.Response)
+	if !ok {
+		return errors.New("unexpected response type")
+	}
+	errResp, ok := raw.Response.(*syncpb.Response_ErrorResponse)
 	if !ok {
 		return errors.New("unexpected message type")
 	}
@@ -396,14 +402,14 @@ func (ts *testSuite) makeTestStream(index int) *testStream {
 	return &testStream{
 		id: stid,
 		rm: ts.rm,
-		deliver: func(req *message.Request) {
+		deliver: func(req *syncpb.Request) {
 			delay := ts.delayFunc()
 			resp := ts.respFunc(req)
 			go func() {
 				select {
 				case <-ts.ctx.Done():
 				case <-time.After(delay):
-					ts.rm.DeliverResponse(stid, resp)
+					ts.rm.DeliverResponse(stid, &testResponse{resp})
 				}
 			}()
 		},
@@ -411,8 +417,24 @@ func (ts *testSuite) makeTestStream(index int) *testStream {
 }
 
 // normalResponseComposer is the default response composer
-func normalResponseComposer(request *message.Request) *message.Response {
-	return &message.Response{
+func normalResponseComposer(request *syncpb.Request) *syncpb.Response {
+	return &syncpb.Response{
 		ReqId: request.ReqId,
 	}
+}
+
+type testResponse struct {
+	pb *syncpb.Response
+}
+
+func (tr *testResponse) ReqID() uint64 {
+	return tr.pb.ReqId
+}
+
+func (tr *testResponse) String() string {
+	return "testResponse"
+}
+
+func (tr *testResponse) GetProtobufMsg() protobuf.Message {
+	return tr.pb
 }

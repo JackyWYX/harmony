@@ -1,7 +1,7 @@
 package sttypes
 
 import (
-	"github.com/harmony-one/harmony/p2p/stream/message"
+	protobuf "github.com/golang/protobuf/proto"
 	p2ptypes "github.com/harmony-one/harmony/p2p/types"
 	"github.com/hashicorp/go-version"
 	libp2p_network "github.com/libp2p/go-libp2p-core/network"
@@ -18,12 +18,18 @@ type Protocol interface {
 	HandleStream(st libp2p_network.Stream)
 }
 
-// Request is the interface of a single request.
+// Request is the interface of a stream request.
 type Request interface {
 	ReqID() uint64
 	SetReqID(rid uint64)
 	String() string
-
 	IsSupportedByProto(ProtoSpec) bool
-	GetRequestMessage() *message.Request
+	GetProtobufMsg() protobuf.Message
+}
+
+// Response is the interface of a stream response
+type Response interface {
+	ReqID() uint64
+	String() string
+	GetProtobufMsg() protobuf.Message
 }

@@ -7,7 +7,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/harmony-one/harmony/p2p/stream/message"
+	protobuf "github.com/golang/protobuf/proto"
 	sttypes "github.com/harmony-one/harmony/p2p/stream/types"
 	"github.com/libp2p/go-libp2p-core/network"
 	libp2p_peer "github.com/libp2p/go-libp2p-core/peer"
@@ -49,7 +49,7 @@ func (st *testStream) ProtoID() sttypes.ProtoID {
 	return st.proto
 }
 
-func (st *testStream) SendRequest(*message.Request) error {
+func (st *testStream) WriteMsg(protobuf.Message) error {
 	return nil
 }
 

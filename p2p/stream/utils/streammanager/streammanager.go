@@ -20,8 +20,8 @@ import (
 // one single protocol. It does the following job:
 // 1. add a new stream to manage with when a new stream starts running.
 // 2. closes a stream when some unexpected error happens.
-// 3. discover new streams when number of streams is below threshold
-// 4. emit stream events.
+// 3. discover new streams when the number of streams is below threshold.
+// 4. emit stream events for other modules.
 type streamManager struct {
 	// streamManager only manages streams on one protocol.
 	myProtoID   sttypes.ProtoID

@@ -5,6 +5,11 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/hashicorp/go-version"
+	libp2p_host "github.com/libp2p/go-libp2p-core/host"
+	libp2p_network "github.com/libp2p/go-libp2p-core/network"
+	"github.com/rs/zerolog"
+
 	"github.com/harmony-one/harmony/consensus/engine"
 	nodeconfig "github.com/harmony-one/harmony/internal/configs/node"
 	"github.com/harmony-one/harmony/internal/utils"
@@ -13,10 +18,6 @@ import (
 	"github.com/harmony-one/harmony/p2p/stream/utils/ratelimiter"
 	"github.com/harmony-one/harmony/p2p/stream/utils/requestmanager"
 	"github.com/harmony-one/harmony/p2p/stream/utils/streammanager"
-	"github.com/hashicorp/go-version"
-	libp2p_host "github.com/libp2p/go-libp2p-core/host"
-	libp2p_network "github.com/libp2p/go-libp2p-core/network"
-	"github.com/rs/zerolog"
 )
 
 const (
@@ -126,6 +127,7 @@ func (p *Protocol) Match(targetID string) bool {
 
 // HandleStream is the stream handle function being registered to libp2p.
 func (p *Protocol) HandleStream(raw libp2p_network.Stream) {
+	p.logger.Info().Str("stream", raw.ID()).Msg("handle new sync stream")
 	st := p.wrapStream(raw)
 	if err := p.sm.NewStream(st); err != nil {
 		// Possibly we have reach the hard limit of the stream

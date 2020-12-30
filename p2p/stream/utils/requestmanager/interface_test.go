@@ -5,7 +5,8 @@ import (
 	"strconv"
 
 	"github.com/ethereum/go-ethereum/event"
-	"github.com/harmony-one/harmony/p2p/stream/message"
+	protobuf "github.com/golang/protobuf/proto"
+	"github.com/harmony-one/harmony/p2p/stream/sync/syncpb"
 	sttypes "github.com/harmony-one/harmony/p2p/stream/types"
 	"github.com/harmony-one/harmony/p2p/stream/utils/streammanager"
 )
@@ -40,7 +41,7 @@ func (sm *testStreamManager) SubscribeRemoveStreamEvent(ch chan<- streammanager.
 type testStream struct {
 	id      sttypes.StreamID
 	rm      *requestManager
-	deliver func(req *message.Request) // use goroutine inside this function
+	deliver func(req *syncpb.Request) // use goroutine inside this function
 }
 
 func (st *testStream) ID() sttypes.StreamID {
@@ -51,9 +52,9 @@ func (st *testStream) ProtoID() sttypes.ProtoID {
 	return testProtoID
 }
 
-func (st *testStream) SendRequest(req *message.Request) error {
+func (st *testStream) WriteMsg(req protobuf.Message) error {
 	if st.rm != nil && st.deliver != nil {
-		st.deliver(req)
+		st.deliver(req.(*syncpb.Request))
 	}
 	return nil
 }
@@ -94,14 +95,14 @@ func (req *testRequest) String() string {
 	return fmt.Sprintf("test request %v", req.index)
 }
 
-func (req *testRequest) GetRequestMessage() *message.Request {
-	return &message.Request{
+func (req *testRequest) GetProtobufMsg() protobuf.Message {
+	return &syncpb.Request{
 		ReqId: req.reqID,
 	}
 }
 
-func (req *testRequest) getResponse() *message.Response {
-	return &message.Response{
+func (req *testRequest) getResponse() *syncpb.Response {
+	return &syncpb.Response{
 		ReqId: req.reqID,
 	}
 }
