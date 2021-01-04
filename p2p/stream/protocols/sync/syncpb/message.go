@@ -19,8 +19,9 @@ func MakeGetBlocksByNumRequest(bns []uint64) *Request {
 }
 
 // MakeErrorResponse makes the error response
-func MakeErrorResponseMessage(err error) *Message {
+func MakeErrorResponseMessage(rid uint64, err error) *Message {
 	resp := &Response{
+		ReqId: rid,
 		Response: &Response_ErrorResponse{
 			&ErrorResponse{
 				Error: err.Error(),

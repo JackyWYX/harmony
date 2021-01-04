@@ -22,9 +22,9 @@ type rateLimiter struct {
 }
 
 // NewRateLimiter creates a new rate limiter
-func NewRateLimiter() RateLimiter {
+func NewRateLimiter(rate int) RateLimiter {
 	return &rateLimiter{
-		globalLimiter: ratelimit.New(100),
+		globalLimiter: ratelimit.New(rate),
 	}
 }
 

@@ -18,7 +18,7 @@ type Protocol interface {
 	HandleStream(st libp2p_network.Stream)
 }
 
-// Request is the interface of a stream request.
+// Request is the interface of a stream request used for common stream utils.
 type Request interface {
 	ReqID() uint64
 	SetReqID(rid uint64)
@@ -27,7 +27,7 @@ type Request interface {
 	GetProtobufMsg() protobuf.Message
 }
 
-// Response is the interface of a stream response
+// Response is the interface of a stream response used for common stream utils
 type Response interface {
 	ReqID() uint64
 	String() string

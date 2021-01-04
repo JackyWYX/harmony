@@ -3,24 +3,28 @@ package sync
 import (
 	"fmt"
 	"sync/atomic"
+	"time"
+
+	protobuf "github.com/golang/protobuf/proto"
+	libp2p_network "github.com/libp2p/go-libp2p-core/network"
+	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 
 	"github.com/harmony-one/harmony/core/types"
 	"github.com/harmony-one/harmony/p2p/stream/sync/syncpb"
 	sttypes "github.com/harmony-one/harmony/p2p/stream/types"
-	libp2p_network "github.com/libp2p/go-libp2p-core/network"
-	"github.com/pkg/errors"
-	"github.com/rs/zerolog"
 )
 
 // syncStream is the structure for a stream running sync protocol.
 type syncStream struct {
 	// Basic stream
-	sttypes.BaseStream
+	*sttypes.BaseStream
 
 	protocol *Protocol
 
 	// pipeline channels
-	msgC chan *syncpb.Message
+	reqC  chan *syncpb.Request
+	respC chan *syncpb.Response
 
 	// close related fields. Concurrent call of close is possible.
 	closeC    chan struct{}
@@ -38,9 +42,10 @@ func (p *Protocol) wrapStream(raw libp2p_network.Stream) *syncStream {
 		Logger()
 
 	return &syncStream{
-		BaseStream: *bs,
+		BaseStream: bs,
 		protocol:   p,
-		msgC:       make(chan *syncpb.Message),
+		reqC:       make(chan *syncpb.Request, 100),
+		respC:      make(chan *syncpb.Response, 100),
 		closeC:     make(chan struct{}),
 		closeStat:  0,
 		logger:     logger,
@@ -49,9 +54,11 @@ func (p *Protocol) wrapStream(raw libp2p_network.Stream) *syncStream {
 
 func (st *syncStream) run() {
 	go st.readMsgLoop()
-	st.handleMsgLoop()
+	go st.handleReqLoop()
+	go st.handleRespLoop()
 }
 
+// readMsgLoop is the loop
 func (st *syncStream) readMsgLoop() {
 	for {
 		msg, err := st.ReadMsg()
@@ -60,26 +67,67 @@ func (st *syncStream) readMsgLoop() {
 				st.logger.Err(err).Msg("failed to close sync stream")
 			}
 		}
+		st.deliverMsg(msg)
+	}
+}
+
+// deliverMsg process the delivered message and forward to the corresponding channel
+func (st *syncStream) deliverMsg(msg protobuf.Message) {
+	syncMsg := msg.(*syncpb.Message)
+	if syncMsg == nil {
+		st.logger.Info().Str("message", msg.String()).Msg("received unexpected sync message")
+		return
+	}
+	if req := syncMsg.GetReq(); req != nil {
+		go func() {
+			select {
+			case st.reqC <- req:
+			case <-time.After(1 * time.Minute):
+				st.logger.Warn().Str("request", req.String()).
+					Msg("request handler severely jammed, message dropped")
+			}
+		}()
+	}
+	if resp := syncMsg.GetResp(); resp != nil {
+		go func() {
+			select {
+			case st.respC <- resp:
+			case <-time.After(1 * time.Minute):
+				st.logger.Warn().Str("response", resp.String()).
+					Msg("response handler severely jammed, message dropped")
+			}
+		}()
+	}
+	return
+}
+
+func (st *syncStream) handleReqLoop() {
+	for {
 		select {
-		case st.msgC <- msg.(*syncpb.Message):
+		case req := <-st.reqC:
+			st.protocol.rl.LimitRequest(st.ID(), req)
+			err := st.handleReq(req)
+
+			if err != nil {
+				st.logger.Info().Err(err).Str("request", req.String()).
+					Msg("handle request error. Closing stream")
+				if err := st.Close(); err != nil {
+					st.logger.Err(err).Msg("failed to close sync stream")
+				}
+				return
+			}
+
 		case <-st.closeC:
 			return
 		}
 	}
 }
 
-func (st *syncStream) handleMsgLoop() {
+func (st *syncStream) handleRespLoop() {
 	for {
 		select {
-		case msg := <-st.msgC:
-			err := st.handleMsg(msg)
-			if err != nil {
-				st.logger.Err(err).Msg("handle request error")
-				if err := st.Close(); err != nil {
-					st.logger.Err(err).Msg("failed to close sync stream")
-				}
-				return
-			}
+		case resp := <-st.respC:
+			st.handleResp(resp)
 
 		case <-st.closeC:
 			return
@@ -109,32 +157,24 @@ func (st *syncStream) Close() error {
 	return err
 }
 
-func (st *syncStream) handleMsg(msg *syncpb.Message) error {
-	if msg == nil {
-		return nil
-	}
-	if req := msg.GetReq(); req != nil {
-		st.protocol.rl.LimitRequest(st.ID(), req)
-		return st.handleReq(req)
-	}
-	if resp := msg.GetResp(); resp != nil {
-		st.handleResp(resp)
-		return nil
-	}
-	return nil
-}
-
 func (st *syncStream) handleReq(req *syncpb.Request) error {
+
 	if bnReq := req.GetGetBlocksByNumRequest(); bnReq != nil {
-		bns := req.GetGetBlocksByNumRequest().Nums
-		resp, err := st.getRespFromBlockNumber(req.ReqId, bns)
-		if err != nil {
-			return errors.Wrap(err, "[GetBlocksByNumber]")
+		resp, err := st.getRespFromBlockNumber(req.ReqId, bnReq.Nums)
+		if resp == nil && err != nil {
+			resp = syncpb.MakeErrorResponseMessage(req.ReqId, err)
 		}
-		return st.WriteMsg(resp)
+		if writeErr := st.WriteMsg(resp); writeErr != nil {
+			if err == nil {
+				err = writeErr
+			} else {
+				err = fmt.Errorf("%v; [writeMsg] %v", err.Error(), writeErr)
+			}
+		}
+		return errors.Wrap(err, "[GetBlocksByNumber]")
 	}
 	// unsupported request type
-	resp := syncpb.MakeErrorResponseMessage(errUnknownReqType)
+	resp := syncpb.MakeErrorResponseMessage(req.ReqId, errUnknownReqType)
 	return st.WriteMsg(resp)
 }
 
@@ -149,12 +189,13 @@ const (
 
 func (st *syncStream) getRespFromBlockNumber(rid uint64, bns []uint64) (*syncpb.Message, error) {
 	if len(bns) > GetBlocksByNumAmountCap {
-		return nil, fmt.Errorf("GetBlocksByNum amount exceed cap: %v/%v", len(bns), GetBlocksByNumAmountCap)
+		err := fmt.Errorf("GetBlocksByNum amount exceed cap: %v/%v", len(bns), GetBlocksByNumAmountCap)
+		return nil, err
 	}
 	blocks := make([]*types.Block, 0, len(bns))
 	for _, bn := range bns {
 		var block *types.Block
-		header := st.protocol.chain.GetHeaderByNumber(uint64(bn))
+		header := st.protocol.chain.GetHeaderByNumber(bn)
 		if header != nil {
 			block = st.protocol.chain.GetBlock(header.Hash(), header.Number().Uint64())
 		}

@@ -70,11 +70,11 @@ type deliverData struct {
 	stID sttypes.StreamID
 }
 
-// Response is the wrapped response for stream requests
-type Response struct {
-	Raw  sttypes.Response
-	StID sttypes.StreamID
-	Err  error
+// response is the wrapped response for stream requests
+type response struct {
+	raw  sttypes.Response
+	stID sttypes.StreamID
+	err  error
 }
 
 // requestQueue is a wrapper of double linked list with Request as type

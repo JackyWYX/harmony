@@ -165,7 +165,7 @@ func getTestRequestFromElem(elem *list.Element) (*testRequest, error) {
 	}
 	raw, ok := req.Request.(*testRequest)
 	if !ok {
-		return nil, errors.New("unexpected Raw types")
+		return nil, errors.New("unexpected raw types")
 	}
 	return raw, nil
 }

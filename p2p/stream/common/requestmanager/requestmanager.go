@@ -7,13 +7,13 @@ import (
 	"time"
 
 	protobuf "github.com/golang/protobuf/proto"
+	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/harmony-one/harmony/internal/utils"
+	"github.com/harmony-one/harmony/p2p/stream/common/streammanager"
 	sttypes "github.com/harmony-one/harmony/p2p/stream/types"
-	"github.com/harmony-one/harmony/p2p/stream/utils/streammanager"
-	"github.com/pkg/errors"
-	"github.com/rs/zerolog"
 )
 
 // requestManager implements RequestManager. It is responsible for matching response
@@ -87,10 +87,10 @@ func (rm *requestManager) Close() {
 // is responsible for response, delivery and error.
 func (rm *requestManager) DoRequest(ctx context.Context, raw sttypes.Request) (sttypes.Response, sttypes.StreamID, error) {
 	resp := <-rm.doRequestAsync(ctx, raw)
-	return resp.Raw, resp.StID, resp.Err
+	return resp.raw, resp.stID, resp.err
 }
 
-func (rm *requestManager) doRequestAsync(ctx context.Context, raw sttypes.Request) <-chan Response {
+func (rm *requestManager) doRequestAsync(ctx context.Context, raw sttypes.Request) <-chan response {
 	req := &request{
 		Request: raw,
 		respC:   make(chan deliverData),
@@ -99,17 +99,17 @@ func (rm *requestManager) doRequestAsync(ctx context.Context, raw sttypes.Reques
 	ctx, _ = context.WithTimeout(ctx, reqTimeOut)
 	rm.newRequestC <- req
 
-	resC := make(chan Response, 1)
+	resC := make(chan response, 1)
 
 	go func() {
 		defer close(req.waitCh)
 		select {
 		case <-ctx.Done(): // canceled or timeout in upper function calls
 			rm.cancelReqC <- req.ReqID()
-			resC <- Response{Err: ctx.Err()}
+			resC <- response{err: ctx.Err()}
 
 		case data := <-req.respC:
-			resC <- Response{Raw: data.resp, StID: data.stID, Err: req.err}
+			resC <- response{raw: data.resp, stID: data.stID, err: req.err}
 		}
 	}()
 	return resC

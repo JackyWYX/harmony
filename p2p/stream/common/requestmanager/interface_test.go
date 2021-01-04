@@ -6,9 +6,9 @@ import (
 
 	"github.com/ethereum/go-ethereum/event"
 	protobuf "github.com/golang/protobuf/proto"
-	"github.com/harmony-one/harmony/p2p/stream/sync/syncpb"
+	"github.com/harmony-one/harmony/p2p/stream/common/streammanager"
+	"github.com/harmony-one/harmony/p2p/stream/protocols/sync/syncpb"
 	sttypes "github.com/harmony-one/harmony/p2p/stream/types"
-	"github.com/harmony-one/harmony/p2p/stream/utils/streammanager"
 )
 
 var testProtoID = sttypes.ProtoID("harmony/sync/unitest/0/1.0.0")

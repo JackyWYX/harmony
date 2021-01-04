@@ -14,10 +14,10 @@ import (
 	nodeconfig "github.com/harmony-one/harmony/internal/configs/node"
 	"github.com/harmony-one/harmony/internal/utils"
 	"github.com/harmony-one/harmony/p2p/discovery"
+	"github.com/harmony-one/harmony/p2p/stream/common/ratelimiter"
+	"github.com/harmony-one/harmony/p2p/stream/common/requestmanager"
+	"github.com/harmony-one/harmony/p2p/stream/common/streammanager"
 	sttypes "github.com/harmony-one/harmony/p2p/stream/types"
-	"github.com/harmony-one/harmony/p2p/stream/utils/ratelimiter"
-	"github.com/harmony-one/harmony/p2p/stream/utils/requestmanager"
-	"github.com/harmony-one/harmony/p2p/stream/utils/streammanager"
 )
 
 const (
@@ -65,7 +65,7 @@ func NewProtocol(config Config) *Protocol {
 
 	sp := &Protocol{
 		chain:  config.Chain,
-		rl:     ratelimiter.NewRateLimiter(),
+		rl:     ratelimiter.NewRateLimiter(100),
 		disc:   config.Discovery,
 		config: config,
 		ctx:    ctx,

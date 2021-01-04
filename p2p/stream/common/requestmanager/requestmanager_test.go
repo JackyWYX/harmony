@@ -30,14 +30,14 @@ func TestRequestManager_Request_Normal(t *testing.T) {
 	ctx, _ := context.WithTimeout(context.Background(), 1*time.Second)
 	res := <-ts.rm.doRequestAsync(ctx, makeTestRequest(0))
 
-	if res.Err != nil {
-		t.Errorf("unexpected error: %v", res.Err)
+	if res.err != nil {
+		t.Errorf("unexpected error: %v", res.err)
 		return
 	}
-	if err := checkResponseMessage(res.Raw, testMsg); err != nil {
+	if err := checkResponseMessage(res.raw, testMsg); err != nil {
 		t.Error(err)
 	}
-	if res.StID == "" {
+	if res.stID == "" {
 		t.Errorf("unexpected stid")
 	}
 }
@@ -57,10 +57,10 @@ func TestRequestManager_Request_Cancel(t *testing.T) {
 	cancel()
 
 	res := <-resC
-	if res.Err != context.Canceled {
-		t.Errorf("unexpected error: %v", res.Err)
+	if res.err != context.Canceled {
+		t.Errorf("unexpected error: %v", res.err)
 	}
-	if res.StID != "" {
+	if res.stID != "" {
 		t.Errorf("unexpected stid")
 	}
 }
@@ -81,13 +81,13 @@ func TestRequestManager_Request_Retry(t *testing.T) {
 	time.Sleep(defTestSleep)
 
 	res := <-resC
-	if res.Err != nil {
-		t.Errorf("unexpected error: %v", res.Err)
+	if res.err != nil {
+		t.Errorf("unexpected error: %v", res.err)
 	}
-	if err := checkResponseMessage(res.Raw, testMsg); err != nil {
+	if err := checkResponseMessage(res.raw, testMsg); err != nil {
 		t.Error(err)
 	}
-	if res.StID == "" {
+	if res.stID == "" {
 		t.Errorf("unexpected stid")
 	}
 }
@@ -129,13 +129,13 @@ func TestRequestManager_RemoveStream(t *testing.T) {
 
 	// the request is rescheduled thus there is supposed to be no errors
 	res := <-resC
-	if res.Err != nil {
-		t.Errorf("unexpected error: %v", res.Err)
+	if res.err != nil {
+		t.Errorf("unexpected error: %v", res.err)
 	}
-	if err := checkResponseMessage(res.Raw, testMsg); err != nil {
+	if err := checkResponseMessage(res.raw, testMsg); err != nil {
 		t.Error(err)
 	}
-	if res.StID == "" {
+	if res.stID == "" {
 		t.Errorf("unexpected stid")
 	}
 
@@ -156,7 +156,7 @@ func TestRequestManager_UnknownDelivery(t *testing.T) {
 		}
 		return &syncpb.Response{
 			ReqId:    rid,
-			Response: nil,
+			response: nil,
 		}
 	}
 	ts := newTestSuite(delayF, respF, 3)
@@ -171,8 +171,8 @@ func TestRequestManager_UnknownDelivery(t *testing.T) {
 	// Since the reqID is not delivered, the result is not delivered to the request
 	// and be canceled
 	res := <-resC
-	if res.Err != context.Canceled {
-		t.Errorf("unexpected error: %v", res.Err)
+	if res.err != context.Canceled {
+		t.Errorf("unexpected error: %v", res.err)
 	}
 }
 
@@ -191,8 +191,8 @@ func TestRequestManager_StaleDelivery(t *testing.T) {
 	// Since the reqID is not delivered, the result is not delivered to the request
 	// and be canceled
 	res := <-resC
-	if res.Err != context.DeadlineExceeded {
-		t.Errorf("unexpected error: %v", res.Err)
+	if res.err != context.DeadlineExceeded {
+		t.Errorf("unexpected error: %v", res.err)
 	}
 }
 
@@ -211,7 +211,7 @@ func TestRequestManager_Close(t *testing.T) {
 	// Since the reqID is not delivered, the result is not delivered to the request
 	// and be canceled
 	res := <-resC
-	if assErr := assertError(res.Err, errors.New("request manager module closed")); assErr != nil {
+	if assErr := assertError(res.err, errors.New("request manager module closed")); assErr != nil {
 		t.Errorf("unexpected error: %v", assErr)
 	}
 }
@@ -241,14 +241,14 @@ func TestRequestManager_Concurrency(t *testing.T) {
 				resC := ts.rm.doRequestAsync(context.Background(), makeTestRequest(1000))
 				select {
 				case res := <-resC:
-					if res.Err == nil {
+					if res.err == nil {
 						atomic.AddUint64(&numReqs, 1)
 						continue
 					}
-					if res.Err.Error() == "request manager module closed" {
+					if res.err.Error() == "request manager module closed" {
 						return
 					}
-					aErr.Store(res.Err.Error())
+					aErr.Store(res.err.Error())
 				case <-stopC:
 					return
 				}
@@ -351,7 +351,7 @@ func makeDefaultResponseFunc(msg string) responseFunc {
 	return func(request *syncpb.Request) *syncpb.Response {
 		resp := &syncpb.Response{
 			ReqId: request.ReqId,
-			Response: &syncpb.Response_ErrorResponse{
+			response: &syncpb.Response_ErrorResponse{
 				ErrorResponse: &syncpb.ErrorResponse{
 					Error: msg,
 				},
