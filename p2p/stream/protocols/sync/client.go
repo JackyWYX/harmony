@@ -93,9 +93,10 @@ func (req *getBlocksByNumberRequest) IsSupportedByProto(target sttypes.ProtoSpec
 	return target.Version.GreaterThanOrEqual(minVersion)
 }
 
-// GetRequestMessage get the raw protobuf message ready for send
-func (req *getBlocksByNumberRequest) GetProtobufMsg() protobuf.Message {
-	return syncpb.MakeMessageFromRequest(req.msg)
+// Encode encode the request data to bytes with protobuf
+func (req *getBlocksByNumberRequest) Encode() ([]byte, error) {
+	msg := syncpb.MakeMessageFromRequest(req.msg)
+	return protobuf.Marshal(msg)
 }
 
 func (req *getBlocksByNumberRequest) getBlocksFromResponse(resp sttypes.Response) ([]*types.Block, error) {
@@ -162,7 +163,8 @@ func (req *getEpochBlockRequest) IsSupportedByProto(target sttypes.ProtoSpec) bo
 	return target.Version.GreaterThanOrEqual(minVersion)
 }
 
-// GetRequestMessage get the raw protobuf message ready for send
-func (req *getEpochBlockRequest) GetProtobufMsg() protobuf.Message {
-	return syncpb.MakeMessageFromRequest(req.msg)
+// Encode encode the request to bytes with protobuf
+func (req *getEpochBlockRequest) Encode() ([]byte, error) {
+	msg := syncpb.MakeMessageFromRequest(req.msg)
+	return protobuf.Marshal(msg)
 }

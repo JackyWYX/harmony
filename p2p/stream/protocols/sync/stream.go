@@ -62,7 +62,7 @@ func (st *syncStream) run() {
 // readMsgLoop is the loop
 func (st *syncStream) readMsgLoop() {
 	for {
-		msg, err := st.ReadMsg()
+		msg, err := st.readMsg()
 		if err != nil {
 			if err := st.Close(); err != nil {
 				st.logger.Err(err).Msg("failed to close sync stream")
@@ -169,7 +169,7 @@ func (st *syncStream) handleReq(req *syncpb.Request) error {
 	}
 	// unsupported request type
 	resp := syncpb.MakeErrorResponseMessage(req.ReqId, errUnknownReqType)
-	return st.WriteMsg(resp)
+	return st.writeMsg(resp)
 }
 
 func (st *syncStream) handleGetBlocksByNumRequest(rid uint64, req *syncpb.GetBlocksByNumRequest) error {
@@ -177,7 +177,7 @@ func (st *syncStream) handleGetBlocksByNumRequest(rid uint64, req *syncpb.GetBlo
 	if resp == nil && err != nil {
 		resp = syncpb.MakeErrorResponseMessage(rid, err)
 	}
-	if writeErr := st.WriteMsg(resp); writeErr != nil {
+	if writeErr := st.writeMsg(resp); writeErr != nil {
 		if err == nil {
 			err = writeErr
 		} else {
@@ -192,7 +192,7 @@ func (st *syncStream) handleEpochStateRequest(rid uint64, req *syncpb.GetEpochSt
 	if resp == nil && err != nil {
 		resp = syncpb.MakeErrorResponseMessage(rid, err)
 	}
-	if writeErr := st.WriteMsg(resp); writeErr != nil {
+	if writeErr := st.writeMsg(resp); writeErr != nil {
 		if err == nil {
 			err = writeErr
 		} else {
@@ -204,6 +204,26 @@ func (st *syncStream) handleEpochStateRequest(rid uint64, req *syncpb.GetEpochSt
 
 func (st *syncStream) handleResp(resp *syncpb.Response) {
 	st.protocol.rm.DeliverResponse(st.ID(), &syncResponse{resp})
+}
+
+func (st *syncStream) readMsg() (*syncpb.Message, error) {
+	b, err := st.ReadBytes()
+	if err != nil {
+		return nil, err
+	}
+	var msg = &syncpb.Message{}
+	if err := protobuf.Unmarshal(b, msg); err != nil {
+		return nil, err
+	}
+	return msg, nil
+}
+
+func (st *syncStream) writeMsg(msg *syncpb.Message) error {
+	b, err := protobuf.Marshal(msg)
+	if err != nil {
+		return err
+	}
+	return st.WriteBytes(b)
 }
 
 func (st *syncStream) computeRespFromBlockNumber(rid uint64, bns []uint64) (*syncpb.Message, error) {
