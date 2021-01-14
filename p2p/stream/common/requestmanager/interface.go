@@ -9,7 +9,7 @@ import (
 
 // Requester is the interface to do request
 type Requester interface {
-	DoRequest(ctx context.Context, request sttypes.Request) (sttypes.Response, sttypes.StreamID, error)
+	DoRequest(ctx context.Context, request sttypes.Request, options ...RequestOption) (sttypes.Response, sttypes.StreamID, error)
 }
 
 // Deliverer is the interface to deliver a response

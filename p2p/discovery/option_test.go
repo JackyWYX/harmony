@@ -38,25 +38,25 @@ func init() {
 
 func TestDHTOption_getLibp2pRawOptions(t *testing.T) {
 	tests := []struct {
-		opt    DHTOption
+		opt    DHTConfig
 		expLen int
 		expErr error
 	}{
 		{
-			opt: DHTOption{
+			opt: DHTConfig{
 				BootNodes: testAddrList,
 			},
 			expLen: 1,
 		},
 		{
-			opt: DHTOption{
+			opt: DHTConfig{
 				BootNodes:     testAddrList,
 				DataStoreFile: &validPath,
 			},
 			expLen: 2,
 		},
 		{
-			opt: DHTOption{
+			opt: DHTConfig{
 				BootNodes:     testAddrList,
 				DataStoreFile: &emptyFile,
 			},

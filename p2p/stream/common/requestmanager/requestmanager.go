@@ -84,17 +84,21 @@ func (rm *requestManager) Close() {
 
 // DoRequest do the given request with a stream picked randomly. Return the response, stream id that
 // is responsible for response, delivery and error.
-func (rm *requestManager) DoRequest(ctx context.Context, raw sttypes.Request) (sttypes.Response, sttypes.StreamID, error) {
-	resp := <-rm.doRequestAsync(ctx, raw)
+func (rm *requestManager) DoRequest(ctx context.Context, raw sttypes.Request, options ...RequestOption) (sttypes.Response, sttypes.StreamID, error) {
+	resp := <-rm.doRequestAsync(ctx, raw, options...)
 	return resp.raw, resp.stID, resp.err
 }
 
-func (rm *requestManager) doRequestAsync(ctx context.Context, raw sttypes.Request) <-chan response {
+func (rm *requestManager) doRequestAsync(ctx context.Context, raw sttypes.Request, options ...RequestOption) <-chan response {
 	req := &request{
 		Request: raw,
 		respC:   make(chan deliverData),
 		waitCh:  make(chan struct{}),
 	}
+	for _, opt := range options {
+		opt(req)
+	}
+
 	ctx, _ = context.WithTimeout(ctx, reqTimeOut)
 	rm.newRequestC <- req
 
@@ -222,7 +226,7 @@ func (rm *requestManager) handleNewRequest(req *request) bool {
 	rm.lock.Lock()
 	defer rm.lock.Unlock()
 
-	err := rm.addNewRequestToWaitings(req, reqPriorityLow)
+	err := rm.addRequestToWaitings(req, reqPriorityLow)
 	if err != nil {
 		rm.logger.Warn().Err(err).Msg("failed to add new request to waitings")
 		req.err = errors.Wrap(err, "failed to add new request to waitings")
@@ -288,7 +292,7 @@ func (rm *requestManager) handleRetryRequest(reqID uint64) bool {
 	}
 	rm.removePendingRequest(req)
 
-	if err := rm.addNewRequestToWaitings(req, reqPriorityHigh); err != nil {
+	if err := rm.addRequestToWaitings(req, reqPriorityMed); err != nil {
 		rm.logger.Warn().Err(err).Msg("cannot add request to waitings during retry")
 		req.err = errors.Wrap(err, "cannot add request to waitings during retry")
 		req.respC <- deliverData{}
@@ -301,14 +305,14 @@ func (rm *requestManager) getNextRequest() (*request, *stream) {
 	rm.lock.Lock()
 	defer rm.lock.Unlock()
 
-	req := rm.waitings.pop()
+	req := rm.waitings.Pop()
 	if req == nil {
 		return nil, nil
 	}
 	st, err := rm.pickAvailableStream(req)
 	if err != nil {
 		rm.logger.Debug().Msg("No available streams.")
-		rm.addNewRequestToWaitings(req, reqPriorityHigh)
+		rm.addRequestToWaitings(req, reqPriorityHigh)
 		return nil, nil
 	}
 	return req, st
@@ -390,7 +394,7 @@ func (rm *requestManager) removeStream(id sttypes.StreamID) bool {
 	cleared := st.clearPendingRequest()
 	if cleared != nil {
 		cleared.clearOwner()
-		if err := rm.addNewRequestToWaitings(cleared, reqPriorityHigh); err != nil {
+		if err := rm.addRequestToWaitings(cleared, reqPriorityMed); err != nil {
 			rm.logger.Err(err).Msg("cannot add new request to waitings in removeStream")
 			return false
 		}
@@ -424,15 +428,10 @@ type reqPriority int
 
 const (
 	reqPriorityLow reqPriority = iota
+	reqPriorityMed
 	reqPriorityHigh
 )
 
-func (rm *requestManager) addNewRequestToWaitings(req *request, priority reqPriority) error {
-	switch priority {
-	case reqPriorityHigh:
-		return rm.waitings.pushFront(req)
-	case reqPriorityLow:
-		return rm.waitings.pushBack(req)
-	}
-	return nil
+func (rm *requestManager) addRequestToWaitings(req *request, priority reqPriority) error {
+	return rm.waitings.Push(req, priority)
 }

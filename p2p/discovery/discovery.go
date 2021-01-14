@@ -32,14 +32,14 @@ type dhtDiscovery struct {
 	disc discovery.Discovery
 	host libp2p_host.Host
 
-	opt    DHTOption
+	opt    DHTConfig
 	logger zerolog.Logger
 	ctx    context.Context
 	cancel func()
 }
 
 // NewDHTDiscovery creates a new dhtDiscovery that implements Discovery interface.
-func NewDHTDiscovery(host libp2p_host.Host, opt DHTOption) (Discovery, error) {
+func NewDHTDiscovery(host libp2p_host.Host, opt DHTConfig) (Discovery, error) {
 	opts, err := opt.getLibp2pRawOptions()
 	if err != nil {
 		return nil, err

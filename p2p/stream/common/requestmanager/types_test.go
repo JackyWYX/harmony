@@ -9,25 +9,52 @@ import (
 	"github.com/pkg/errors"
 )
 
-func TestRequestQueue_pushBack(t *testing.T) {
+func TestRequestQueue_Push(t *testing.T) {
 	tests := []struct {
-		initSize int
+		initSize []int
+		priority reqPriority
+		expSize  []int
 		expErr   error
 	}{
 		{
-			initSize: 10,
+			initSize: []int{10, 10, 10},
+			priority: reqPriorityHigh,
+			expSize:  []int{11, 10, 10},
 			expErr:   nil,
 		},
 		{
-			initSize: maxWaitingSize,
+			initSize: []int{10, 10, 10},
+			priority: reqPriorityMed,
+			expSize:  []int{10, 11, 10},
+			expErr:   nil,
+		},
+		{
+			initSize: []int{10, 10, 10},
+			priority: reqPriorityLow,
+			expSize:  []int{10, 10, 11},
+			expErr:   nil,
+		},
+		{
+			initSize: []int{maxWaitingSize, maxWaitingSize, maxWaitingSize},
+			priority: reqPriorityLow,
+			expErr:   ErrQueueFull,
+		},
+		{
+			initSize: []int{maxWaitingSize, maxWaitingSize, maxWaitingSize},
+			priority: reqPriorityMed,
+			expErr:   ErrQueueFull,
+		},
+		{
+			initSize: []int{maxWaitingSize, maxWaitingSize, maxWaitingSize},
+			priority: reqPriorityHigh,
 			expErr:   ErrQueueFull,
 		},
 	}
 	for i, test := range tests {
 		q := makeTestRequestQueue(test.initSize)
-		req := wrapRequestFromRaw(makeTestRequest(uint64(test.initSize)))
+		req := wrapRequestFromRaw(makeTestRequest(100))
 
-		err := q.pushBack(req)
+		err := q.Push(req, test.priority)
 		if assErr := assertError(err, test.expErr); assErr != nil {
 			t.Errorf("Test %v: %v", i, assErr)
 		}
@@ -35,101 +62,49 @@ func TestRequestQueue_pushBack(t *testing.T) {
 			continue
 		}
 
-		if q.reqs.Len() != test.initSize+1 {
-			t.Errorf("size unexpected: %v/%v", q.reqs.Len(), test.initSize+1)
-		}
-		raw, err := getTestRequestFromElem(q.reqs.Back())
-		if err != nil {
-			t.Error(err)
-		}
-		if raw.index != uint64(test.initSize) {
-			t.Errorf("unexpected index at back: %v/%v", raw.index, test.initSize)
+		if err := q.checkSizes(test.expSize); err != nil {
+			t.Errorf("Test %v: %v", i, err)
 		}
 	}
 }
 
-func TestRequestQueue_pushFront(t *testing.T) {
+func TestRequestQueue_Pop(t *testing.T) {
 	tests := []struct {
-		initSize int
-		expErr   error
+		initSizes []int
+		expNil    bool
+		expIndex  uint64
+		expSizes  []int
 	}{
 		{
-			initSize: 10,
-			expErr:   nil,
+			initSizes: []int{10, 10, 10},
+			expNil:    false,
+			expIndex:  0,
+			expSizes:  []int{9, 10, 10},
 		},
 		{
-			initSize: maxWaitingSize,
-			expErr:   ErrQueueFull,
+			initSizes: []int{0, 10, 10},
+			expNil:    false,
+			expIndex:  0,
+			expSizes:  []int{0, 9, 10},
+		},
+		{
+			initSizes: []int{0, 0, 10},
+			expNil:    false,
+			expIndex:  0,
+			expSizes:  []int{0, 0, 9},
+		},
+		{
+			initSizes: []int{0, 0, 0},
+			expNil:    true,
+			expSizes:  []int{0, 0, 0},
 		},
 	}
 	for i, test := range tests {
-		q := makeTestRequestQueue(test.initSize)
-		req := wrapRequestFromRaw(makeTestRequest(uint64(test.initSize)))
+		q := makeTestRequestQueue(test.initSizes)
+		req := q.Pop()
 
-		err := q.pushFront(req)
-		if assErr := assertError(err, test.expErr); assErr != nil {
-			t.Errorf("Test %v: %v", i, assErr)
-		}
-		if err != nil || test.expErr != nil {
-			continue
-		}
-
-		if q.reqs.Len() != test.initSize+1 {
-			t.Errorf("size unexpected: %v/%v", q.reqs.Len(), test.initSize+1)
-		}
-		raw, err := getTestRequestFromElem(q.reqs.Front())
-		if err != nil {
-			t.Error(err)
-		}
-		if raw.index != uint64(test.initSize) {
-			t.Errorf("unexpected index at back: %v/%v", raw.index, test.initSize)
-		}
-	}
-}
-
-func TestRequestQueue_pop(t *testing.T) {
-	tests := []struct {
-		q        requestQueue
-		expNil   bool
-		expIndex int
-		expLen   int
-	}{
-		{
-			q:      newRequestQueue(),
-			expNil: true,
-			expLen: 0,
-		},
-		{
-			q:        makeTestRequestQueue(10),
-			expIndex: 0,
-			expLen:   9,
-		},
-		{
-			q: func() requestQueue {
-				q := newRequestQueue()
-				req := wrapRequestFromRaw(makeTestRequest(10))
-				q.pushBack(req)
-				return q
-			}(),
-			expIndex: 10,
-			expLen:   0,
-		},
-		{
-			q: func() requestQueue {
-				q := makeTestRequestQueue(9)
-				req := wrapRequestFromRaw(makeTestRequest(10))
-				q.pushFront(req)
-				return q
-			}(),
-			expIndex: 10,
-			expLen:   9,
-		},
-	}
-	for i, test := range tests {
-		req := test.q.pop()
-
-		if test.q.reqs.Len() != test.expLen {
-			t.Errorf("Test %v: unepxected size: %v / %v", i, test.q.reqs.Len(), test.expLen)
+		if err := q.checkSizes(test.expSizes); err != nil {
+			t.Errorf("Test %v: %v", i, err)
 		}
 		if req == nil != (test.expNil) {
 			t.Errorf("test %v: unpected nil", i)
@@ -138,16 +113,30 @@ func TestRequestQueue_pop(t *testing.T) {
 			continue
 		}
 		index := req.Request.(*testRequest).index
-		if index != uint64(test.expIndex) {
-			t.Errorf("Test %v: unexpted index: %v / %v", i, index, test.expIndex)
+		if index != test.expIndex {
+			t.Errorf("Test %v: unexpected index: %v / %v", i, index, test.expIndex)
 		}
 	}
 }
 
-func makeTestRequestQueue(size int) requestQueue {
-	q := requestQueue{reqs: list.New()}
-	for i := 0; i != size; i++ {
-		q.reqs.PushBack(wrapRequestFromRaw(makeTestRequest(uint64(i))))
+func makeTestRequestQueue(sizes []int) requestQueue {
+	if len(sizes) != 3 {
+		panic("unexpected sizes")
+	}
+	q := newRequestQueue()
+
+	index := 0
+	for i := 0; i != sizes[0]; i++ {
+		q.reqsPHigh.PushBack(wrapRequestFromRaw(makeTestRequest(uint64(index))))
+		index++
+	}
+	for i := 0; i != sizes[1]; i++ {
+		q.reqsPMedium.PushBack(wrapRequestFromRaw(makeTestRequest(uint64(index))))
+		index++
+	}
+	for i := 0; i != sizes[2]; i++ {
+		q.reqsPLow.PushBack(wrapRequestFromRaw(makeTestRequest(uint64(index))))
+		index++
 	}
 	return q
 }
@@ -168,6 +157,22 @@ func getTestRequestFromElem(elem *list.Element) (*testRequest, error) {
 		return nil, errors.New("unexpected raw types")
 	}
 	return raw, nil
+}
+
+func (q *requestQueue) checkSizes(sizes []int) error {
+	if len(sizes) != 3 {
+		panic("expect 3 sizes")
+	}
+	if q.reqsPHigh.Len() != sizes[0] {
+		return fmt.Errorf("high priority %v / %v", q.reqsPHigh.Len(), sizes[0])
+	}
+	if q.reqsPMedium.Len() != sizes[1] {
+		return fmt.Errorf("medium priority %v / %v", q.reqsPMedium.Len(), sizes[1])
+	}
+	if q.reqsPLow.Len() != sizes[2] {
+		return fmt.Errorf("low priority %v / %v", q.reqsPLow.Len(), sizes[2])
+	}
+	return nil
 }
 
 func assertError(got, exp error) error {

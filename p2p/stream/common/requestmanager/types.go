@@ -36,6 +36,9 @@ type request struct {
 	// utils
 	lock sync.RWMutex
 	raw  *interface{}
+	// options
+	priority  reqPriority
+	blacklist []sttypes.StreamID // list of banned streams
 }
 
 func (req *request) clearOwner() {
@@ -79,47 +82,64 @@ type response struct {
 
 // requestQueue is a wrapper of double linked list with Request as type
 type requestQueue struct {
-	reqs *list.List
-	lock sync.Mutex
+	reqsPHigh   *list.List // high priority, currently defined by upper function calls
+	reqsPMedium *list.List // medium priority, referring to the retrying requests
+	reqsPLow    *list.List // low priority, applied to all normal requests
+	lock        sync.Mutex
 }
 
 func newRequestQueue() requestQueue {
 	return requestQueue{
-		reqs: list.New(),
+		reqsPHigh:   list.New(),
+		reqsPMedium: list.New(),
+		reqsPLow:    list.New(),
 	}
 }
 
-func (q *requestQueue) pushBack(req *request) error {
+// Push add a new request to requestQueue.
+func (q *requestQueue) Push(req *request, priority reqPriority) error {
 	q.lock.Lock()
 	defer q.lock.Unlock()
 
-	if q.reqs.Len() >= maxWaitingSize {
-		return ErrQueueFull
+	if priority == reqPriorityHigh || req.priority == reqPriorityHigh {
+		return pushRequestToList(q.reqsPHigh, req)
 	}
-	q.reqs.PushBack(req)
+	if priority == reqPriorityMed || req.priority == reqPriorityMed {
+		return pushRequestToList(q.reqsPMedium, req)
+	}
+	if priority == reqPriorityLow {
+		return pushRequestToList(q.reqsPLow, req)
+	}
 	return nil
 }
 
-func (q *requestQueue) pushFront(req *request) error {
+// Pop will first pop the request from high priority, and then pop from low priority
+func (q *requestQueue) Pop() *request {
 	q.lock.Lock()
 	defer q.lock.Unlock()
 
-	if q.reqs.Len() >= maxWaitingSize {
+	if req := popRequestFromList(q.reqsPHigh); req != nil {
+		return req
+	}
+	if req := popRequestFromList(q.reqsPMedium); req != nil {
+		return req
+	}
+	return popRequestFromList(q.reqsPLow)
+}
+
+func pushRequestToList(l *list.List, req *request) error {
+	if l.Len() >= maxWaitingSize {
 		return ErrQueueFull
 	}
-	q.reqs.PushFront(req)
+	l.PushBack(req)
 	return nil
 }
 
-// Note: pop might return nil
-func (q *requestQueue) pop() *request {
-	q.lock.Lock()
-	defer q.lock.Unlock()
-
-	elem := q.reqs.Front()
+func popRequestFromList(l *list.List) *request {
+	elem := l.Front()
 	if elem == nil {
 		return nil
 	}
-	q.reqs.Remove(elem)
+	l.Remove(elem)
 	return elem.Value.(*request)
 }

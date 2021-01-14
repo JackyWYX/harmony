@@ -103,7 +103,7 @@ func NewHost(cfg HostConfig) (Host, error) {
 		return nil, errors.Wrapf(err, "cannot initialize libp2p host")
 	}
 
-	disc, err := discovery.NewDHTDiscovery(p2pHost, discovery.DHTOption{
+	disc, err := discovery.NewDHTDiscovery(p2pHost, discovery.DHTConfig{
 		BootNodes:     cfg.BootNodes,
 		DataStoreFile: cfg.DataStoreFile,
 	})

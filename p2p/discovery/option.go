@@ -8,15 +8,15 @@ import (
 	libp2p_dht "github.com/libp2p/go-libp2p-kad-dht"
 )
 
-// DHTOption is the configurable DHT options.
+// DHTConfig is the configurable DHT options.
 // For normal nodes, only BootNodes field need to be specified.
-type DHTOption struct {
+type DHTConfig struct {
 	BootNodes     []libp2p_peer.AddrInfo
 	DataStoreFile *string // File path to store DHT data. Shall be only used for bootstrap nodes.
 }
 
 // getLibp2pRawOptions get the raw libp2p options as a slice.
-func (opt DHTOption) getLibp2pRawOptions() ([]libp2p_dht.Option, error) {
+func (opt DHTConfig) getLibp2pRawOptions() ([]libp2p_dht.Option, error) {
 	var opts []libp2p_dht.Option
 
 	bootOption, err := getBootstrapOption(opt.BootNodes)

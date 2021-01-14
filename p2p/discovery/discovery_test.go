@@ -14,7 +14,7 @@ func TestNewDHTDiscovery(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = NewDHTDiscovery(host, DHTOption{})
+	_, err = NewDHTDiscovery(host, DHTConfig{})
 	if err != nil {
 		t.Fatal(err)
 	}
