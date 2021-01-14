@@ -25,7 +25,7 @@ func TestRequestQueue_pushBack(t *testing.T) {
 	}
 	for i, test := range tests {
 		q := makeTestRequestQueue(test.initSize)
-		req := wrapRequestFromRaw(makeTestRequest(test.initSize))
+		req := wrapRequestFromRaw(makeTestRequest(uint64(test.initSize)))
 
 		err := q.pushBack(req)
 		if assErr := assertError(err, test.expErr); assErr != nil {
@@ -42,7 +42,7 @@ func TestRequestQueue_pushBack(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
-		if raw.index != test.initSize {
+		if raw.index != uint64(test.initSize) {
 			t.Errorf("unexpected index at back: %v/%v", raw.index, test.initSize)
 		}
 	}
@@ -64,7 +64,7 @@ func TestRequestQueue_pushFront(t *testing.T) {
 	}
 	for i, test := range tests {
 		q := makeTestRequestQueue(test.initSize)
-		req := wrapRequestFromRaw(makeTestRequest(test.initSize))
+		req := wrapRequestFromRaw(makeTestRequest(uint64(test.initSize)))
 
 		err := q.pushFront(req)
 		if assErr := assertError(err, test.expErr); assErr != nil {
@@ -81,7 +81,7 @@ func TestRequestQueue_pushFront(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
-		if raw.index != test.initSize {
+		if raw.index != uint64(test.initSize) {
 			t.Errorf("unexpected index at back: %v/%v", raw.index, test.initSize)
 		}
 	}
@@ -138,7 +138,7 @@ func TestRequestQueue_pop(t *testing.T) {
 			continue
 		}
 		index := req.Request.(*testRequest).index
-		if index != test.expIndex {
+		if index != uint64(test.expIndex) {
 			t.Errorf("Test %v: unexpted index: %v / %v", i, index, test.expIndex)
 		}
 	}
@@ -147,7 +147,7 @@ func TestRequestQueue_pop(t *testing.T) {
 func makeTestRequestQueue(size int) requestQueue {
 	q := requestQueue{reqs: list.New()}
 	for i := 0; i != size; i++ {
-		q.reqs.PushBack(wrapRequestFromRaw(makeTestRequest(i)))
+		q.reqs.PushBack(wrapRequestFromRaw(makeTestRequest(uint64(i))))
 	}
 	return q
 }

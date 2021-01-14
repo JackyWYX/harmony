@@ -6,7 +6,6 @@ import (
 	"sync"
 	"time"
 
-	protobuf "github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 
@@ -156,9 +155,14 @@ func (rm *requestManager) loop() {
 					break loop
 				}
 				rm.addPendingRequest(req, st)
+				b, err := req.Encode()
+				if err != nil {
+					rm.logger.Warn().Str("request", req.String()).Err(err).
+						Msg("request encode error")
+				}
 
-				go func(reqID uint64, reqMsg protobuf.Message) {
-					if err := st.WriteMsg(reqMsg); err != nil {
+				go func(reqID uint64) {
+					if err := st.WriteBytes(b); err != nil {
 						rm.logger.Warn().Str("streamID", string(st.ID())).Err(err).
 							Msg("failed to send request")
 						// TODO: Decide whether we also need to close the stream here based
@@ -174,7 +178,7 @@ func (rm *requestManager) loop() {
 							// request cancelled or response received. Do nothing and return
 						}
 					}()
-				}(req.ReqID(), req.GetProtobufMsg())
+				}(req.ReqID())
 			}
 
 		case req := <-rm.newRequestC:

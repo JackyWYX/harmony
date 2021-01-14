@@ -6,11 +6,8 @@ import (
 	"time"
 
 	"github.com/libp2p/go-libp2p-core/discovery"
-
 	libp2p_peer "github.com/libp2p/go-libp2p-core/peer"
 )
-
-const myProtoSpec = "sync/unitest/0/1.0.0"
 
 func TestProtocol_Match(t *testing.T) {
 	tests := []struct {

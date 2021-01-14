@@ -12,11 +12,16 @@ message Request {
   uint64 req_id = 1;
   oneof request {
     GetBlocksByNumRequest get_blocks_by_num_request = 2;
+    GetEpochStateRequest get_epoch_state_request = 3;
   }
 }
 
 message GetBlocksByNumRequest {
   repeated uint64 nums = 1 [packed=true];
+}
+
+message GetEpochStateRequest {
+  uint64 epoch = 1;
 }
 
 
@@ -25,13 +30,19 @@ message Response {
   oneof response {
       ErrorResponse error_response = 2;
       GetBlocksByNumResponse get_blocks_by_num_response = 3;
+      GetEpochStateResponse get_epoch_state_response = 4;
   }
 }
 
 message GetBlocksByNumResponse {
-  repeated bytes blocks = 1;
+  repeated bytes blocks_bytes = 1;
 }
 
 message ErrorResponse {
   string error = 1;
+}
+
+message GetEpochStateResponse {
+  bytes header_bytes = 1;
+  bytes shard_state = 2;
 }

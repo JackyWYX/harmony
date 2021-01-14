@@ -5,9 +5,8 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/rs/zerolog"
-
 	"github.com/harmony-one/harmony/shard"
+	"github.com/rs/zerolog"
 )
 
 // Header defines the block header interface.

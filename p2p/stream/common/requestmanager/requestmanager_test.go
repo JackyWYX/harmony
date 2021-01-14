@@ -2,15 +2,11 @@ package requestmanager
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
-	protobuf "github.com/golang/protobuf/proto"
-
-	"github.com/harmony-one/harmony/p2p/stream/sync/syncpb"
 	sttypes "github.com/harmony-one/harmony/p2p/stream/types"
 	"github.com/pkg/errors"
 )
@@ -22,19 +18,20 @@ var (
 // Request is delivered right away as expected
 func TestRequestManager_Request_Normal(t *testing.T) {
 	delayF := makeDefaultDelayFunc(150 * time.Millisecond)
-	respF := makeDefaultResponseFunc(testMsg)
+	respF := makeDefaultResponseFunc()
 	ts := newTestSuite(delayF, respF, 3)
 	ts.Start()
 	defer ts.Close()
 
+	req := makeTestRequest(100)
 	ctx, _ := context.WithTimeout(context.Background(), 1*time.Second)
-	res := <-ts.rm.doRequestAsync(ctx, makeTestRequest(0))
+	res := <-ts.rm.doRequestAsync(ctx, req)
 
 	if res.err != nil {
 		t.Errorf("unexpected error: %v", res.err)
 		return
 	}
-	if err := checkResponseMessage(res.raw, testMsg); err != nil {
+	if err := req.checkResponse(res.raw); err != nil {
 		t.Error(err)
 	}
 	if res.stID == "" {
@@ -45,13 +42,14 @@ func TestRequestManager_Request_Normal(t *testing.T) {
 // The request is canceled by context
 func TestRequestManager_Request_Cancel(t *testing.T) {
 	delayF := makeDefaultDelayFunc(500 * time.Millisecond)
-	respF := makeDefaultResponseFunc(testMsg)
+	respF := makeDefaultResponseFunc()
 	ts := newTestSuite(delayF, respF, 3)
 	ts.Start()
 	defer ts.Close()
 
+	req := makeTestRequest(100)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	resC := ts.rm.doRequestAsync(ctx, makeTestRequest(0))
+	resC := ts.rm.doRequestAsync(ctx, req)
 
 	time.Sleep(defTestSleep)
 	cancel()
@@ -69,14 +67,15 @@ func TestRequestManager_Request_Cancel(t *testing.T) {
 func TestRequestManager_Request_Retry(t *testing.T) {
 	// Block for first try and
 	delayF := makeOnceBlockDelayFunc(150 * time.Millisecond)
-	respF := makeDefaultResponseFunc(testMsg)
+	respF := makeDefaultResponseFunc()
 
 	ts := newTestSuite(delayF, respF, 3)
 	ts.Start()
 	defer ts.Close()
 
+	req := makeTestRequest(100)
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-	resC := ts.rm.doRequestAsync(ctx, makeTestRequest(0))
+	resC := ts.rm.doRequestAsync(ctx, req)
 
 	time.Sleep(defTestSleep)
 
@@ -84,7 +83,7 @@ func TestRequestManager_Request_Retry(t *testing.T) {
 	if res.err != nil {
 		t.Errorf("unexpected error: %v", res.err)
 	}
-	if err := checkResponseMessage(res.raw, testMsg); err != nil {
+	if err := req.checkResponse(res.raw); err != nil {
 		t.Error(err)
 	}
 	if res.stID == "" {
@@ -95,7 +94,7 @@ func TestRequestManager_Request_Retry(t *testing.T) {
 // error happens when adding request to waiting list
 func TestRequestManager_NewStream(t *testing.T) {
 	delayF := makeDefaultDelayFunc(500 * time.Millisecond)
-	respF := makeDefaultResponseFunc(testMsg)
+	respF := makeDefaultResponseFunc()
 	ts := newTestSuite(delayF, respF, 3)
 	ts.Start()
 	defer ts.Close()
@@ -114,13 +113,14 @@ func TestRequestManager_NewStream(t *testing.T) {
 // For request assigned to the stream being removed, the request will be rescheduled.
 func TestRequestManager_RemoveStream(t *testing.T) {
 	delayF := makeOnceBlockDelayFunc(150 * time.Millisecond)
-	respF := makeDefaultResponseFunc(testMsg)
+	respF := makeDefaultResponseFunc()
 	ts := newTestSuite(delayF, respF, 3)
 	ts.Start()
 	defer ts.Close()
 
+	req := makeTestRequest(100)
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-	resC := ts.rm.doRequestAsync(ctx, makeTestRequest(0))
+	resC := ts.rm.doRequestAsync(ctx, req)
 	time.Sleep(defTestSleep)
 
 	// remove the stream which is responsible for the request
@@ -132,7 +132,7 @@ func TestRequestManager_RemoveStream(t *testing.T) {
 	if res.err != nil {
 		t.Errorf("unexpected error: %v", res.err)
 	}
-	if err := checkResponseMessage(res.raw, testMsg); err != nil {
+	if err := req.checkResponse(res.raw); err != nil {
 		t.Error(err)
 	}
 	if res.stID == "" {
@@ -149,22 +149,23 @@ func TestRequestManager_RemoveStream(t *testing.T) {
 // stream delivers an unknown request ID
 func TestRequestManager_UnknownDelivery(t *testing.T) {
 	delayF := makeDefaultDelayFunc(150 * time.Millisecond)
-	respF := func(req *syncpb.Request) *syncpb.Response {
+	respF := func(req *testRequest) *testResponse {
 		var rid uint64
-		for rid == req.ReqId {
+		for rid == req.reqID {
 			rid++
 		}
-		return &syncpb.Response{
-			ReqId:    rid,
-			response: nil,
+		return &testResponse{
+			reqID: rid,
+			index: 0,
 		}
 	}
 	ts := newTestSuite(delayF, respF, 3)
 	ts.Start()
 	defer ts.Close()
 
+	req := makeTestRequest(100)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	resC := ts.rm.doRequestAsync(ctx, makeTestRequest(0))
+	resC := ts.rm.doRequestAsync(ctx, req)
 	time.Sleep(6 * time.Second)
 	cancel()
 
@@ -179,13 +180,14 @@ func TestRequestManager_UnknownDelivery(t *testing.T) {
 // stream delivers a response for a canceled request
 func TestRequestManager_StaleDelivery(t *testing.T) {
 	delayF := makeDefaultDelayFunc(1 * time.Second)
-	respF := makeDefaultResponseFunc(testMsg)
+	respF := makeDefaultResponseFunc()
 	ts := newTestSuite(delayF, respF, 3)
 	ts.Start()
 	defer ts.Close()
 
+	req := makeTestRequest(100)
 	ctx, _ := context.WithTimeout(context.Background(), 100*time.Millisecond)
-	resC := ts.rm.doRequestAsync(ctx, makeTestRequest(0))
+	resC := ts.rm.doRequestAsync(ctx, req)
 	time.Sleep(2 * time.Second)
 
 	// Since the reqID is not delivered, the result is not delivered to the request
@@ -199,7 +201,7 @@ func TestRequestManager_StaleDelivery(t *testing.T) {
 // closing request manager will also close all
 func TestRequestManager_Close(t *testing.T) {
 	delayF := makeDefaultDelayFunc(1 * time.Second)
-	respF := makeDefaultResponseFunc(testMsg)
+	respF := makeDefaultResponseFunc()
 	ts := newTestSuite(delayF, respF, 3)
 	ts.Start()
 
@@ -223,7 +225,7 @@ func TestRequestManager_Concurrency(t *testing.T) {
 		numThreads   = 25
 	)
 	delayF := makeDefaultDelayFunc(100 * time.Millisecond)
-	respF := makeDefaultResponseFunc(testMsg)
+	respF := makeDefaultResponseFunc()
 	ts := newTestSuite(delayF, respF, 18)
 	ts.Start()
 
@@ -339,41 +341,32 @@ func (ts *testSuite) pickOneOccupiedStream() sttypes.StreamID {
 
 type (
 	// responseFunc is the function to compose a response
-	responseFunc func(request *syncpb.Request) *syncpb.Response
+	responseFunc func(request *testRequest) *testResponse
 
 	// delayFunc is the function to determine the delay to deliver a response
 	delayFunc func() time.Duration
 )
 
-const testMsg = "test message"
-
-func makeDefaultResponseFunc(msg string) responseFunc {
-	return func(request *syncpb.Request) *syncpb.Response {
-		resp := &syncpb.Response{
-			ReqId: request.ReqId,
-			response: &syncpb.Response_ErrorResponse{
-				ErrorResponse: &syncpb.ErrorResponse{
-					Error: msg,
-				},
-			},
+func makeDefaultResponseFunc() responseFunc {
+	return func(request *testRequest) *testResponse {
+		resp := &testResponse{
+			reqID: request.reqID,
+			index: request.index,
 		}
 		return resp
 	}
 }
 
-func checkResponseMessage(resp sttypes.Response, expStr string) error {
-	raw, ok := resp.GetProtobufMsg().(*syncpb.Response)
-	if !ok {
-		return errors.New("unexpected response type")
+func checkResponseMessage(request sttypes.Request, response sttypes.Response) error {
+	tReq, ok := request.(*testRequest)
+	if !ok || tReq == nil {
+		return errors.New("request not testRequest")
 	}
-	errResp, ok := raw.Response.(*syncpb.Response_ErrorResponse)
-	if !ok {
-		return errors.New("unexpected message type")
+	tResp, ok := response.(*testResponse)
+	if !ok || tResp == nil {
+		return errors.New("response not testResponse")
 	}
-	if errResp.ErrorResponse.Error != expStr {
-		return fmt.Errorf("unexpected error message %v/%v", errResp.ErrorResponse.Error, expStr)
-	}
-	return nil
+	return tReq.checkResponse(tResp)
 }
 
 func makeDefaultDelayFunc(delay time.Duration) delayFunc {
@@ -402,39 +395,16 @@ func (ts *testSuite) makeTestStream(index int) *testStream {
 	return &testStream{
 		id: stid,
 		rm: ts.rm,
-		deliver: func(req *syncpb.Request) {
+		deliver: func(req *testRequest) {
 			delay := ts.delayFunc()
 			resp := ts.respFunc(req)
 			go func() {
 				select {
 				case <-ts.ctx.Done():
 				case <-time.After(delay):
-					ts.rm.DeliverResponse(stid, &testResponse{resp})
+					ts.rm.DeliverResponse(stid, resp)
 				}
 			}()
 		},
 	}
-}
-
-// normalResponseComposer is the default response composer
-func normalResponseComposer(request *syncpb.Request) *syncpb.Response {
-	return &syncpb.Response{
-		ReqId: request.ReqId,
-	}
-}
-
-type testResponse struct {
-	pb *syncpb.Response
-}
-
-func (tr *testResponse) ReqID() uint64 {
-	return tr.pb.ReqId
-}
-
-func (tr *testResponse) String() string {
-	return "testResponse"
-}
-
-func (tr *testResponse) GetProtobufMsg() protobuf.Message {
-	return tr.pb
 }

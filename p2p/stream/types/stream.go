@@ -4,7 +4,6 @@ import (
 	"io/ioutil"
 	"sync"
 
-	protobuf "github.com/golang/protobuf/proto"
 	libp2p_network "github.com/libp2p/go-libp2p-core/network"
 )
 
@@ -14,7 +13,8 @@ type Stream interface {
 	ID() StreamID
 	ProtoID() ProtoID
 	ProtoSpec() (ProtoSpec, error)
-	WriteMsg(msg protobuf.Message) error
+	WriteBytes([]byte) error
+	ReadBytes() ([]byte, error)
 	Close() error // Make sure streams can handle multiple calls of Close
 }
 
@@ -62,25 +62,17 @@ func (st *BaseStream) Close() error {
 	return st.raw.Reset()
 }
 
-// WriteMsg write the protobuf message to the stream
-func (st *BaseStream) WriteMsg(msg protobuf.Message) error {
-	b, err := protobuf.Marshal(msg)
-	if err != nil {
-		return err
-	}
-	_, err = st.raw.Write(b)
+// WriteBytes write the bytes to the stream
+func (st *BaseStream) WriteBytes(b []byte) error {
+	_, err := st.raw.Write(b)
 	return err
 }
 
-// ReadMsg read the protobuf message from the stream
-func (st *BaseStream) ReadMsg() (protobuf.Message, error) {
+// ReadMsg read the bytes from the stream
+func (st *BaseStream) ReadBytes() ([]byte, error) {
 	b, err := ioutil.ReadAll(st.raw)
 	if err != nil {
 		return nil, err
 	}
-	var msg protobuf.Message
-	if err := protobuf.Unmarshal(b, msg); err != nil {
-		return nil, err
-	}
-	return msg, nil
+	return b, nil
 }

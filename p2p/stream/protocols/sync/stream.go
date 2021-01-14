@@ -5,14 +5,13 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ethereum/go-ethereum/rlp"
 	protobuf "github.com/golang/protobuf/proto"
+	syncpb "github.com/harmony-one/harmony/p2p/stream/protocols/sync/message"
+	sttypes "github.com/harmony-one/harmony/p2p/stream/types"
 	libp2p_network "github.com/libp2p/go-libp2p-core/network"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
-
-	"github.com/harmony-one/harmony/core/types"
-	"github.com/harmony-one/harmony/p2p/stream/sync/syncpb"
-	sttypes "github.com/harmony-one/harmony/p2p/stream/types"
 )
 
 // syncStream is the structure for a stream running sync protocol.
@@ -21,6 +20,7 @@ type syncStream struct {
 	*sttypes.BaseStream
 
 	protocol *Protocol
+	chain    chainHelper
 
 	// pipeline channels
 	reqC  chan *syncpb.Request
@@ -44,6 +44,7 @@ func (p *Protocol) wrapStream(raw libp2p_network.Stream) *syncStream {
 	return &syncStream{
 		BaseStream: bs,
 		protocol:   p,
+		chain:      newChainHelper(p.chain, p.schedule),
 		reqC:       make(chan *syncpb.Request, 100),
 		respC:      make(chan *syncpb.Response, 100),
 		closeC:     make(chan struct{}),
@@ -66,6 +67,8 @@ func (st *syncStream) readMsgLoop() {
 			if err := st.Close(); err != nil {
 				st.logger.Err(err).Msg("failed to close sync stream")
 			}
+			fmt.Println(err)
+			return
 		}
 		st.deliverMsg(msg)
 	}
@@ -105,7 +108,7 @@ func (st *syncStream) handleReqLoop() {
 	for {
 		select {
 		case req := <-st.reqC:
-			st.protocol.rl.LimitRequest(st.ID(), req)
+			st.protocol.rl.LimitRequest(st.ID())
 			err := st.handleReq(req)
 
 			if err != nil {
@@ -158,48 +161,76 @@ func (st *syncStream) Close() error {
 }
 
 func (st *syncStream) handleReq(req *syncpb.Request) error {
-
 	if bnReq := req.GetGetBlocksByNumRequest(); bnReq != nil {
-		resp, err := st.getRespFromBlockNumber(req.ReqId, bnReq.Nums)
-		if resp == nil && err != nil {
-			resp = syncpb.MakeErrorResponseMessage(req.ReqId, err)
-		}
-		if writeErr := st.WriteMsg(resp); writeErr != nil {
-			if err == nil {
-				err = writeErr
-			} else {
-				err = fmt.Errorf("%v; [writeMsg] %v", err.Error(), writeErr)
-			}
-		}
-		return errors.Wrap(err, "[GetBlocksByNumber]")
+		return st.handleGetBlocksByNumRequest(req.ReqId, bnReq)
+	}
+	if esReq := req.GetGetEpochStateRequest(); esReq != nil {
+		return st.handleEpochStateRequest(req.ReqId, esReq)
 	}
 	// unsupported request type
 	resp := syncpb.MakeErrorResponseMessage(req.ReqId, errUnknownReqType)
 	return st.WriteMsg(resp)
 }
 
+func (st *syncStream) handleGetBlocksByNumRequest(rid uint64, req *syncpb.GetBlocksByNumRequest) error {
+	resp, err := st.computeRespFromBlockNumber(rid, req.Nums)
+	if resp == nil && err != nil {
+		resp = syncpb.MakeErrorResponseMessage(rid, err)
+	}
+	if writeErr := st.WriteMsg(resp); writeErr != nil {
+		if err == nil {
+			err = writeErr
+		} else {
+			err = fmt.Errorf("%v; [writeMsg] %v", err.Error(), writeErr)
+		}
+	}
+	return errors.Wrap(err, "[GetBlocksByNumber]")
+}
+
+func (st *syncStream) handleEpochStateRequest(rid uint64, req *syncpb.GetEpochStateRequest) error {
+	resp, err := st.computeEpochStateResp(rid, req.Epoch)
+	if resp == nil && err != nil {
+		resp = syncpb.MakeErrorResponseMessage(rid, err)
+	}
+	if writeErr := st.WriteMsg(resp); writeErr != nil {
+		if err == nil {
+			err = writeErr
+		} else {
+			err = fmt.Errorf("%v; [writeMsg] %v", err.Error(), writeErr)
+		}
+	}
+	return errors.Wrap(err, "[GetEpochState]")
+}
+
 func (st *syncStream) handleResp(resp *syncpb.Response) {
 	st.protocol.rm.DeliverResponse(st.ID(), &syncResponse{resp})
 }
 
-const (
-	// GetBlocksByNumAmountCap is the cap of request of a single GetBlocksByNum request
-	GetBlocksByNumAmountCap = 10
-)
-
-func (st *syncStream) getRespFromBlockNumber(rid uint64, bns []uint64) (*syncpb.Message, error) {
+func (st *syncStream) computeRespFromBlockNumber(rid uint64, bns []uint64) (*syncpb.Message, error) {
 	if len(bns) > GetBlocksByNumAmountCap {
 		err := fmt.Errorf("GetBlocksByNum amount exceed cap: %v/%v", len(bns), GetBlocksByNumAmountCap)
 		return nil, err
 	}
-	blocks := make([]*types.Block, 0, len(bns))
-	for _, bn := range bns {
-		var block *types.Block
-		header := st.protocol.chain.GetHeaderByNumber(bn)
-		if header != nil {
-			block = st.protocol.chain.GetBlock(header.Hash(), header.Number().Uint64())
+	blocks := st.chain.getBlocks(bns)
+
+	blocksBytes := make([][]byte, 0, len(blocks))
+	for _, block := range blocks {
+		bb, err := rlp.EncodeToBytes(block)
+		if err != nil {
+			return nil, err
 		}
-		blocks = append(blocks, block)
+		blocksBytes = append(blocksBytes, bb)
 	}
-	return syncpb.MakeGetBlocksByNumResponse(rid, blocks)
+	return syncpb.MakeGetBlocksByNumResponseMessage(rid, blocksBytes)
+}
+
+func (st *syncStream) computeEpochStateResp(rid uint64, epoch uint64) (*syncpb.Message, error) {
+	if epoch == 0 {
+		return nil, errors.New("Epoch 0 does not have shard state")
+	}
+	esRes, err := st.chain.getEpochState(epoch)
+	if err != nil {
+		return nil, err
+	}
+	return esRes.toMessage(rid)
 }

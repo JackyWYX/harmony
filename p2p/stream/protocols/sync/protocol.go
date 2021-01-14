@@ -5,19 +5,19 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/hashicorp/go-version"
-	libp2p_host "github.com/libp2p/go-libp2p-core/host"
-	libp2p_network "github.com/libp2p/go-libp2p-core/network"
-	"github.com/rs/zerolog"
-
 	"github.com/harmony-one/harmony/consensus/engine"
 	nodeconfig "github.com/harmony-one/harmony/internal/configs/node"
+	shardingconfig "github.com/harmony-one/harmony/internal/configs/sharding"
 	"github.com/harmony-one/harmony/internal/utils"
 	"github.com/harmony-one/harmony/p2p/discovery"
 	"github.com/harmony-one/harmony/p2p/stream/common/ratelimiter"
 	"github.com/harmony-one/harmony/p2p/stream/common/requestmanager"
 	"github.com/harmony-one/harmony/p2p/stream/common/streammanager"
 	sttypes "github.com/harmony-one/harmony/p2p/stream/types"
+	"github.com/hashicorp/go-version"
+	libp2p_host "github.com/libp2p/go-libp2p-core/host"
+	libp2p_network "github.com/libp2p/go-libp2p-core/network"
+	"github.com/rs/zerolog"
 )
 
 const (
@@ -35,11 +35,12 @@ var (
 type (
 	// Protocol is the protocol for sync streaming
 	Protocol struct {
-		chain engine.ChainReader            // provide SYNC data
-		rl    ratelimiter.RateLimiter       // limit the incoming request rate
-		sm    streammanager.StreamManager   // stream management
-		rm    requestmanager.RequestManager // deliver the response from stream
-		disc  discovery.Discovery
+		chain    engine.ChainReader            // provide SYNC data
+		schedule shardingconfig.Schedule       // provide schedule information
+		rl       ratelimiter.RateLimiter       // limit the incoming request rate
+		sm       streammanager.StreamManager   // stream management
+		rm       requestmanager.RequestManager // deliver the response from stream
+		disc     discovery.Discovery
 
 		config Config
 		logger zerolog.Logger
@@ -102,6 +103,11 @@ func (p *Protocol) Specifier() string {
 // ProtoID return the ProtoID of the sync protocol
 func (p *Protocol) ProtoID() sttypes.ProtoID {
 	return p.protoIDByVersion(myVersion)
+}
+
+// Version returns the sync protocol version
+func (p *Protocol) Version() *version.Version {
+	return myVersion
 }
 
 // Match checks the compatibility to the target protocol ID.
@@ -167,4 +173,28 @@ func (p *Protocol) advertise() time.Duration {
 		}
 	}
 	return nextWait
+}
+
+func (p *Protocol) supportedProtoIDs() []sttypes.ProtoID {
+	vs := p.supportedVersions()
+
+	pids := make([]sttypes.ProtoID, 0, len(vs))
+	for _, v := range vs {
+		pids = append(pids, p.protoIDByVersion(v))
+	}
+	return pids
+}
+
+func (p *Protocol) supportedVersions() []*version.Version {
+	return []*version.Version{version100}
+}
+
+func (p *Protocol) protoIDByVersion(v *version.Version) sttypes.ProtoID {
+	spec := sttypes.ProtoSpec{
+		Service:     serviceSpecifier,
+		NetworkType: p.config.Network,
+		ShardID:     p.config.ShardID,
+		Version:     v,
+	}
+	return spec.ToProtoID()
 }

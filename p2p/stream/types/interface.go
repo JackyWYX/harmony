@@ -1,7 +1,6 @@
 package sttypes
 
 import (
-	protobuf "github.com/golang/protobuf/proto"
 	p2ptypes "github.com/harmony-one/harmony/p2p/types"
 	"github.com/hashicorp/go-version"
 	libp2p_network "github.com/libp2p/go-libp2p-core/network"
@@ -24,12 +23,11 @@ type Request interface {
 	SetReqID(rid uint64)
 	String() string
 	IsSupportedByProto(ProtoSpec) bool
-	GetProtobufMsg() protobuf.Message
+	Encode() ([]byte, error)
 }
 
 // Response is the interface of a stream response used for common stream utils
 type Response interface {
 	ReqID() uint64
 	String() string
-	GetProtobufMsg() protobuf.Message
 }
