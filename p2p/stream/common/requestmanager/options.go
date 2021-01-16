@@ -2,6 +2,10 @@ package requestmanager
 
 import sttypes "github.com/harmony-one/harmony/p2p/stream/types"
 
+// Request is the additional instruction for requests.
+// Currently, two options are supported:
+// 1. WithHighPriority
+// 2. WithBlacklist
 type RequestOption func(*request)
 
 // WithHighPriority is the request option to do request with higher priority.
@@ -12,9 +16,12 @@ func WithHighPriority() RequestOption {
 	}
 }
 
-// WithBlacklist is the request option to do request without the given stream
+// WithBlacklist is the request option not to assign the request to the blacklisted
+// stream ID.
 func WithBlacklist(blacklist []sttypes.StreamID) RequestOption {
 	return func(req *request) {
-		req.blacklist = append(req.blacklist, blacklist...)
+		for _, stid := range blacklist {
+			req.addBlacklistedStream(stid)
+		}
 	}
 }

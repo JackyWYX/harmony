@@ -6,6 +6,7 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 	protobuf "github.com/golang/protobuf/proto"
 	"github.com/harmony-one/harmony/block"
+	"github.com/harmony-one/harmony/p2p/stream/common/requestmanager"
 	syncpb "github.com/harmony-one/harmony/p2p/stream/protocols/sync/message"
 	sttypes "github.com/harmony-one/harmony/p2p/stream/types"
 	"github.com/harmony-one/harmony/shard"
@@ -89,3 +90,18 @@ func (res *EpochStateResult) toMessage(rid uint64) (*syncpb.Message, error) {
 	}
 	return syncpb.MakeGetEpochStateResponseMessage(rid, headerBytes, ssBytes), nil
 }
+
+// Option is the additional option to do requests.
+// Currently, two options are supported:
+//  1. WithHighPriority - do the request in high priority.
+//  2. WithBlacklist - do the request without the given stream ids as blacklist
+type Option = requestmanager.RequestOption
+
+var (
+	// WithHighPriority instruct the request manager to do the request with high
+	// priority
+	WithHighPriority = requestmanager.WithHighPriority
+	// WithBlacklist instruct the request manager not to assign the request to the
+	// given streamID
+	WithBlacklist = requestmanager.WithBlacklist
+)

@@ -195,8 +195,8 @@ func (rm *requestManager) loop() {
 			rm.handleDeliverData(data)
 
 		case reqID := <-rm.retryReqC:
-			added := rm.handleRetryRequest(reqID)
-			if added {
+			addedBacked := rm.handleRetryRequest(reqID)
+			if addedBacked {
 				throttle()
 			}
 
@@ -290,6 +290,10 @@ func (rm *requestManager) handleRetryRequest(reqID uint64) bool {
 	if !ok {
 		return false
 	}
+	// sanity check. If a request is done before, its owner must not be nil.
+	if req.owner != nil {
+		req.addBlacklistedStream(req.owner.ID())
+	}
 	rm.removePendingRequest(req)
 
 	if err := rm.addRequestToWaitings(req, reqPriorityMed); err != nil {
@@ -353,6 +357,9 @@ func (rm *requestManager) removePendingRequest(req *request) {
 
 func (rm *requestManager) pickAvailableStream(req *request) (*stream, error) {
 	for id := range rm.available {
+		if req.isStreamBlacklisted(id) {
+			continue
+		}
 		st, ok := rm.streams[id]
 		if !ok {
 			return nil, errors.New("sanity error: available stream not registered")

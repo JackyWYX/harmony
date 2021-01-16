@@ -38,7 +38,7 @@ type request struct {
 	raw  *interface{}
 	// options
 	priority  reqPriority
-	blacklist []sttypes.StreamID // list of banned streams
+	blacklist map[sttypes.StreamID]struct{} // banned streams
 }
 
 func (req *request) clearOwner() {
@@ -57,6 +57,21 @@ func (req *request) SetReqID(val uint64) {
 	defer req.lock.Unlock()
 
 	req.Request.SetReqID(val)
+}
+
+func (req *request) addBlacklistedStream(stid sttypes.StreamID) {
+	if req.blacklist == nil {
+		req.blacklist = make(map[sttypes.StreamID]struct{})
+	}
+	req.blacklist[stid] = struct{}{}
+}
+
+func (req *request) isStreamBlacklisted(stid sttypes.StreamID) bool {
+	if req.blacklist == nil {
+		return false
+	}
+	_, ok := req.blacklist[stid]
+	return ok
 }
 
 func (st *stream) clearPendingRequest() *request {

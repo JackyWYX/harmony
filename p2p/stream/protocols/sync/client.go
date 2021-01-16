@@ -9,6 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 	protobuf "github.com/golang/protobuf/proto"
 	"github.com/harmony-one/harmony/core/types"
+	"github.com/harmony-one/harmony/p2p/stream/common/requestmanager"
 	syncpb "github.com/harmony-one/harmony/p2p/stream/protocols/sync/message"
 	sttypes "github.com/harmony-one/harmony/p2p/stream/types"
 	"github.com/pkg/errors"
@@ -16,10 +17,10 @@ import (
 
 // GetBlocksByNumber do getBlocksByNumberRequest through sync stream protocol.
 // Return the block as result, target stream id, and error
-func (p *Protocol) GetBlocksByNumber(ctx context.Context, bns []uint64) ([]*types.Block, sttypes.StreamID, error) {
+func (p *Protocol) GetBlocksByNumber(ctx context.Context, bns []uint64, opts ...requestmanager.RequestOption) ([]*types.Block, sttypes.StreamID, error) {
 	req := newGetBlocksByNumberRequest(bns)
 
-	resp, stid, err := p.rm.DoRequest(ctx, req)
+	resp, stid, err := p.rm.DoRequest(ctx, req, opts...)
 	if err != nil {
 		// At this point, error can be context canceled, context timed out, or waiting queue
 		// is already full.
@@ -37,10 +38,10 @@ func (p *Protocol) GetBlocksByNumber(ctx context.Context, bns []uint64) ([]*type
 
 // GetEpochState get the epoch block from querying the remote node running sync stream protocol.
 // Currently, this method is only supported by beacon syncer
-func (p *Protocol) GetEpochState(ctx context.Context, epoch uint64) (*EpochStateResult, sttypes.StreamID, error) {
+func (p *Protocol) GetEpochState(ctx context.Context, epoch uint64, opts ...requestmanager.RequestOption) (*EpochStateResult, sttypes.StreamID, error) {
 	req := newGetEpochBlockRequest(epoch)
 
-	resp, stid, err := p.rm.DoRequest(ctx, req)
+	resp, stid, err := p.rm.DoRequest(ctx, req, opts...)
 	if err != nil {
 		return nil, stid, err
 	}
