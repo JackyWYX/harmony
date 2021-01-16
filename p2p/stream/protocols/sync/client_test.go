@@ -179,7 +179,7 @@ func TestProtocol_GetEpochState(t *testing.T) {
 			t.Errorf("Test %v: after request stream exist: %v / %v", i, streamExist, !test.streamRemoved)
 		}
 		if test.expErr == nil {
-			if gotEpoch := res.state.Epoch; gotEpoch.Cmp(new(big.Int).SetUint64(1)) != 0 {
+			if gotEpoch := res.State.Epoch; gotEpoch.Cmp(new(big.Int).SetUint64(1)) != 0 {
 				t.Errorf("Test %v: unexpected epoch delivered: %v / %v", i, gotEpoch.String(), 1)
 			}
 		}
@@ -212,7 +212,7 @@ func (rm *testHostRequestManager) Start()                                       
 func (rm *testHostRequestManager) Close()                                             {}
 func (rm *testHostRequestManager) DeliverResponse(sttypes.StreamID, sttypes.Response) {}
 
-func (rm *testHostRequestManager) DoRequest(ctx context.Context, request sttypes.Request) (sttypes.Response, sttypes.StreamID, error) {
+func (rm *testHostRequestManager) DoRequest(ctx context.Context, request sttypes.Request, opts ...Option) (sttypes.Response, sttypes.StreamID, error) {
 	if rm.getResponse == nil {
 		return nil, "", errors.New("get response error")
 	}

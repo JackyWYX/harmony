@@ -38,8 +38,8 @@ func (resp *syncResponse) String() string {
 
 // EpochStateResult is the result for GetEpochStateQuery
 type EpochStateResult struct {
-	header *block.Header
-	state  *shard.State
+	Header *block.Header
+	State  *shard.State
 }
 
 func epochStateResultFromResponse(resp sttypes.Response) (*EpochStateResult, error) {
@@ -67,24 +67,25 @@ func epochStateResultFromResponse(resp sttypes.Response) (*EpochStateResult, err
 		}
 	}
 	if len(ssBytes) > 0 {
+		// here shard state is not encoded with legacy rules
 		if err := rlp.DecodeBytes(ssBytes, &ss); err != nil {
 			return nil, err
 		}
 	}
 	return &EpochStateResult{
-		header: header,
-		state:  ss,
+		Header: header,
+		State:  ss,
 	}, nil
 }
 
 func (res *EpochStateResult) toMessage(rid uint64) (*syncpb.Message, error) {
-	headerBytes, err := rlp.EncodeToBytes(res.header)
+	headerBytes, err := rlp.EncodeToBytes(res.Header)
 	if err != nil {
 		return nil, err
 	}
 	// Shard state is not wrapped here, means no legacy shard state encoding rule as
 	// in shard.EncodeWrapper.
-	ssBytes, err := rlp.EncodeToBytes(res.state)
+	ssBytes, err := rlp.EncodeToBytes(res.State)
 	if err != nil {
 		return nil, err
 	}

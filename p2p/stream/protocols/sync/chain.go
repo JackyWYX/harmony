@@ -42,14 +42,17 @@ func (ch *chainHelperImpl) getBlocks(bns []uint64) []*types.Block {
 }
 
 func (ch *chainHelperImpl) getEpochState(epoch uint64) (*EpochStateResult, error) {
+	if ch.chain.ShardID() != 0 {
+		return nil, errors.New("get epoch state currently unavailable on side chain.")
+	}
 	if epoch == 0 {
 		return nil, errors.New("nil shard state for epoch 0")
 	}
 	res := &EpochStateResult{}
 
 	targetBN := ch.schedule.EpochLastBlock(epoch - 1)
-	res.header = ch.chain.GetHeaderByNumber(targetBN)
-	if res.header == nil {
+	res.Header = ch.chain.GetHeaderByNumber(targetBN)
+	if res.Header == nil {
 		// we still don't have the given epoch
 		return res, nil
 	}
@@ -63,7 +66,7 @@ func (ch *chainHelperImpl) getEpochState(epoch uint64) (*EpochStateResult, error
 		if ss == nil {
 			return nil, fmt.Errorf("missing shard state for [EPOCH-%v]", epoch)
 		}
-		res.state = ss
+		res.State = ss
 	}
 	return res, nil
 }

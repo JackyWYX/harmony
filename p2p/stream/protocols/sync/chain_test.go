@@ -33,8 +33,8 @@ func (tch *testChainHelper) getEpochState(epoch uint64) (*EpochStateResult, erro
 	state.Epoch = big.NewInt(int64(epoch))
 
 	return &EpochStateResult{
-		header: header,
-		state:  state,
+		Header: header,
+		State:  state,
 	}, nil
 }
 
