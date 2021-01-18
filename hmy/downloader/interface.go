@@ -1,5 +1,14 @@
 package downloader
 
+import (
+	"context"
+
+	"github.com/harmony-one/harmony/core/types"
+	"github.com/harmony-one/harmony/p2p/stream/protocols/sync"
+	sttypes "github.com/harmony-one/harmony/p2p/stream/types"
+)
+
 type syncProtocol interface {
-	Get
+	GetBlocksByNumber(ctx context.Context, bns []uint64, opts ...sync.Option) ([]*types.Block, sttypes.StreamID, error)
+	RemoveStream(stID sttypes.StreamID) error // If a stream delivers invalid data, remove the stream
 }

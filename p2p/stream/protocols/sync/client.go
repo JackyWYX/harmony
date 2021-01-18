@@ -19,6 +19,9 @@ import (
 func (p *Protocol) GetBlocksByNumber(ctx context.Context, bns []uint64, opts ...Option) ([]*types.Block, sttypes.StreamID, error) {
 	req := newGetBlocksByNumberRequest(bns)
 
+	if len(bns) > GetBlocksByNumAmountCap {
+		return nil, "", fmt.Errorf("number of blocks exceed cap of %v", GetBlocksByNumAmountCap)
+	}
 	resp, stid, err := p.rm.DoRequest(ctx, req, opts...)
 	if err != nil {
 		// At this point, error can be context canceled, context timed out, or waiting queue
