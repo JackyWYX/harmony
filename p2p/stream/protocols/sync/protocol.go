@@ -203,3 +203,8 @@ func (p *Protocol) protoIDByVersion(v *version.Version) sttypes.ProtoID {
 func (p *Protocol) RemoveStream(stID sttypes.StreamID) error {
 	return p.sm.RemoveStream(stID)
 }
+
+// GetStreamManager get the underlying stream manager for upper level stream operations
+func (p *Protocol) GetStreamManager() streammanager.StreamManager {
+	return p.sm
+}

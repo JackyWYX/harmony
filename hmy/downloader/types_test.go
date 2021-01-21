@@ -17,40 +17,23 @@ func TestResultQueue_AddBlockResults(t *testing.T) {
 	tests := []struct {
 		initBNs []uint64
 		addBNs  []uint64
-		expErr  error
 		expSize int
 	}{
 		{
 			initBNs: []uint64{},
 			addBNs:  []uint64{1, 2, 3, 4},
-			expErr:  nil,
 			expSize: 4,
 		},
 		{
 			initBNs: []uint64{1, 2, 3, 4},
 			addBNs:  []uint64{5, 6, 7, 8},
-			expErr:  nil,
 			expSize: 8,
-		},
-		{
-			initBNs: func() []uint64 {
-				res := make([]uint64, 0, queueMaxSize-3)
-				for i := uint64(0); i < uint64(queueMaxSize-3); i++ {
-					res = append(res, i)
-				}
-				return res
-			}(),
-			addBNs:  []uint64{1, 2, 3, 4},
-			expErr:  errResultQueueFull,
-			expSize: queueMaxSize - 3,
 		},
 	}
 	for i, test := range tests {
 		rq := makeTestResultQueue(test.initBNs)
-		err := rq.addBlockResults(makeTestBlocks(test.addBNs), "")
-		if assErr := assertError(err, test.expErr); assErr != nil {
-			t.Errorf("Test %v: %v", i, assErr)
-		}
+		rq.addBlockResults(makeTestBlocks(test.addBNs), "")
+
 		if rq.results.Len() != test.expSize {
 			t.Errorf("Test %v: unexpected size: %v / %v", i, rq.results.Len(), test.expSize)
 		}
@@ -59,53 +42,63 @@ func TestResultQueue_AddBlockResults(t *testing.T) {
 
 func TestResultQueue_PopBlockResults(t *testing.T) {
 	tests := []struct {
-		initBNs  []uint64
-		cap      int
-		expStart uint64
-		expSize  int
+		initBNs   []uint64
+		cap       int
+		expStart  uint64
+		expSize   int
+		staleSize int
 	}{
 		{
-			initBNs:  []uint64{1, 2, 3, 4, 5},
-			cap:      3,
-			expStart: 1,
-			expSize:  3,
+			initBNs:   []uint64{1, 2, 3, 4, 5},
+			cap:       3,
+			expStart:  1,
+			expSize:   3,
+			staleSize: 0,
 		},
 		{
-			initBNs:  []uint64{1, 2, 3, 4, 5},
-			cap:      10,
-			expStart: 1,
-			expSize:  5,
+			initBNs:   []uint64{1, 2, 3, 4, 5},
+			cap:       10,
+			expStart:  1,
+			expSize:   5,
+			staleSize: 0,
 		},
 		{
-			initBNs:  []uint64{1, 3, 4, 5},
-			cap:      10,
-			expStart: 1,
-			expSize:  1,
+			initBNs:   []uint64{1, 3, 4, 5},
+			cap:       10,
+			expStart:  1,
+			expSize:   1,
+			staleSize: 0,
 		},
 		{
-			initBNs:  []uint64{1, 2, 3, 4, 5},
-			cap:      10,
-			expStart: 0,
-			expSize:  0,
+			initBNs:   []uint64{1, 2, 3, 4, 5},
+			cap:       10,
+			expStart:  0,
+			expSize:   0,
+			staleSize: 0,
 		},
 		{
-			initBNs:  []uint64{1, 1, 1, 1, 2},
-			cap:      10,
-			expStart: 1,
-			expSize:  2,
+			initBNs:   []uint64{1, 1, 1, 1, 2},
+			cap:       10,
+			expStart:  1,
+			expSize:   2,
+			staleSize: 3,
 		},
 		{
-			initBNs:  []uint64{1, 2, 3, 4, 5},
-			cap:      10,
-			expStart: 2,
-			expSize:  4,
+			initBNs:   []uint64{1, 2, 3, 4, 5},
+			cap:       10,
+			expStart:  2,
+			expSize:   4,
+			staleSize: 1,
 		},
 	}
 	for i, test := range tests {
 		rq := makeTestResultQueue(test.initBNs)
-		res := rq.popBlockResults(test.expStart, test.cap)
+		res, stales := rq.popBlockResults(test.expStart, test.cap)
 		if len(res) != test.expSize {
 			t.Errorf("Test %v: unexpect size %v / %v", i, len(res), test.expSize)
+		}
+		if len(stales) != test.staleSize {
+			t.Errorf("Test %v: unexpect stale size %v / %v", i, len(stales), test.staleSize)
 		}
 	}
 }

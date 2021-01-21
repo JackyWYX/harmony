@@ -25,51 +25,57 @@ type resultQueue struct {
 }
 
 func newResultQueue() *resultQueue {
-	pq := make(priorityQueue, 0, queueMaxSize)
+	pq := make(priorityQueue, 0, 200) // 200 - rough estimate
 	heap.Init(&pq)
 	return &resultQueue{
 		results: &pq,
 	}
 }
 
-func (rq *resultQueue) addBlockResults(blocks []*types.Block, stid sttypes.StreamID) error {
+// addBlockResults adds the blocks to the result queue to be processed by insertChainLoop.
+// If a nil block is detected in the block list, will not process further blocks.
+func (rq *resultQueue) addBlockResults(blocks []*types.Block, stid sttypes.StreamID) {
 	rq.lock.Lock()
 	defer rq.lock.Unlock()
 
-	if len(blocks)+rq.results.Len() > queueMaxSize {
-		return errResultQueueFull
-	}
 	for _, block := range blocks {
 		if block == nil {
-			return nil
+			return
 		}
 		heap.Push(rq.results, &blockResult{
 			block: block,
 			stid:  stid,
 		})
 	}
-	return nil
+	return
 }
 
-func (rq *resultQueue) popBlockResults(expStartBN uint64, cap int) []*blockResult {
+// popBlockResults pop a continuous list of blocks starting at expStartBN with capped size.
+// Return the stale block numbers as the second return value
+func (rq *resultQueue) popBlockResults(expStartBN uint64, cap int) ([]*blockResult, []uint64) {
 	rq.lock.Lock()
 	defer rq.lock.Unlock()
 
-	res := make([]*blockResult, 0, cap)
+	var (
+		res    = make([]*blockResult, 0, cap)
+		stales []uint64
+	)
+
 	for cnt := 0; rq.results.Len() > 0 && cnt < cap; cnt++ {
 		br := heap.Pop(rq.results).(*blockResult)
-
+		// stale block number
 		if br.block.NumberU64() < expStartBN {
-			// duplicate block number or low starting number, skipping
+			stales = append(stales, br.block.NumberU64())
 			continue
 		}
 		if br.block.NumberU64() != expStartBN {
-			return res
+			heap.Push(rq.results, br)
+			return res, stales
 		}
 		res = append(res, br)
 		expStartBN++
 	}
-	return res
+	return res, stales
 }
 
 // removeResultsByStreamID remove the block results of the given stream, return the block
@@ -85,7 +91,7 @@ Loop:
 		for i, res := range *rq.results {
 			blockRes := res.(*blockResult)
 			if blockRes.stid == stid {
-				heap.Remove(rq.results, i)
+				rq.removeByIndex(i)
 				removed = append(removed, blockRes.block.NumberU64())
 				goto Loop
 			}
