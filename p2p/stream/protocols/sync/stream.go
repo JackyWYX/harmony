@@ -67,7 +67,6 @@ func (st *syncStream) readMsgLoop() {
 			if err := st.Close(); err != nil {
 				st.logger.Err(err).Msg("failed to close sync stream")
 			}
-			fmt.Println(err)
 			return
 		}
 		st.deliverMsg(msg)
@@ -167,7 +166,11 @@ func (st *syncStream) handleReq(req *syncpb.Request) error {
 	if esReq := req.GetGetEpochStateRequest(); esReq != nil {
 		return st.handleEpochStateRequest(req.ReqId, esReq)
 	}
+	if gnReq := req.GetGetBlockNumberRequest(); gnReq != nil {
+		return st.handleGetBlockNumberRequest(req.ReqId)
+	}
 	// unsupported request type
+	fmt.Println("unsupported")
 	resp := syncpb.MakeErrorResponseMessage(req.ReqId, errUnknownReqType)
 	return st.writeMsg(resp)
 }
@@ -200,6 +203,14 @@ func (st *syncStream) handleEpochStateRequest(rid uint64, req *syncpb.GetEpochSt
 		}
 	}
 	return errors.Wrap(err, "[GetEpochState]")
+}
+
+func (st *syncStream) handleGetBlockNumberRequest(rid uint64) error {
+	resp := st.computeBlockNumberResp(rid)
+	if err := st.writeMsg(resp); err != nil {
+		return errors.Wrap(err, "[GetBlockNumber]: writeMsg")
+	}
+	return nil
 }
 
 func (st *syncStream) handleResp(resp *syncpb.Response) {
@@ -253,4 +264,9 @@ func (st *syncStream) computeEpochStateResp(rid uint64, epoch uint64) (*syncpb.M
 		return nil, err
 	}
 	return esRes.toMessage(rid)
+}
+
+func (st *syncStream) computeBlockNumberResp(rid uint64) *syncpb.Message {
+	bn := st.chain.getCurrentBlockNumber()
+	return syncpb.MakeGetBlockNumberResponseMessage(rid, bn)
 }

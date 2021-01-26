@@ -16,6 +16,11 @@ import (
 	"github.com/rs/zerolog"
 )
 
+var (
+	// ErrStreamAlreadyRemoved is the error that a stream has already been removed
+	ErrStreamAlreadyRemoved = errors.New("stream already removed")
+)
+
 // streamManager is the implementation of StreamManager. It manages streams on
 // one single protocol. It does the following job:
 // 1. add a new stream to manage with when a new stream starts running.
@@ -48,7 +53,6 @@ type streamManager struct {
 }
 
 // NewStreamManager creates a new stream manager for the given proto ID
-// TODO: make stream manager global for all protocol IDs
 func NewStreamManager(pid sttypes.ProtoID, host host, pf peerFinder, opts ...Option) StreamManager {
 	return newStreamManager(pid, host, pf, opts...)
 }
@@ -165,6 +169,12 @@ func (sm *streamManager) RemoveStream(stID sttypes.StreamID) error {
 	return <-task.errC
 }
 
+// GetStreams return the streams.
+// Do not use Write or Read for the returned stream. Define them in the protocol level.
+func (sm *streamManager) GetStreams() []sttypes.Stream {
+	return sm.streams.getStreams()
+}
+
 type (
 	addStreamTask struct {
 		st   sttypes.Stream
@@ -220,7 +230,7 @@ func (sm *streamManager) handleAddStream(st sttypes.Stream) error {
 func (sm *streamManager) handleRemoveStream(id sttypes.StreamID) error {
 	st, ok := sm.streams.get(id)
 	if !ok {
-		return errors.New("stream not exist in manager")
+		return ErrStreamAlreadyRemoved
 	}
 
 	sm.streams.deleteStream(st)
@@ -292,9 +302,10 @@ func (sm *streamManager) discover(ctx context.Context) (<-chan libp2p_peer.AddrI
 }
 
 func (sm *streamManager) setupStreamWithPeer(ctx context.Context, pid libp2p_peer.ID) error {
-	ctx, _ = context.WithTimeout(ctx, connectTimeout)
+	nCtx, cancel := context.WithTimeout(ctx, connectTimeout)
+	defer cancel()
 
-	_, err := sm.host.NewStream(ctx, pid, protocol.ID(sm.myProtoID))
+	_, err := sm.host.NewStream(nCtx, pid, protocol.ID(sm.myProtoID))
 	return err
 }
 
@@ -368,6 +379,17 @@ func (ss *streamSet) slice() []sttypes.Stream {
 		sts = append(sts, st)
 	}
 	return sts
+}
+
+func (ss *streamSet) getStreams() []sttypes.Stream {
+	ss.lock.RLock()
+	defer ss.lock.RUnlock()
+
+	res := make([]sttypes.Stream, 0, len(ss.streams))
+	for _, st := range ss.streams {
+		res = append(res, st)
+	}
+	return res
 }
 
 func (ss *streamSet) numStreamsWithMinProtoSpec(minSpec sttypes.ProtoSpec) int {

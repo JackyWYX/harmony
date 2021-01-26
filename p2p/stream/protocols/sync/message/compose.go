@@ -22,6 +22,15 @@ func MakeGetEpochStateRequest(epoch uint64) *Request {
 	}
 }
 
+// MakeGetBlockNumberRequest makes the GetBlockNumber Request
+func MakeGetBlockNumberRequest() *Request {
+	return &Request{
+		Request: &Request_GetBlockNumberRequest{
+			GetBlockNumberRequest: &GetBlockNumberRequest{},
+		},
+	}
+}
+
 // MakeErrorResponse makes the error response
 func MakeErrorResponseMessage(rid uint64, err error) *Message {
 	resp := MakeErrorResponse(rid, err)
@@ -75,6 +84,24 @@ func MakeGetEpochStateResponse(rid uint64, headerBytes []byte, ssBytes []byte) *
 			GetEpochStateResponse: &GetEpochStateResponse{
 				HeaderBytes: headerBytes,
 				ShardState:  ssBytes,
+			},
+		},
+	}
+}
+
+// MakeGetBlockNumberResponseMessage makes the GetBlockNumber response message
+func MakeGetBlockNumberResponseMessage(rid uint64, bn uint64) *Message {
+	resp := MakeGetBlockNumberResponse(rid, bn)
+	return makeMessageFromResponse(resp)
+}
+
+// MakeGetBlockNumberResponse makes the GetBlockNumber response
+func MakeGetBlockNumberResponse(rid uint64, bn uint64) *Response {
+	return &Response{
+		ReqId: rid,
+		Response: &Response_GetBlockNumberResponse{
+			GetBlockNumberResponse: &GetBlockNumberResponse{
+				Number: bn,
 			},
 		},
 	}

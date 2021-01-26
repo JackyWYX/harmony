@@ -28,8 +28,11 @@ const (
 var (
 	version100, _ = version.NewVersion("1.0.0")
 
-	myVersion  = version100
-	minVersion = version100 // minimum version for matching function
+	// MyVersion is the version of sync protocol of the local node
+	MyVersion = version100
+
+	// MinVersion is the minimum version for matching function
+	MinVersion = version100
 )
 
 type (
@@ -66,7 +69,7 @@ func NewProtocol(config Config) *Protocol {
 
 	sp := &Protocol{
 		chain:  config.Chain,
-		rl:     ratelimiter.NewRateLimiter(100),
+		rl:     ratelimiter.NewRateLimiter(50, 10),
 		disc:   config.Discovery,
 		config: config,
 		ctx:    ctx,
@@ -102,12 +105,12 @@ func (p *Protocol) Specifier() string {
 
 // ProtoID return the ProtoID of the sync protocol
 func (p *Protocol) ProtoID() sttypes.ProtoID {
-	return p.protoIDByVersion(myVersion)
+	return p.protoIDByVersion(MyVersion)
 }
 
 // Version returns the sync protocol version
 func (p *Protocol) Version() *version.Version {
-	return myVersion
+	return MyVersion
 }
 
 // Match checks the compatibility to the target protocol ID.
@@ -125,7 +128,7 @@ func (p *Protocol) Match(targetID string) bool {
 	if target.ShardID != p.config.ShardID {
 		return false
 	}
-	if target.Version.LessThan(minVersion) {
+	if target.Version.LessThan(MinVersion) {
 		return false
 	}
 	return true
@@ -202,6 +205,21 @@ func (p *Protocol) protoIDByVersion(v *version.Version) sttypes.ProtoID {
 // RemoveStream removes the stream of the given stream ID
 func (p *Protocol) RemoveStream(stID sttypes.StreamID) error {
 	return p.sm.RemoveStream(stID)
+}
+
+// NumStreams return the streams with minimum version.
+// Note: nodes with sync version smaller than minVersion is not counted.
+func (p *Protocol) NumStreams() int {
+	res := 0
+	sts := p.sm.GetStreams()
+
+	for _, st := range sts {
+		ps, _ := st.ProtoSpec()
+		if ps.Version.GreaterThanOrEqual(MinVersion) {
+			res++
+		}
+	}
+	return res
 }
 
 // GetStreamManager get the underlying stream manager for upper level stream operations

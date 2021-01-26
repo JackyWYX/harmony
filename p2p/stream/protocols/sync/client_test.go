@@ -23,6 +23,7 @@ import (
 var (
 	_ sttypes.Request  = &getBlocksByNumberRequest{}
 	_ sttypes.Request  = &getEpochBlockRequest{}
+	_ sttypes.Request  = &getBlockNumberRequest{}
 	_ sttypes.Response = &syncResponse{&syncpb.Response{}}
 )
 
@@ -48,6 +49,9 @@ var (
 	}
 	testEpochStateBytes, _ = rlp.EncodeToBytes(testEpochState)
 	testEpochStateResponse = syncpb.MakeGetEpochStateResponse(0, testHeaderBytes, testEpochStateBytes)
+
+	testCurBlockNumber      uint64 = 100
+	testBlockNumberResponse        = syncpb.MakeGetBlockNumberResponse(0, testCurBlockNumber)
 
 	testErrorResponse = syncpb.MakeErrorResponse(0, errors.New("test error"))
 )
@@ -186,6 +190,74 @@ func TestProtocol_GetEpochState(t *testing.T) {
 	}
 }
 
+func TestProtocol_GetCurrentBlockNumber(t *testing.T) {
+	tests := []struct {
+		getResponse   getResponseFn
+		expErr        error
+		expStID       sttypes.StreamID
+		streamRemoved bool
+	}{
+		{
+			getResponse: func(request sttypes.Request) (sttypes.Response, sttypes.StreamID) {
+				return &syncResponse{
+					pb: testBlockNumberResponse,
+				}, makeTestStreamID(0)
+			},
+			expErr:        nil,
+			expStID:       makeTestStreamID(0),
+			streamRemoved: false,
+		},
+		{
+			getResponse: func(request sttypes.Request) (sttypes.Response, sttypes.StreamID) {
+				return &syncResponse{
+					pb: testBlockResponse,
+				}, makeTestStreamID(0)
+			},
+			expErr:        errors.New("not GetBlockNumber"),
+			expStID:       makeTestStreamID(0),
+			streamRemoved: true,
+		},
+		{
+			getResponse:   nil,
+			expErr:        errors.New("get response error"),
+			expStID:       "",
+			streamRemoved: true, // Does not exist at the first place
+		},
+		{
+			getResponse: func(request sttypes.Request) (sttypes.Response, sttypes.StreamID) {
+				return &syncResponse{
+					pb: testErrorResponse,
+				}, makeTestStreamID(0)
+			},
+			expErr:        errors.New("test error"),
+			expStID:       makeTestStreamID(0),
+			streamRemoved: true,
+		},
+	}
+
+	for i, test := range tests {
+		protocol := makeTestProtocol(test.getResponse)
+		res, stid, err := protocol.GetCurrentBlockNumber(context.Background())
+
+		if assErr := assertError(err, test.expErr); assErr != nil {
+			t.Errorf("Test %v: %v", i, assErr)
+			continue
+		}
+		if stid != test.expStID {
+			t.Errorf("Test %v: unexpected st id: %v / %v", i, stid, test.expStID)
+		}
+		streamExist := protocol.sm.(*testStreamManager).isStreamExist(stid)
+		if streamExist == test.streamRemoved {
+			t.Errorf("Test %v: after request stream exist: %v / %v", i, streamExist, !test.streamRemoved)
+		}
+		if test.expErr == nil {
+			if res != testCurBlockNumber {
+				t.Errorf("Test %v: block number not expected: %v / %v", i, res, testCurBlockNumber)
+			}
+		}
+	}
+}
+
 type getResponseFn func(request sttypes.Request) (sttypes.Response, sttypes.StreamID)
 
 type testHostRequestManager struct {
@@ -199,7 +271,7 @@ func makeTestProtocol(f getResponseFn) *Protocol {
 	copy(streamIDs, initStreamIDs)
 	sm := &testStreamManager{streamIDs}
 
-	rl := ratelimiter.NewRateLimiter(10)
+	rl := ratelimiter.NewRateLimiter(10, 10)
 
 	return &Protocol{
 		rm: rm,
@@ -266,6 +338,10 @@ func (sm *testStreamManager) isStreamExist(stid sttypes.StreamID) bool {
 		}
 	}
 	return false
+}
+
+func (sm *testStreamManager) GetStreams() []sttypes.Stream {
+	return nil
 }
 
 func assertError(got, expect error) error {

@@ -13,6 +13,7 @@ message Request {
   oneof request {
     GetBlocksByNumRequest get_blocks_by_num_request = 2;
     GetEpochStateRequest get_epoch_state_request = 3;
+    GetBlockNumberRequest get_block_number_request = 4;
   }
 }
 
@@ -24,6 +25,8 @@ message GetEpochStateRequest {
   uint64 epoch = 1;
 }
 
+message GetBlockNumberRequest {}
+
 
 message Response {
   uint64 req_id = 1;
@@ -31,6 +34,7 @@ message Response {
       ErrorResponse error_response = 2;
       GetBlocksByNumResponse get_blocks_by_num_response = 3;
       GetEpochStateResponse get_epoch_state_response = 4;
+      GetBlockNumberResponse get_block_number_response = 5;
   }
 }
 
@@ -45,4 +49,8 @@ message ErrorResponse {
 message GetEpochStateResponse {
   bytes header_bytes = 1;
   bytes shard_state = 2;
+}
+
+message GetBlockNumberResponse {
+  uint64 number = 1;
 }

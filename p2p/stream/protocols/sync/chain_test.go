@@ -15,6 +15,10 @@ import (
 
 type testChainHelper struct{}
 
+func (tch *testChainHelper) getCurrentBlockNumber() uint64 {
+	return 100
+}
+
 func (tch *testChainHelper) getBlocks(bns []uint64) []*types.Block {
 	blocks := make([]*types.Block, 0, len(bns))
 	for _, bn := range bns {
@@ -103,6 +107,25 @@ func checkEpochStateResult(epoch uint64, b []byte) error {
 	}
 	if epochState.Epoch.Uint64() != epoch {
 		return fmt.Errorf("unexpected epoch of shard state %v / %v", epochState.Epoch.Uint64(), epoch)
+	}
+	return nil
+}
+
+func checkBlockNumberResult(b []byte) error {
+	var msg = &syncpb.Message{}
+	if err := protobuf.Unmarshal(b, msg); err != nil {
+		return err
+	}
+	sResp := msg.GetResp()
+	if sResp == nil {
+		return errors.New("not sync response")
+	}
+	gnResp := sResp.GetGetBlockNumberResponse()
+	if gnResp == nil {
+		return errors.New("not GetBlockNumber response")
+	}
+	if gnResp.Number != testCurBlockNumber {
+		return fmt.Errorf("unexpected block number: %v / %v", gnResp.Number, testCurBlockNumber)
 	}
 	return nil
 }

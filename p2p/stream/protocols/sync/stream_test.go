@@ -22,6 +22,9 @@ var (
 	testEpoch                uint64 = 20
 	testEpochStateRequest           = syncpb.MakeGetEpochStateRequest(testEpoch)
 	testEpochStateRequestMsg        = syncpb.MakeMessageFromRequest(testEpochStateRequest)
+
+	testCurrentNumberRequest    = syncpb.MakeGetBlockNumberRequest()
+	testCurrentNumberRequestMsg = syncpb.MakeMessageFromRequest(testCurrentNumberRequest)
 )
 
 func TestSyncStream_HandleGetBlocksByRequest(t *testing.T) {
@@ -63,6 +66,27 @@ func TestSyncStream_HandleEpochStateRequest(t *testing.T) {
 	}
 
 	if err := checkEpochStateResult(testEpoch, receivedBytes); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestSyncStream_HandleCurrentBlockNumber(t *testing.T) {
+	st, inC, outC := makeTestSyncStream()
+	st.run()
+	defer close(st.closeC)
+
+	req := testCurrentNumberRequestMsg
+	b, _ := protobuf.Marshal(req)
+	outC <- b
+
+	var receivedBytes []byte
+	select {
+	case receivedBytes = <-inC:
+	case <-time.After(200 * time.Millisecond):
+		t.Fatalf("timed out")
+	}
+
+	if err := checkBlockNumberResult(receivedBytes); err != nil {
 		t.Fatal(err)
 	}
 }

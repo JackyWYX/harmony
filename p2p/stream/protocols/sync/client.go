@@ -57,6 +57,23 @@ func (p *Protocol) GetEpochState(ctx context.Context, epoch uint64, opts ...Opti
 	return res, stid, nil
 }
 
+// GetCurrentBlockNumber get the current block number from remote node
+func (p *Protocol) GetCurrentBlockNumber(ctx context.Context, opts ...Option) (uint64, sttypes.StreamID, error) {
+	req := newGetBlockNumberRequest()
+
+	resp, stid, err := p.rm.DoRequest(ctx, req, opts...)
+	if err != nil {
+		return 0, stid, err
+	}
+
+	bn, err := req.getNumberFromResponse(resp)
+	if err != nil {
+		p.sm.RemoveStream(stid)
+		return bn, stid, err
+	}
+	return bn, stid, nil
+}
+
 // getBlocksByNumberRequest is the request for get block by numbers which implements
 // sttypes.Request interface
 type getBlocksByNumberRequest struct {
@@ -94,7 +111,7 @@ func (req *getBlocksByNumberRequest) String() string {
 
 // IsSupportedByProto return the compatibility result with the target protoSpec
 func (req *getBlocksByNumberRequest) IsSupportedByProto(target sttypes.ProtoSpec) bool {
-	return target.Version.GreaterThanOrEqual(minVersion)
+	return target.Version.GreaterThanOrEqual(MinVersion)
 }
 
 // Encode encode the request data to bytes with protobuf
@@ -164,11 +181,63 @@ func (req *getEpochBlockRequest) String() string {
 
 // IsSupportedByProto return the compatibility result with the target protoSpec
 func (req *getEpochBlockRequest) IsSupportedByProto(target sttypes.ProtoSpec) bool {
-	return target.Version.GreaterThanOrEqual(minVersion)
+	return target.Version.GreaterThanOrEqual(MinVersion)
 }
 
 // Encode encode the request to bytes with protobuf
 func (req *getEpochBlockRequest) Encode() ([]byte, error) {
 	msg := syncpb.MakeMessageFromRequest(req.msg)
 	return protobuf.Marshal(msg)
+}
+
+type getBlockNumberRequest struct {
+	msg *syncpb.Request
+}
+
+func newGetBlockNumberRequest() *getBlockNumberRequest {
+	msg := syncpb.MakeGetBlockNumberRequest()
+	return &getBlockNumberRequest{
+		msg: msg,
+	}
+}
+
+// ReqID returns the request id of the request
+func (req *getBlockNumberRequest) ReqID() uint64 {
+	return req.msg.GetReqId()
+}
+
+// SetReqID set the request id of the request
+func (req *getBlockNumberRequest) SetReqID(val uint64) {
+	req.msg.ReqId = val
+}
+
+// String return the string representation of the request
+func (req *getBlockNumberRequest) String() string {
+	return fmt.Sprintf("REQUEST [GetBlockNumber]")
+}
+
+// IsSupportedByProto return the compatibility result with the target protoSpec
+func (req *getBlockNumberRequest) IsSupportedByProto(target sttypes.ProtoSpec) bool {
+	return target.Version.GreaterThanOrEqual(MinVersion)
+}
+
+// Encode encode the request to bytes with protobuf
+func (req *getBlockNumberRequest) Encode() ([]byte, error) {
+	msg := syncpb.MakeMessageFromRequest(req.msg)
+	return protobuf.Marshal(msg)
+}
+
+func (req *getBlockNumberRequest) getNumberFromResponse(resp sttypes.Response) (uint64, error) {
+	sResp, ok := resp.(*syncResponse)
+	if !ok || sResp == nil {
+		return 0, errors.New("not sync response")
+	}
+	if errResp := sResp.pb.GetErrorResponse(); errResp != nil {
+		return 0, errors.New(errResp.Error)
+	}
+	gnResp := sResp.pb.GetGetBlockNumberResponse()
+	if gnResp == nil {
+		return 0, errors.New("response not GetBlockNumber")
+	}
+	return gnResp.Number, nil
 }

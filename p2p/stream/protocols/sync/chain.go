@@ -12,6 +12,7 @@ import (
 
 // chainHelper is the adapter for blockchain which is friendlier to unit test.
 type chainHelper interface {
+	getCurrentBlockNumber() uint64
 	getEpochState(epoch uint64) (*EpochStateResult, error)
 	getBlocks(bns []uint64) []*types.Block
 }
@@ -26,6 +27,10 @@ func newChainHelper(chain engine.ChainReader, schedule shardingconfig.Schedule) 
 		chain:    chain,
 		schedule: schedule,
 	}
+}
+
+func (ch *chainHelperImpl) getCurrentBlockNumber() uint64 {
+	return ch.chain.CurrentBlock().NumberU64()
 }
 
 func (ch *chainHelperImpl) getBlocks(bns []uint64) []*types.Block {

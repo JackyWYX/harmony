@@ -16,6 +16,8 @@ type StreamManager interface {
 	p2ptypes.LifeCycle
 	StreamOperator
 	Subscriber
+
+	GetStreams() []sttypes.Stream
 }
 
 // StreamOperator handles new stream or remove stream
