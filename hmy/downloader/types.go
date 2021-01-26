@@ -40,7 +40,7 @@ func (rq *resultQueue) addBlockResults(blocks []*types.Block, stid sttypes.Strea
 
 	for _, block := range blocks {
 		if block == nil {
-			return
+			continue
 		}
 		heap.Push(rq.results, &blockResult{
 			block: block,
@@ -101,6 +101,10 @@ Loop:
 	return removed
 }
 
+func (rq *resultQueue) length() int {
+	return len(*rq.results)
+}
+
 func (rq *resultQueue) removeByIndex(index int) {
 	heap.Remove(rq.results, index)
 }
@@ -117,6 +121,15 @@ type blockResult struct {
 
 func (br *blockResult) getBlockNumber() uint64 {
 	return br.block.NumberU64()
+}
+
+func blockResultsToBlocks(results []*blockResult) []*types.Block {
+	blocks := make([]*types.Block, 0, len(results))
+
+	for _, result := range results {
+		blocks = append(blocks, result.block)
+	}
+	return blocks
 }
 
 type (
@@ -149,6 +162,10 @@ func (pbs *prioritizedNumbers) pop() uint64 {
 	}
 	item := heap.Pop(pbs.q)
 	return uint64(item.(prioritizedNumber))
+}
+
+func (pbs *prioritizedNumbers) length() int {
+	return len(*pbs.q)
 }
 
 // priorityQueue is a priorityQueue with lowest block number with highest priority

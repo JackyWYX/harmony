@@ -19,12 +19,12 @@ type (
 	Downloader struct {
 		bc           blockChain
 		syncProtocol syncProtocol
-		sm           streammanager.StreamOperator
+		sm           streammanager.StreamManager
 
-		rq        *resultQueue
 		downloadC chan downloadTask
 		closeC    chan struct{}
 
+		config Config
 		logger zerolog.Logger
 	}
 
