@@ -87,6 +87,7 @@ func (lsi *lrSyncIter) estimateCurrentNumber() (uint64, error) {
 			if err != nil {
 				lsi.logger.Err(err).Str("streamID", string(stid)).
 					Msg("getCurrentNumber request failed. Removing stream")
+				// TODO: if the error is context canceled, shall not remove the stream
 				lsi.protocol.RemoveStream(stid)
 				return
 			}
@@ -117,7 +118,7 @@ func (lsi *lrSyncIter) doGetCurrentNumberRequest() (uint64, sttypes.StreamID, er
 }
 
 // fetchAndInsertBlocks use the pipeline pattern to boost the performance of inserting blocks.
-// TODO: For resharding, use the pipeline to do fast sync
+// TODO: For resharding, use the pipeline to do fast sync (epoch loop, header loop, body loop)
 func (lsi *lrSyncIter) fetchAndInsertBlocks(targetBN uint64) {
 	gbm := newGetBlocksManager(lsi.chain, targetBN, lsi.logger)
 	lsi.gbm = gbm
@@ -137,19 +138,34 @@ func (lsi *lrSyncIter) fetchAndInsertBlocks(targetBN uint64) {
 }
 
 func (lsi *lrSyncIter) insertChainLoop(targetBN uint64) {
-	t := time.NewTicker(5 * time.Second)
-	gbm := lsi.gbm
+	var (
+		gbm     = lsi.gbm
+		t       = time.NewTicker(1 * time.Second)
+		resultC = make(chan struct{}, 1)
+	)
+
+	trigger := func() {
+		select {
+		case resultC <- struct{}{}:
+		default:
+		}
+	}
+
 	for {
 		select {
 		case <-lsi.ctx.Done():
 			return
+
 		case <-t.C:
-			// Redundancy, periodically check whether there is blocks to be processed
-			select {
-			case gbm.resultC <- struct{}{}:
-			default:
-			}
+			// Redundancy, periodically check whether there is blocks that can be processed
+			trigger()
+
 		case <-gbm.resultC:
+			// New block arrive in resultQueue
+			trigger()
+
+		case <-resultC:
+			//fmt.Println(gbm.rq.length())
 			blockResults := gbm.PullContinuousBlocks(blocksPerInsert)
 			if len(blockResults) > 0 {
 				lsi.processBlocks(blockResults)
@@ -172,7 +188,6 @@ func (lsi *lrSyncIter) processBlocks(results []*blockResult) {
 
 	n, err := lsi.chain.InsertChain(blocks, true)
 	if err != nil {
-		fmt.Println("insert error", err)
 		lsi.protocol.RemoveStream(results[n].stid)
 		lsi.gbm.HandleInsertError(results, n)
 	} else {
@@ -209,7 +224,7 @@ func (w *getBlocksWorker) workLoop() {
 			select {
 			case <-w.ctx.Done():
 				return
-			case <-time.After(1 * time.Second):
+			case <-time.After(100 * time.Millisecond):
 				continue
 			}
 		}
@@ -316,7 +331,6 @@ func (gbm *getBlocksManager) HandleRequestResult(bns []uint64, blocks []*types.B
 	for i, bn := range bns {
 		delete(gbm.requesting, bn)
 		if blocks[i] == nil {
-			fmt.Println("nil block, push", bn)
 			gbm.retries.push(bn)
 		} else {
 			gbm.processing[bn] = struct{}{}

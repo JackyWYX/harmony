@@ -11,13 +11,15 @@ import (
 )
 
 type testBlockChain struct {
-	curBN uint64
-	lock  sync.Mutex
+	curBN         uint64
+	insertErrHook func(bn uint64) error
+	lock          sync.Mutex
 }
 
-func newTestBlockChain(curBN uint64) *testBlockChain {
+func newTestBlockChain(curBN uint64, insertErrHook func(bn uint64) error) *testBlockChain {
 	return &testBlockChain{
-		curBN: curBN,
+		curBN:         curBN,
+		insertErrHook: insertErrHook,
 	}
 }
 
@@ -40,6 +42,11 @@ func (bc *testBlockChain) InsertChain(chain types.Blocks, verifyHeaders bool) (i
 	defer bc.lock.Unlock()
 
 	for i, block := range chain {
+		if bc.insertErrHook != nil {
+			if err := bc.insertErrHook(block.NumberU64()); err != nil {
+				return i, err
+			}
+		}
 		if block.NumberU64() <= bc.curBN {
 			continue
 		}
@@ -55,19 +62,28 @@ func (bc *testBlockChain) ShardID() uint32 {
 	return 0
 }
 
-type testSyncProtocol struct {
-	streamIDs   []sttypes.StreamID
-	remoteChain *testBlockChain
+const (
+	initStreamNum = 32
+	minStreamNum  = 16
+)
 
-	curIndex int
-	lock     sync.Mutex
+type testSyncProtocol struct {
+	streamIDs      []sttypes.StreamID
+	remoteChain    *testBlockChain
+	requestErrHook func(uint64) error
+
+	curIndex   int
+	numStreams int
+	lock       sync.Mutex
 }
 
-func newTestSyncProtocol(targetBN uint64) *testSyncProtocol {
+func newTestSyncProtocol(targetBN uint64, requestErrHook, insertErrHook func(uint64) error) *testSyncProtocol {
 	return &testSyncProtocol{
-		streamIDs:   makeStreamIDs(32),
-		remoteChain: newTestBlockChain(targetBN),
-		curIndex:    0,
+		streamIDs:      makeStreamIDs(initStreamNum),
+		remoteChain:    newTestBlockChain(targetBN, insertErrHook),
+		requestErrHook: requestErrHook,
+		curIndex:       0,
+		numStreams:     32,
 	}
 }
 
@@ -86,6 +102,11 @@ func (sp *testSyncProtocol) GetBlocksByNumber(ctx context.Context, bns []uint64,
 
 	res := make([]*types.Block, 0, len(bns))
 	for _, bn := range bns {
+		if sp.requestErrHook != nil {
+			if err := sp.requestErrHook(bn); err != nil {
+				return nil, sp.nextStreamID(), err
+			}
+		}
 		if bn > sp.remoteChain.currentBlockNumber() {
 			res = append(res, nil)
 		} else {
@@ -105,6 +126,11 @@ func (sp *testSyncProtocol) RemoveStream(target sttypes.StreamID) error {
 				sp.streamIDs = sp.streamIDs[:i]
 			} else {
 				sp.streamIDs = append(sp.streamIDs[:i], sp.streamIDs[i+1:]...)
+			}
+			// mock discovery
+			if len(sp.streamIDs) < minStreamNum {
+				sp.streamIDs = append(sp.streamIDs, makeStreamID(sp.numStreams))
+				sp.numStreams++
 			}
 		}
 	}

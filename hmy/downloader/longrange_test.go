@@ -3,18 +3,17 @@ package downloader
 import (
 	"context"
 	"fmt"
-	"os"
+	"math/rand"
+	"sync"
 	"testing"
-	"time"
-
-	"github.com/rs/zerolog"
 
 	sttypes "github.com/harmony-one/harmony/p2p/stream/types"
+	"github.com/pkg/errors"
 )
 
 func TestLrSyncIter_EstimateCurrentNumber(t *testing.T) {
 	lsi := &lrSyncIter{
-		protocol: newTestSyncProtocol(100),
+		protocol: newTestSyncProtocol(100, nil, nil),
 		ctx:      context.Background(),
 		config: Config{
 			Concurrency: 16,
@@ -87,7 +86,6 @@ func TestGetBlocksManager_GetNextBatch(t *testing.T) {
 		if len(test.expBNs) != len(batch) {
 			t.Errorf("Test %v: unexpected size [%v] / [%v]", i, batch, test.expBNs)
 		}
-		fmt.Println(batch)
 		for i := range test.expBNs {
 			if test.expBNs[i] != batch[i] {
 				t.Errorf("Test %v: [%v] / [%v]", i, batch, test.expBNs)
@@ -98,8 +96,8 @@ func TestGetBlocksManager_GetNextBatch(t *testing.T) {
 
 func TestLrSyncIter_FetchAndInsertBlocks(t *testing.T) {
 	targetBN := uint64(1000)
-	chain := newTestBlockChain(0)
-	protocol := newTestSyncProtocol(targetBN)
+	chain := newTestBlockChain(0, nil)
+	protocol := newTestSyncProtocol(targetBN, nil, nil)
 	ctx, cancel := context.WithCancel(context.Background())
 
 	lsi := &lrSyncIter{
@@ -111,27 +109,133 @@ func TestLrSyncIter_FetchAndInsertBlocks(t *testing.T) {
 		},
 		ctx:    ctx,
 		cancel: cancel,
-		logger: zerolog.New(os.Stdout),
 	}
 	lsi.fetchAndInsertBlocks(targetBN)
 
-	time.Sleep(100 * time.Millisecond)
-
-	if bn := chain.currentBlockNumber(); bn != targetBN {
-		t.Errorf("did not reached targetBN: %v / %v", bn, targetBN)
+	if err := fetchAndInsertBlocksResultCheck(lsi, targetBN, initStreamNum); err != nil {
+		t.Error(err)
 	}
+}
+
+// When FetchAndInsertBlocks, one request has an error
+func TestLrSyncIter_FetchAndInsertBlocks_ErrRequest(t *testing.T) {
+	targetBN := uint64(1000)
+	var once sync.Once
+	errHook := func(bn uint64) error {
+		var err error
+		once.Do(func() {
+			err = errors.New("test error expected")
+		})
+		return err
+	}
+	chain := newTestBlockChain(0, nil)
+	protocol := newTestSyncProtocol(targetBN, errHook, nil)
+	ctx, cancel := context.WithCancel(context.Background())
+
+	lsi := &lrSyncIter{
+		chain:    chain,
+		protocol: protocol,
+		gbm:      nil,
+		config: Config{
+			Concurrency: 100,
+		},
+		ctx:    ctx,
+		cancel: cancel,
+	}
+	lsi.fetchAndInsertBlocks(targetBN)
+
+	if err := fetchAndInsertBlocksResultCheck(lsi, targetBN, initStreamNum-1); err != nil {
+		t.Error(err)
+	}
+}
+
+// When FetchAndInsertBlocks, one insertion has an error
+func TestLrSyncIter_FetchAndInsertBlocks_ErrInsert(t *testing.T) {
+	targetBN := uint64(1000)
+	var once sync.Once
+	errHook := func(bn uint64) error {
+		var err error
+		once.Do(func() {
+			err = errors.New("test error expected")
+		})
+		return err
+	}
+	chain := newTestBlockChain(0, nil)
+	protocol := newTestSyncProtocol(targetBN, nil, errHook)
+	ctx, cancel := context.WithCancel(context.Background())
+
+	lsi := &lrSyncIter{
+		chain:    chain,
+		protocol: protocol,
+		gbm:      nil,
+		config: Config{
+			Concurrency: 100,
+		},
+		ctx:    ctx,
+		cancel: cancel,
+	}
+	lsi.fetchAndInsertBlocks(targetBN)
+
+	if err := fetchAndInsertBlocksResultCheck(lsi, targetBN, initStreamNum); err != nil {
+		t.Error(err)
+	}
+}
+
+// When FetchAndInsertBlocks, randomly error happens
+func TestLrSyncIter_FetchAndInsertBlocks_RandomErr(t *testing.T) {
+	targetBN := uint64(10000)
+	rand.Seed(0)
+	errHook := func(bn uint64) error {
+		// 10% error happens
+		if rand.Intn(10)%10 == 0 {
+			return errors.New("error expected")
+		}
+		return nil
+	}
+	chain := newTestBlockChain(0, nil)
+	protocol := newTestSyncProtocol(targetBN, errHook, errHook)
+	ctx, cancel := context.WithCancel(context.Background())
+
+	lsi := &lrSyncIter{
+		chain:    chain,
+		protocol: protocol,
+		gbm:      nil,
+		config: Config{
+			Concurrency: 100,
+		},
+		ctx:    ctx,
+		cancel: cancel,
+	}
+	lsi.fetchAndInsertBlocks(targetBN)
+
+	if err := fetchAndInsertBlocksResultCheck(lsi, targetBN, minStreamNum); err != nil {
+		t.Error(err)
+	}
+}
+
+func fetchAndInsertBlocksResultCheck(lsi *lrSyncIter, targetBN uint64, expNumStreams int) error {
+	if bn := lsi.chain.CurrentBlock().NumberU64(); bn != targetBN {
+		return fmt.Errorf("did not reached targetBN: %v / %v", bn, targetBN)
+	}
+	lsi.gbm.lock.Lock()
+	defer lsi.gbm.lock.Unlock()
 	if len(lsi.gbm.processing) != 0 {
-		t.Errorf("not empty processing")
+		return fmt.Errorf("not empty processing")
 	}
 	if len(lsi.gbm.requesting) != 0 {
-		t.Errorf("not empty requesting")
+		return fmt.Errorf("not empty requesting")
 	}
 	if lsi.gbm.retries.length() != 0 {
-		t.Errorf("not empty retries")
+		return fmt.Errorf("not empty retries")
 	}
 	if lsi.gbm.rq.length() != 0 {
-		t.Errorf("not empty result queue")
+		return fmt.Errorf("not empty result queue")
 	}
+	tsp := lsi.protocol.(*testSyncProtocol)
+	if len(tsp.streamIDs) != expNumStreams {
+		return fmt.Errorf("num streams not expected: %v / %v", len(tsp.streamIDs), expNumStreams)
+	}
+	return nil
 }
 
 func TestComputeBNMaxVote(t *testing.T) {
@@ -173,7 +277,7 @@ func TestComputeBNMaxVote(t *testing.T) {
 }
 
 func makeGetBlocksManager(curBN, targetBN uint64, requesting, processing, retries []uint64, sizeRQ int) *getBlocksManager {
-	chain := newTestBlockChain(curBN)
+	chain := newTestBlockChain(curBN, nil)
 	requestingM := make(map[uint64]struct{})
 	for _, bn := range requesting {
 		requestingM[bn] = struct{}{}
@@ -188,7 +292,7 @@ func makeGetBlocksManager(curBN, targetBN uint64, requesting, processing, retrie
 	}
 	rq := newResultQueue()
 	for i := uint64(0); i != uint64(sizeRQ); i++ {
-		rq.addBlockResults(makeTestBlocks([]uint64{uint64(i) + curBN}), "")
+		rq.addBlockResults(makeTestBlocks([]uint64{i + curBN}), "")
 	}
 	return &getBlocksManager{
 		chain:      chain,
