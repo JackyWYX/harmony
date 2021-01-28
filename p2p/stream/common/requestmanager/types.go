@@ -3,6 +3,7 @@ package requestmanager
 import (
 	"container/list"
 	"sync"
+	"sync/atomic"
 
 	sttypes "github.com/harmony-one/harmony/p2p/stream/types"
 	"github.com/pkg/errors"
@@ -30,7 +31,8 @@ type request struct {
 	respC chan deliverData // channel to receive response from delivered message
 	err   error
 	// concurrency control
-	waitCh chan struct{} // channel to wait for the request to be canceled or answered
+	waitCh      chan struct{} // channel to wait for the request to be canceled or answered
+	atmCanceled uint32
 	// stream info
 	owner *stream // Current owner
 	// utils
@@ -39,6 +41,7 @@ type request struct {
 	// options
 	priority  reqPriority
 	blacklist map[sttypes.StreamID]struct{} // banned streams
+	whitelist map[sttypes.StreamID]struct{} // allowed streams
 }
 
 func (req *request) clearOwner() {
@@ -59,6 +62,19 @@ func (req *request) SetReqID(val uint64) {
 	req.Request.SetReqID(val)
 }
 
+func (req *request) cancel() {
+	close(req.waitCh)
+	atomic.StoreUint32(&req.atmCanceled, 1)
+}
+
+func (req *request) isCanceled() bool {
+	return atomic.LoadUint32(&req.atmCanceled) == 1
+}
+
+func (req *request) isStreamAllowed(stid sttypes.StreamID) bool {
+	return req.isStreamWhitelisted(stid) && !req.isStreamBlacklisted(stid)
+}
+
 func (req *request) addBlacklistedStream(stid sttypes.StreamID) {
 	if req.blacklist == nil {
 		req.blacklist = make(map[sttypes.StreamID]struct{})
@@ -71,6 +87,21 @@ func (req *request) isStreamBlacklisted(stid sttypes.StreamID) bool {
 		return false
 	}
 	_, ok := req.blacklist[stid]
+	return ok
+}
+
+func (req *request) addWhiteListStream(stid sttypes.StreamID) {
+	if req.whitelist == nil {
+		req.whitelist = make(map[sttypes.StreamID]struct{})
+	}
+	req.whitelist[stid] = struct{}{}
+}
+
+func (req *request) isStreamWhitelisted(stid sttypes.StreamID) bool {
+	if req.whitelist == nil {
+		return true
+	}
+	_, ok := req.whitelist[stid]
 	return ok
 }
 

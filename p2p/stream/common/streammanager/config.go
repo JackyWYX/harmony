@@ -3,10 +3,10 @@ package streammanager
 import "time"
 
 const (
-	defHardLoCap = 4  // discovery trigger immediately when size smaller than this number
-	defSoftLoCap = 32 // discovery trigger for routine check
-	defHiCap     = 64 // Hard cap of the stream number
-	defDiscBatch = 16 // batch size for discovery
+	defHardLoCap = 4   // discovery trigger immediately when size smaller than this number
+	defSoftLoCap = 32  // discovery trigger for routine check
+	defHiCap     = 128 // Hard cap of the stream number
+	defDiscBatch = 16  // batch size for discovery
 
 	// checkInterval is the default interval for checking stream number. If the stream
 	// number is smaller than softLoCap, an active discover through DHT will be triggered.

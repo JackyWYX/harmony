@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
+
 	protobuf "github.com/golang/protobuf/proto"
 	syncpb "github.com/harmony-one/harmony/p2p/stream/protocols/sync/message"
 	sttypes "github.com/harmony-one/harmony/p2p/stream/types"
@@ -25,6 +27,20 @@ var (
 
 	testCurrentNumberRequest    = syncpb.MakeGetBlockNumberRequest()
 	testCurrentNumberRequestMsg = syncpb.MakeMessageFromRequest(testCurrentNumberRequest)
+
+	testGetBlockHashNums         = []uint64{1, 2, 3, 4, 5}
+	testGetBlockHashesRequest    = syncpb.MakeGetBlockHashesRequest(testGetBlockHashNums)
+	testGetBlockHashesRequestMsg = syncpb.MakeMessageFromRequest(testGetBlockHashesRequest)
+
+	testGetBlockByHashes = []common.Hash{
+		numberToHash(1),
+		numberToHash(2),
+		numberToHash(3),
+		numberToHash(4),
+		numberToHash(5),
+	}
+	testGetBlocksByHashesRequest    = syncpb.MakeGetBlocksByHashesRequest(testGetBlockByHashes)
+	testGetBlocksByHashesRequestMsg = syncpb.MakeMessageFromRequest(testGetBlocksByHashesRequest)
 )
 
 func TestSyncStream_HandleGetBlocksByRequest(t *testing.T) {
@@ -87,6 +103,48 @@ func TestSyncStream_HandleCurrentBlockNumber(t *testing.T) {
 	}
 
 	if err := checkBlockNumberResult(receivedBytes); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestSyncStream_HandleGetBlockHashes(t *testing.T) {
+	st, inC, outC := makeTestSyncStream()
+	st.run()
+	defer close(st.closeC)
+
+	req := testGetBlockHashesRequestMsg
+	b, _ := protobuf.Marshal(req)
+	outC <- b
+
+	var receivedBytes []byte
+	select {
+	case receivedBytes = <-inC:
+	case <-time.After(200 * time.Millisecond):
+		t.Fatal("timed out")
+	}
+
+	if err := checkBlockHashesResult(receivedBytes, testGetBlockNumbers); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestSyncStream_HandleGetBlocksByHashes(t *testing.T) {
+	st, inC, outC := makeTestSyncStream()
+	st.run()
+	defer close(st.closeC)
+
+	req := testGetBlocksByHashesRequestMsg
+	b, _ := protobuf.Marshal(req)
+	outC <- b
+
+	var receivedBytes []byte
+	select {
+	case receivedBytes = <-inC:
+	case <-time.After(200 * time.Millisecond):
+		t.Fatal("timed out")
+	}
+
+	if err := checkBlocksByHashesResult(receivedBytes, testGetBlockByHashes); err != nil {
 		t.Fatal(err)
 	}
 }

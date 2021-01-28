@@ -79,7 +79,7 @@ func NewProtocol(config Config) *Protocol {
 	sp.sm = streammanager.NewStreamManager(sp.ProtoID(), config.Host, config.Discovery)
 	sp.rm = requestmanager.NewRequestManager(sp.sm)
 
-	sp.logger = utils.Logger().With().Str("My Protocol", string(sp.ProtoID())).Logger()
+	sp.logger = utils.Logger().With().Str("Protocol", string(sp.ProtoID())).Logger()
 	return sp
 }
 

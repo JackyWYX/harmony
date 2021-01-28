@@ -218,6 +218,58 @@ func TestRequestManager_Close(t *testing.T) {
 	}
 }
 
+func TestRequestManager_Request_Blacklist(t *testing.T) {
+	delayF := makeDefaultDelayFunc(150 * time.Millisecond)
+	respF := makeDefaultResponseFunc()
+	ts := newTestSuite(delayF, respF, 4)
+	ts.Start()
+	defer ts.Close()
+
+	req := makeTestRequest(100)
+	ctx, _ := context.WithTimeout(context.Background(), 1*time.Second)
+	res := <-ts.rm.doRequestAsync(ctx, req, WithBlacklist([]sttypes.StreamID{
+		makeStreamID(0),
+		makeStreamID(1),
+		makeStreamID(2),
+	}))
+
+	if res.err != nil {
+		t.Errorf("unexpected error: %v", res.err)
+		return
+	}
+	if err := req.checkResponse(res.raw); err != nil {
+		t.Error(err)
+	}
+	if res.stID != makeStreamID(3) {
+		t.Errorf("unexpected stid")
+	}
+}
+
+func TestRequestManager_Request_Whitelist(t *testing.T) {
+	delayF := makeDefaultDelayFunc(150 * time.Millisecond)
+	respF := makeDefaultResponseFunc()
+	ts := newTestSuite(delayF, respF, 4)
+	ts.Start()
+	defer ts.Close()
+
+	req := makeTestRequest(100)
+	ctx, _ := context.WithTimeout(context.Background(), 1*time.Second)
+	res := <-ts.rm.doRequestAsync(ctx, req, WithWhitelist([]sttypes.StreamID{
+		makeStreamID(3),
+	}))
+
+	if res.err != nil {
+		t.Errorf("unexpected error: %v", res.err)
+		return
+	}
+	if err := req.checkResponse(res.raw); err != nil {
+		t.Error(err)
+	}
+	if res.stID != makeStreamID(3) {
+		t.Errorf("unexpected stid")
+	}
+}
+
 // test the race condition by spinning up a lot of goroutines
 func TestRequestManager_Concurrency(t *testing.T) {
 	var (

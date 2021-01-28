@@ -96,6 +96,7 @@ func (res *EpochStateResult) toMessage(rid uint64) (*syncpb.Message, error) {
 // Currently, two options are supported:
 //  1. WithHighPriority - do the request in high priority.
 //  2. WithBlacklist - do the request without the given stream ids as blacklist
+//  3. WithWhitelist - do the request only with the given stream ids
 type Option = requestmanager.RequestOption
 
 var (
@@ -105,4 +106,7 @@ var (
 	// WithBlacklist instruct the request manager not to assign the request to the
 	// given streamID
 	WithBlacklist = requestmanager.WithBlacklist
+	// WithWhitelist instruct the request manager only to assign the request to the
+	// given streamID
+	WithWhitelist = requestmanager.WithWhitelist
 )

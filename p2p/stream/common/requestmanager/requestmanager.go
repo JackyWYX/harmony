@@ -105,7 +105,7 @@ func (rm *requestManager) doRequestAsync(ctx context.Context, raw sttypes.Reques
 	resC := make(chan response, 1)
 
 	go func() {
-		defer close(req.waitCh)
+		defer req.cancel()
 		select {
 		case <-ctx.Done(): // canceled or timeout in upper function calls
 			rm.cancelReqC <- req.ReqID()
@@ -309,10 +309,17 @@ func (rm *requestManager) getNextRequest() (*request, *stream) {
 	rm.lock.Lock()
 	defer rm.lock.Unlock()
 
-	req := rm.waitings.Pop()
-	if req == nil {
-		return nil, nil
+	var req *request
+	for {
+		req = rm.waitings.Pop()
+		if req == nil {
+			return nil, nil
+		}
+		if !req.isCanceled() {
+			break
+		}
 	}
+
 	st, err := rm.pickAvailableStream(req)
 	if err != nil {
 		rm.logger.Debug().Msg("No available streams.")
@@ -357,7 +364,7 @@ func (rm *requestManager) removePendingRequest(req *request) {
 
 func (rm *requestManager) pickAvailableStream(req *request) (*stream, error) {
 	for id := range rm.available {
-		if req.isStreamBlacklisted(id) {
+		if !req.isStreamAllowed(id) {
 			continue
 		}
 		st, ok := rm.streams[id]

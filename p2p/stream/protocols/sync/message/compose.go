@@ -1,11 +1,46 @@
 package message
 
+import (
+	"github.com/ethereum/go-ethereum/common"
+)
+
+// MakeGetBlockNumberRequest makes the GetBlockNumber Request
+func MakeGetBlockNumberRequest() *Request {
+	return &Request{
+		Request: &Request_GetBlockNumberRequest{
+			GetBlockNumberRequest: &GetBlockNumberRequest{},
+		},
+	}
+}
+
+// MakeGetBlockHashesRequest makes GetBlockHashes Request
+func MakeGetBlockHashesRequest(bns []uint64) *Request {
+	return &Request{
+		Request: &Request_GetBlockHashesRequest{
+			GetBlockHashesRequest: &GetBlockHashesRequest{
+				Nums: bns,
+			},
+		},
+	}
+}
+
 // MakeGetBlocksByNumRequest makes the GetBlockByNumber request
 func MakeGetBlocksByNumRequest(bns []uint64) *Request {
 	return &Request{
 		Request: &Request_GetBlocksByNumRequest{
 			GetBlocksByNumRequest: &GetBlocksByNumRequest{
 				Nums: bns,
+			},
+		},
+	}
+}
+
+//MakeGetBlockByHashesRequest makes the GetBlocksByHashes request
+func MakeGetBlocksByHashesRequest(hashes []common.Hash) *Request {
+	return &Request{
+		Request: &Request_GetBlocksByHashesRequest{
+			GetBlocksByHashesRequest: &GetBlocksByHashesRequest{
+				BlockHashes: hashesToBytes(hashes),
 			},
 		},
 	}
@@ -18,15 +53,6 @@ func MakeGetEpochStateRequest(epoch uint64) *Request {
 			GetEpochStateRequest: &GetEpochStateRequest{
 				Epoch: epoch,
 			},
-		},
-	}
-}
-
-// MakeGetBlockNumberRequest makes the GetBlockNumber Request
-func MakeGetBlockNumberRequest() *Request {
-	return &Request{
-		Request: &Request_GetBlockNumberRequest{
-			GetBlockNumberRequest: &GetBlockNumberRequest{},
 		},
 	}
 }
@@ -44,46 +70,6 @@ func MakeErrorResponse(rid uint64, err error) *Response {
 		Response: &Response_ErrorResponse{
 			&ErrorResponse{
 				Error: err.Error(),
-			},
-		},
-	}
-}
-
-// MakeGetBlocksByNumResponseMessage makes the GetBlocksByNumResponse of Message type
-func MakeGetBlocksByNumResponseMessage(rid uint64, blocksBytes [][]byte) (*Message, error) {
-	resp, err := MakeGetBlocksByNumResponse(rid, blocksBytes)
-	if err != nil {
-		return nil, err
-	}
-	return makeMessageFromResponse(resp), nil
-}
-
-// MakeGetBlocksByNumResponseMessage make the GetBlocksByNumResponse of Response type
-func MakeGetBlocksByNumResponse(rid uint64, blocksBytes [][]byte) (*Response, error) {
-	return &Response{
-		ReqId: rid,
-		Response: &Response_GetBlocksByNumResponse{
-			GetBlocksByNumResponse: &GetBlocksByNumResponse{
-				BlocksBytes: blocksBytes,
-			},
-		},
-	}, nil
-}
-
-// MakeGetEpochStateResponse makes GetEpochStateResponse as message
-func MakeGetEpochStateResponseMessage(rid uint64, headerBytes []byte, ssBytes []byte) *Message {
-	resp := MakeGetEpochStateResponse(rid, headerBytes, ssBytes)
-	return makeMessageFromResponse(resp)
-}
-
-// MakeEpochStateResponse makes GetEpochStateResponse as response
-func MakeGetEpochStateResponse(rid uint64, headerBytes []byte, ssBytes []byte) *Response {
-	return &Response{
-		ReqId: rid,
-		Response: &Response_GetEpochStateResponse{
-			GetEpochStateResponse: &GetEpochStateResponse{
-				HeaderBytes: headerBytes,
-				ShardState:  ssBytes,
 			},
 		},
 	}
@@ -107,6 +93,79 @@ func MakeGetBlockNumberResponse(rid uint64, bn uint64) *Response {
 	}
 }
 
+// MakeGetBlockHashesResponseMessage makes the GetBlockHashes message
+func MakeGetBlockHashesResponseMessage(rid uint64, hs []common.Hash) *Message {
+	resp := MakeGetBlockHashesResponse(rid, hs)
+	return makeMessageFromResponse(resp)
+}
+
+// MakeGetBlockHashesResponse makes the GetBlockHashes response
+func MakeGetBlockHashesResponse(rid uint64, hs []common.Hash) *Response {
+	return &Response{
+		ReqId: rid,
+		Response: &Response_GetBlockHashesResponse{
+			GetBlockHashesResponse: &GetBlockHashesResponse{
+				Hashes: hashesToBytes(hs),
+			},
+		},
+	}
+}
+
+// MakeGetBlocksByNumResponseMessage makes the GetBlocksByNumResponse of Message type
+func MakeGetBlocksByNumResponseMessage(rid uint64, blocksBytes [][]byte) *Message {
+	resp := MakeGetBlocksByNumResponse(rid, blocksBytes)
+	return makeMessageFromResponse(resp)
+}
+
+// MakeGetBlocksByNumResponseMessage make the GetBlocksByNumResponse of Response type
+func MakeGetBlocksByNumResponse(rid uint64, blocksBytes [][]byte) *Response {
+	return &Response{
+		ReqId: rid,
+		Response: &Response_GetBlocksByNumResponse{
+			GetBlocksByNumResponse: &GetBlocksByNumResponse{
+				BlocksBytes: blocksBytes,
+			},
+		},
+	}
+}
+
+// MakeGetBlocksByHashesResponseMessage makes the GetBlocksByHashesResponse of Message type
+func MakeGetBlocksByHashesResponseMessage(rid uint64, blocksBytes [][]byte) *Message {
+	resp := MakeGetBlocksByHashesResponse(rid, blocksBytes)
+	return makeMessageFromResponse(resp)
+}
+
+// MakeGetBlocksByHashesResponse make the GetBlocksByHashesResponse of Response type
+func MakeGetBlocksByHashesResponse(rid uint64, blocksBytes [][]byte) *Response {
+	return &Response{
+		ReqId: rid,
+		Response: &Response_GetBlocksByHashesResponse{
+			GetBlocksByHashesResponse: &GetBlocksByHashesResponse{
+				BlocksBytes: blocksBytes,
+			},
+		},
+	}
+}
+
+// MakeGetEpochStateResponse makes GetEpochStateResponse as message
+func MakeGetEpochStateResponseMessage(rid uint64, headerBytes []byte, ssBytes []byte) *Message {
+	resp := MakeGetEpochStateResponse(rid, headerBytes, ssBytes)
+	return makeMessageFromResponse(resp)
+}
+
+// MakeEpochStateResponse makes GetEpochStateResponse as response
+func MakeGetEpochStateResponse(rid uint64, headerBytes []byte, ssBytes []byte) *Response {
+	return &Response{
+		ReqId: rid,
+		Response: &Response_GetEpochStateResponse{
+			GetEpochStateResponse: &GetEpochStateResponse{
+				HeaderBytes: headerBytes,
+				ShardState:  ssBytes,
+			},
+		},
+	}
+}
+
 // MakeMessageFromRequest makes a message from the request
 func MakeMessageFromRequest(req *Request) *Message {
 	return &Message{
@@ -122,4 +181,26 @@ func makeMessageFromResponse(resp *Response) *Message {
 			Resp: resp,
 		},
 	}
+}
+
+func hashesToBytes(hashes []common.Hash) [][]byte {
+	res := make([][]byte, 0, len(hashes))
+
+	for _, h := range hashes {
+		b := make([]byte, common.HashLength)
+		copy(b, h[:])
+		res = append(res, b)
+	}
+	return res
+}
+
+func bytesToHashes(bs [][]byte) []common.Hash {
+	res := make([]common.Hash, len(bs))
+
+	for _, b := range bs {
+		var h common.Hash
+		copy(h[:], b)
+		res = append(res, h)
+	}
+	return res
 }

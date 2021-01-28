@@ -39,7 +39,7 @@ func TestProtocol_Match(t *testing.T) {
 }
 
 func TestProtocol_advertiseLoop(t *testing.T) {
-	disc := NewTestDiscovery(100 * time.Millisecond)
+	disc := newTestDiscovery(100 * time.Millisecond)
 	p := &Protocol{
 		disc:   disc,
 		closeC: make(chan struct{}),
@@ -66,7 +66,7 @@ type testDiscovery struct {
 	sleep  time.Duration
 }
 
-func NewTestDiscovery(discInterval time.Duration) *testDiscovery {
+func newTestDiscovery(discInterval time.Duration) *testDiscovery {
 	return &testDiscovery{
 		advCnt: make(map[string]int),
 		sleep:  discInterval,
