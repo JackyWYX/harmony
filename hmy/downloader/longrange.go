@@ -25,13 +25,13 @@ func (d *Downloader) doLongRangeSync(ctx context.Context) error {
 			chain:    d.bc,
 			protocol: d.syncProtocol,
 			ctx:      ctx,
-			cancel:   cancel,
 			config:   d.config,
-			logger:   d.logger,
+			logger:   d.logger.With().Str("mode", "long range").Logger(),
 		}
 		if err := iter.doLongRangeSync(); err != nil {
 			return err
 		}
+		cancel()
 
 		endBN := d.bc.CurrentBlock().NumberU64()
 		if endBN-initBN < lastMileThres {
@@ -51,7 +51,6 @@ type lrSyncIter struct {
 
 	config Config
 	ctx    context.Context
-	cancel func()
 	logger zerolog.Logger
 }
 
@@ -87,8 +86,9 @@ func (lsi *lrSyncIter) estimateCurrentNumber() (uint64, error) {
 			if err != nil {
 				lsi.logger.Err(err).Str("streamID", string(stid)).
 					Msg("getCurrentNumber request failed. Removing stream")
-				// TODO: if the error is context canceled, shall not remove the stream
-				lsi.protocol.RemoveStream(stid)
+				if err != context.Canceled {
+					lsi.protocol.RemoveStream(stid)
+				}
 				return
 			}
 
@@ -176,7 +176,6 @@ func (lsi *lrSyncIter) insertChainLoop(targetBN uint64) {
 				}
 			}
 			if lsi.chain.CurrentBlock().NumberU64() == targetBN {
-				lsi.cancel() // cancel workers
 				return
 			}
 		}
@@ -231,7 +230,9 @@ func (w *getBlocksWorker) workLoop() {
 
 		blocks, stid, err := w.doBatch(batch)
 		if err != nil {
-			w.protocol.RemoveStream(stid)
+			if err != context.Canceled {
+				w.protocol.RemoveStream(stid)
+			}
 			err = errors.Wrap(err, "request error")
 			w.gbm.HandleRequestError(batch, err, stid)
 		} else {
@@ -287,7 +288,7 @@ func (gbm *getBlocksManager) GetNextBatch() []uint64 {
 	gbm.lock.Lock()
 	defer gbm.lock.Unlock()
 
-	cap := blocksPerRequest
+	cap := numBlocksByNumPerRequest
 
 	bns := gbm.getBatchFromRetries(cap)
 	cap -= len(bns)

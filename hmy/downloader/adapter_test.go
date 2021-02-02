@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/harmony-one/harmony/core/types"
 	syncproto "github.com/harmony-one/harmony/p2p/stream/protocols/sync"
 	sttypes "github.com/harmony-one/harmony/p2p/stream/types"
@@ -77,13 +78,13 @@ type testSyncProtocol struct {
 	lock       sync.Mutex
 }
 
-func newTestSyncProtocol(targetBN uint64, requestErrHook, insertErrHook func(uint64) error) *testSyncProtocol {
+func newTestSyncProtocol(targetBN uint64, numStreams int, requestErrHook func(uint64) error) *testSyncProtocol {
 	return &testSyncProtocol{
-		streamIDs:      makeStreamIDs(initStreamNum),
-		remoteChain:    newTestBlockChain(targetBN, insertErrHook),
+		streamIDs:      makeStreamIDs(numStreams),
+		remoteChain:    newTestBlockChain(targetBN, nil),
 		requestErrHook: requestErrHook,
 		curIndex:       0,
-		numStreams:     32,
+		numStreams:     numStreams,
 	}
 }
 
@@ -102,6 +103,47 @@ func (sp *testSyncProtocol) GetBlocksByNumber(ctx context.Context, bns []uint64,
 
 	res := make([]*types.Block, 0, len(bns))
 	for _, bn := range bns {
+		if sp.requestErrHook != nil {
+			if err := sp.requestErrHook(bn); err != nil {
+				return nil, sp.nextStreamID(), err
+			}
+		}
+		if bn > sp.remoteChain.currentBlockNumber() {
+			res = append(res, nil)
+		} else {
+			res = append(res, makeTestBlock(bn))
+		}
+	}
+	return res, sp.nextStreamID(), nil
+}
+
+func (sp *testSyncProtocol) GetBlockHashes(ctx context.Context, bns []uint64, opts ...syncproto.Option) ([]common.Hash, sttypes.StreamID, error) {
+	sp.lock.Lock()
+	defer sp.lock.Unlock()
+
+	res := make([]common.Hash, 0, len(bns))
+	for _, bn := range bns {
+		if sp.requestErrHook != nil {
+			if err := sp.requestErrHook(bn); err != nil {
+				return nil, sp.nextStreamID(), err
+			}
+		}
+		if bn > sp.remoteChain.currentBlockNumber() {
+			res = append(res, emptyHash)
+		} else {
+			res = append(res, makeTestBlockHash(bn))
+		}
+	}
+	return res, sp.nextStreamID(), nil
+}
+
+func (sp *testSyncProtocol) GetBlocksByHashes(ctx context.Context, hs []common.Hash, opts ...syncproto.Option) ([]*types.Block, sttypes.StreamID, error) {
+	sp.lock.Lock()
+	defer sp.lock.Unlock()
+
+	res := make([]*types.Block, 0, len(hs))
+	for _, h := range hs {
+		bn := testHashToNumber(h)
 		if sp.requestErrHook != nil {
 			if err := sp.requestErrHook(bn); err != nil {
 				return nil, sp.nextStreamID(), err
@@ -144,6 +186,7 @@ func (sp *testSyncProtocol) NumStreams() int {
 	return len(sp.streamIDs)
 }
 
+// TODO: add with whitelist stuff
 func (sp *testSyncProtocol) nextStreamID() sttypes.StreamID {
 	if sp.curIndex >= len(sp.streamIDs) {
 		sp.curIndex = 0
@@ -166,4 +209,37 @@ func makeStreamIDs(size int) []sttypes.StreamID {
 
 func makeStreamID(index int) sttypes.StreamID {
 	return sttypes.StreamID(fmt.Sprintf("test stream %v", index))
+}
+
+var (
+	hashNumberMap  = map[common.Hash]uint64{}
+	computed       uint64
+	hashNumberLock sync.Mutex
+)
+
+func testHashToNumber(h common.Hash) uint64 {
+	hashNumberLock.Lock()
+	defer hashNumberLock.Unlock()
+
+	if h == emptyHash {
+		panic("not allowed")
+	}
+	if bn, ok := hashNumberMap[h]; ok {
+		return bn
+	}
+	for ; ; computed++ {
+		ch := makeTestBlockHash(computed)
+		hashNumberMap[ch] = computed
+		if ch == h {
+			return computed
+		}
+	}
+}
+
+func testNumberToHashes(nums []uint64) []common.Hash {
+	hashes := make([]common.Hash, 0, len(nums))
+	for _, num := range nums {
+		hashes = append(hashes, makeTestBlockHash(num))
+	}
+	return hashes
 }

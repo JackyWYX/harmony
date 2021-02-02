@@ -11,9 +11,29 @@ import (
 	"github.com/pkg/errors"
 )
 
+func TestDownloader_doLongRangeSync(t *testing.T) {
+	targetBN := uint64(1000)
+
+	d := &Downloader{
+		bc:           newTestBlockChain(1, nil),
+		syncProtocol: newTestSyncProtocol(targetBN, 32, nil),
+		config: Config{
+			Concurrency: 16,
+			MinStreams:  16,
+		},
+	}
+	err := d.doLongRangeSync(context.Background())
+	if err != nil {
+		t.Error(err)
+	}
+	if curNum := d.bc.CurrentBlock().NumberU64(); curNum != targetBN {
+		t.Errorf("block number not expected: %v / %v", curNum, targetBN)
+	}
+}
+
 func TestLrSyncIter_EstimateCurrentNumber(t *testing.T) {
 	lsi := &lrSyncIter{
-		protocol: newTestSyncProtocol(100, nil, nil),
+		protocol: newTestSyncProtocol(100, 32, nil),
 		ctx:      context.Background(),
 		config: Config{
 			Concurrency: 16,
@@ -97,8 +117,8 @@ func TestGetBlocksManager_GetNextBatch(t *testing.T) {
 func TestLrSyncIter_FetchAndInsertBlocks(t *testing.T) {
 	targetBN := uint64(1000)
 	chain := newTestBlockChain(0, nil)
-	protocol := newTestSyncProtocol(targetBN, nil, nil)
-	ctx, cancel := context.WithCancel(context.Background())
+	protocol := newTestSyncProtocol(targetBN, 32, nil)
+	ctx, _ := context.WithCancel(context.Background())
 
 	lsi := &lrSyncIter{
 		chain:    chain,
@@ -107,8 +127,7 @@ func TestLrSyncIter_FetchAndInsertBlocks(t *testing.T) {
 		config: Config{
 			Concurrency: 100,
 		},
-		ctx:    ctx,
-		cancel: cancel,
+		ctx: ctx,
 	}
 	lsi.fetchAndInsertBlocks(targetBN)
 
@@ -129,8 +148,8 @@ func TestLrSyncIter_FetchAndInsertBlocks_ErrRequest(t *testing.T) {
 		return err
 	}
 	chain := newTestBlockChain(0, nil)
-	protocol := newTestSyncProtocol(targetBN, errHook, nil)
-	ctx, cancel := context.WithCancel(context.Background())
+	protocol := newTestSyncProtocol(targetBN, 32, errHook)
+	ctx, _ := context.WithCancel(context.Background())
 
 	lsi := &lrSyncIter{
 		chain:    chain,
@@ -139,8 +158,7 @@ func TestLrSyncIter_FetchAndInsertBlocks_ErrRequest(t *testing.T) {
 		config: Config{
 			Concurrency: 100,
 		},
-		ctx:    ctx,
-		cancel: cancel,
+		ctx: ctx,
 	}
 	lsi.fetchAndInsertBlocks(targetBN)
 
@@ -160,9 +178,9 @@ func TestLrSyncIter_FetchAndInsertBlocks_ErrInsert(t *testing.T) {
 		})
 		return err
 	}
-	chain := newTestBlockChain(0, nil)
-	protocol := newTestSyncProtocol(targetBN, nil, errHook)
-	ctx, cancel := context.WithCancel(context.Background())
+	chain := newTestBlockChain(0, errHook)
+	protocol := newTestSyncProtocol(targetBN, 32, nil)
+	ctx, _ := context.WithCancel(context.Background())
 
 	lsi := &lrSyncIter{
 		chain:    chain,
@@ -171,12 +189,11 @@ func TestLrSyncIter_FetchAndInsertBlocks_ErrInsert(t *testing.T) {
 		config: Config{
 			Concurrency: 100,
 		},
-		ctx:    ctx,
-		cancel: cancel,
+		ctx: ctx,
 	}
 	lsi.fetchAndInsertBlocks(targetBN)
 
-	if err := fetchAndInsertBlocksResultCheck(lsi, targetBN, initStreamNum); err != nil {
+	if err := fetchAndInsertBlocksResultCheck(lsi, targetBN, initStreamNum-1); err != nil {
 		t.Error(err)
 	}
 }
@@ -192,9 +209,9 @@ func TestLrSyncIter_FetchAndInsertBlocks_RandomErr(t *testing.T) {
 		}
 		return nil
 	}
-	chain := newTestBlockChain(0, nil)
-	protocol := newTestSyncProtocol(targetBN, errHook, errHook)
-	ctx, cancel := context.WithCancel(context.Background())
+	chain := newTestBlockChain(0, errHook)
+	protocol := newTestSyncProtocol(targetBN, 32, errHook)
+	ctx, _ := context.WithCancel(context.Background())
 
 	lsi := &lrSyncIter{
 		chain:    chain,
@@ -203,8 +220,7 @@ func TestLrSyncIter_FetchAndInsertBlocks_RandomErr(t *testing.T) {
 		config: Config{
 			Concurrency: 100,
 		},
-		ctx:    ctx,
-		cancel: cancel,
+		ctx: ctx,
 	}
 	lsi.fetchAndInsertBlocks(targetBN)
 

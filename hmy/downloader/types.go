@@ -4,13 +4,13 @@ import (
 	"container/heap"
 	"sync"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/harmony-one/harmony/core/types"
 	sttypes "github.com/harmony-one/harmony/p2p/stream/types"
-	"github.com/pkg/errors"
 )
 
 var (
-	errResultQueueFull = errors.New("resultQueue is already full.")
+	emptyHash common.Hash
 )
 
 type getBlocksResult struct {
