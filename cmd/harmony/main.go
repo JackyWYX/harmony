@@ -309,6 +309,7 @@ func setupNodeAndRun(hc harmonyConfig) {
 				utils.Logger().Warn().Str("signal", sig.String()).Msg("Gracefully shutting down...")
 				const msg = "Got %s signal. Gracefully shutting down...\n"
 				fmt.Fprintf(os.Stderr, msg, sig)
+				currentNode.ShutDown()
 				// stop block proposal service for leader
 				if node.Consensus.IsLeader() {
 					node.ServiceManager().StopService(service.BlockProposal)
@@ -436,10 +437,12 @@ func setupNodeAndRun(hc harmonyConfig) {
 		}
 	}
 
-	if err := currentNode.Start(); err != nil {
+	if err := currentNode.StartPubSub(); err != nil {
 		fmt.Println("could not begin network message handling for node", err.Error())
 		os.Exit(-1)
 	}
+
+	select {}
 }
 
 func nodeconfigSetShardSchedule(config harmonyConfig) {
