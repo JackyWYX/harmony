@@ -6,7 +6,9 @@ import (
 	"sync"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/event"
 	"github.com/harmony-one/harmony/core/types"
+	"github.com/harmony-one/harmony/p2p/stream/common/streammanager"
 	syncproto "github.com/harmony-one/harmony/p2p/stream/protocols/sync"
 	sttypes "github.com/harmony-one/harmony/p2p/stream/types"
 )
@@ -57,6 +59,13 @@ func (bc *testBlockChain) InsertChain(chain types.Blocks, verifyHeaders bool) (i
 		bc.curBN++
 	}
 	return len(chain), nil
+}
+
+func (bc *testBlockChain) changeBlockNumber(val uint64) {
+	bc.lock.Lock()
+	defer bc.lock.Unlock()
+
+	bc.curBN = val
 }
 
 func (bc *testBlockChain) ShardID() uint32 {
@@ -186,6 +195,19 @@ func (sp *testSyncProtocol) NumStreams() int {
 	return len(sp.streamIDs)
 }
 
+func (sp *testSyncProtocol) SubscribeAddStreamEvent(ch chan<- streammanager.EvtStreamAdded) event.Subscription {
+	var evtFeed event.Feed
+	go func() {
+		sp.lock.Lock()
+		num := len(sp.streamIDs)
+		sp.lock.Unlock()
+		for i := 0; i != num; i++ {
+			evtFeed.Send(streammanager.EvtStreamAdded{Stream: nil})
+		}
+	}()
+	return evtFeed.Subscribe(ch)
+}
+
 // TODO: add with whitelist stuff
 func (sp *testSyncProtocol) nextStreamID() sttypes.StreamID {
 	if sp.curIndex >= len(sp.streamIDs) {
@@ -197,6 +219,10 @@ func (sp *testSyncProtocol) nextStreamID() sttypes.StreamID {
 		sp.curIndex = 0
 	}
 	return sp.streamIDs[index]
+}
+
+func (sp *testSyncProtocol) changeBlockNumber(val uint64) {
+	sp.remoteChain.changeBlockNumber(val)
 }
 
 func makeStreamIDs(size int) []sttypes.StreamID {

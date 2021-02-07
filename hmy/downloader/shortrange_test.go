@@ -20,9 +20,10 @@ func TestDownloader_doShortRangeSync(t *testing.T) {
 			Concurrency: 16,
 			MinStreams:  16,
 		},
+		ctx:    context.Background(),
 		logger: zerolog.Logger{},
 	}
-	err := d.doShortRangeSync(context.Background())
+	err := d.doShortRangeSync()
 	if err != nil {
 		t.Error(err)
 	}

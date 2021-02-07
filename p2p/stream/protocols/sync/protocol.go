@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/ethereum/go-ethereum/event"
 	"github.com/harmony-one/harmony/consensus/engine"
 	nodeconfig "github.com/harmony-one/harmony/internal/configs/node"
 	shardingconfig "github.com/harmony-one/harmony/internal/configs/sharding"
@@ -225,4 +226,9 @@ func (p *Protocol) NumStreams() int {
 // GetStreamManager get the underlying stream manager for upper level stream operations
 func (p *Protocol) GetStreamManager() streammanager.StreamManager {
 	return p.sm
+}
+
+// SubscribeAddStreamEvent subscribe the stream add event
+func (p *Protocol) SubscribeAddStreamEvent(ch chan<- streammanager.EvtStreamAdded) event.Subscription {
+	return p.sm.SubscribeAddStreamEvent(ch)
 }

@@ -21,11 +21,11 @@ import (
 // 1. Obtain the block hashes and ompute the longest hash chain..
 // 2. Get blocks by hashes from computed hash chain.
 // 3. Insert the blocks to blockchain.
-func (d *Downloader) doShortRangeSync(ctx context.Context) error {
+func (d *Downloader) doShortRangeSync() error {
 	sh := &srHelper{
 		bc:           d.bc,
 		syncProtocol: d.syncProtocol,
-		ctx:          ctx,
+		ctx:          d.ctx,
 		config:       d.config,
 		logger:       d.logger.With().Str("mode", "short range").Logger(),
 	}

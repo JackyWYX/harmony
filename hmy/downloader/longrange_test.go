@@ -21,8 +21,9 @@ func TestDownloader_doLongRangeSync(t *testing.T) {
 			Concurrency: 16,
 			MinStreams:  16,
 		},
+		ctx: context.Background(),
 	}
-	err := d.doLongRangeSync(context.Background())
+	err := d.doLongRangeSync()
 	if err != nil {
 		t.Error(err)
 	}

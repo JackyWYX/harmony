@@ -16,9 +16,9 @@ import (
 // doLongRangeSync does the long range sync.
 // One LongRangeSync consists of several iterations.
 // For each iteration, estimate the current block number, then fetch block & insert to blockchain
-func (d *Downloader) doLongRangeSync(ctx context.Context) error {
+func (d *Downloader) doLongRangeSync() error {
 	for {
-		ctx, cancel := context.WithCancel(ctx)
+		ctx, cancel := context.WithCancel(d.ctx)
 		initBN := d.bc.CurrentBlock().NumberU64()
 
 		iter := &lrSyncIter{
@@ -29,6 +29,7 @@ func (d *Downloader) doLongRangeSync(ctx context.Context) error {
 			logger:   d.logger.With().Str("mode", "long range").Logger(),
 		}
 		if err := iter.doLongRangeSync(); err != nil {
+			cancel()
 			return err
 		}
 		cancel()
@@ -62,8 +63,7 @@ func (lsi *lrSyncIter) doLongRangeSync() error {
 	if err != nil {
 		return err
 	}
-	lsi.fetchAndInsertBlocks(bn)
-	return nil
+	return lsi.fetchAndInsertBlocks(bn)
 }
 
 func (lsi *lrSyncIter) checkPrerequisites() error {
@@ -91,7 +91,6 @@ func (lsi *lrSyncIter) estimateCurrentNumber() (uint64, error) {
 				}
 				return
 			}
-
 			lock.Lock()
 			cnResults[stid] = bn
 			lock.Unlock()
@@ -100,6 +99,11 @@ func (lsi *lrSyncIter) estimateCurrentNumber() (uint64, error) {
 	wg.Wait()
 
 	if len(cnResults) == 0 {
+		select {
+		case <-lsi.ctx.Done():
+			return 0, lsi.ctx.Err()
+		default:
+		}
 		return 0, errors.New("zero block number response from remote nodes")
 	}
 	bn := computeBNMaxVote(cnResults)
@@ -119,7 +123,7 @@ func (lsi *lrSyncIter) doGetCurrentNumberRequest() (uint64, sttypes.StreamID, er
 
 // fetchAndInsertBlocks use the pipeline pattern to boost the performance of inserting blocks.
 // TODO: For resharding, use the pipeline to do fast sync (epoch loop, header loop, body loop)
-func (lsi *lrSyncIter) fetchAndInsertBlocks(targetBN uint64) {
+func (lsi *lrSyncIter) fetchAndInsertBlocks(targetBN uint64) error {
 	gbm := newGetBlocksManager(lsi.chain, targetBN, lsi.logger)
 	lsi.gbm = gbm
 
@@ -135,12 +139,19 @@ func (lsi *lrSyncIter) fetchAndInsertBlocks(targetBN uint64) {
 
 	// insert the blocks to chain. Return when the target block number is reached.
 	lsi.insertChainLoop(targetBN)
+
+	select {
+	case <-lsi.ctx.Done():
+		return lsi.ctx.Err()
+	default:
+	}
+	return nil
 }
 
 func (lsi *lrSyncIter) insertChainLoop(targetBN uint64) {
 	var (
 		gbm     = lsi.gbm
-		t       = time.NewTicker(1 * time.Second)
+		t       = time.NewTicker(100 * time.Millisecond)
 		resultC = make(chan struct{}, 1)
 	)
 
@@ -165,15 +176,11 @@ func (lsi *lrSyncIter) insertChainLoop(targetBN uint64) {
 			trigger()
 
 		case <-resultC:
-			//fmt.Println(gbm.rq.length())
 			blockResults := gbm.PullContinuousBlocks(blocksPerInsert)
 			if len(blockResults) > 0 {
 				lsi.processBlocks(blockResults)
 				// more blocks is expected being able to be pulled from queue
-				select {
-				case gbm.resultC <- struct{}{}:
-				default:
-				}
+				trigger()
 			}
 			if lsi.chain.CurrentBlock().NumberU64() == targetBN {
 				return
