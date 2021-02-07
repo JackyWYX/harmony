@@ -86,7 +86,7 @@ func resolveMultiAddrString(addrStr string) ([]libp2p_peer.AddrInfo, error) {
 
 func resolveMultiAddr(raw ma.Multiaddr) ([]ma.Multiaddr, error) {
 	if madns.Matches(raw) {
-		ctx, _ := context.WithTimeout(context.Background(), 1*time.Second)
+		ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 		mas, err := madns.Resolve(ctx, raw)
 		if err != nil {
 			return nil, err
