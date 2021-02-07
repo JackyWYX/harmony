@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/harmony-one/harmony/internal/utils"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -76,11 +77,11 @@ func (s *Service) getJobName() string {
 }
 
 // NewService sets up a new instance for a given address host:port.
-// An empty host will match with any IP so an address like ":19000" is perfectly acceptable.
-func NewService(cfg Config, additionalHandlers ...Handler) {
+// Anq empty host will match with any IP so an address like ":19000" is perfectly acceptable.
+func NewService(cfg Config, additionalHandlers ...Handler) *Service {
 	if !cfg.Enabled {
 		utils.Logger().Info().Msg("Prometheus http server disabled...")
-		return
+		return nil
 	}
 
 	utils.Logger().Debug().Str("cfg", cfg.String()).Msg("Prometheus")
@@ -107,26 +108,12 @@ func NewService(cfg Config, additionalHandlers ...Handler) {
 		Msg("Starting Prometheus server")
 	endpoint := fmt.Sprintf("%s:%d", svc.config.IP, svc.config.Port)
 	svc.server = &http.Server{Addr: endpoint, Handler: mux}
+	return svc
+}
+
+// Start start the prometheus service
+func (s *Service) Start() error {
 	svc.Start()
-}
-
-// StopService stop the Prometheus service
-func StopService() error {
-	return svc.Stop()
-}
-
-func (s *Service) goroutinezHandler(w http.ResponseWriter, _ *http.Request) {
-	stack := debug.Stack()
-	if _, err := w.Write(stack); err != nil {
-		utils.Logger().Error().Err(err).Msg("Failed to write goroutines stack")
-	}
-	if err := pprof.Lookup("goroutine").WriteTo(w, 2); err != nil {
-		utils.Logger().Error().Err(err).Msg("Failed to write pprof goroutines")
-	}
-}
-
-// Start the prometheus service.
-func (s *Service) Start() {
 	go func() {
 		utils.Logger().Info().Str("address", s.server.Addr).Msg("Starting prometheus service")
 		err := s.server.ListenAndServe()
@@ -158,13 +145,24 @@ func (s *Service) Start() {
 			}
 		}(s)
 	}
+	return nil
 }
 
-// Stop the service gracefully.
+// Stop stop the Prometheus service
 func (s *Service) Stop() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 	return s.server.Shutdown(ctx)
+}
+
+func (s *Service) goroutinezHandler(w http.ResponseWriter, _ *http.Request) {
+	stack := debug.Stack()
+	if _, err := w.Write(stack); err != nil {
+		utils.Logger().Error().Err(err).Msg("Failed to write goroutines stack")
+	}
+	if err := pprof.Lookup("goroutine").WriteTo(w, 2); err != nil {
+		utils.Logger().Error().Err(err).Msg("Failed to write pprof goroutines")
+	}
 }
 
 // Status checks for any service failure conditions.
@@ -172,6 +170,11 @@ func (s *Service) Status() error {
 	if s.failStatus != nil {
 		return s.failStatus
 	}
+	return nil
+}
+
+// APIs returns the RPC apis of the prometheus service
+func (s *Service) APIs() []rpc.API {
 	return nil
 }
 

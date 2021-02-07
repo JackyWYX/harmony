@@ -106,7 +106,6 @@ type Node struct {
 	// Chain configuration.
 	chainConfig params.ChainConfig
 	// map of service type to its message channel.
-	serviceMessageChan  map[service.Type]chan *msg_pb.Message
 	isFirstTime         bool // the node was started with a fresh database
 	unixTimeAtNodeStart int64
 	// KeysToAddrs holds the addresses of bls keys run by the node

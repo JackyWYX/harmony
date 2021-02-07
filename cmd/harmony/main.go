@@ -309,11 +309,9 @@ func setupNodeAndRun(hc harmonyConfig) {
 				utils.Logger().Warn().Str("signal", sig.String()).Msg("Gracefully shutting down...")
 				const msg = "Got %s signal. Gracefully shutting down...\n"
 				fmt.Fprintf(os.Stderr, msg, sig)
+
 				currentNode.ShutDown()
-				// stop block proposal service for leader
-				if node.Consensus.IsLeader() {
-					node.ServiceManager().StopService(service.BlockProposal)
-				}
+
 				if node.Consensus.Mode() == consensus.Normal {
 					phase := node.Consensus.GetConsensusPhase()
 					utils.Logger().Warn().Str("phase", phase).Msg("[shutdown] commit phase has to wait")
@@ -324,7 +322,6 @@ func setupNodeAndRun(hc harmonyConfig) {
 						time.Sleep(time.Millisecond * 100)
 					}
 				}
-				currentNode.ShutDown()
 			}
 		}
 	}(currentNode)
@@ -395,22 +392,19 @@ func setupNodeAndRun(hc harmonyConfig) {
 
 	nodeconfig.SetPeerID(myHost.GetID())
 
-	prometheusConfig := prometheus.Config{
-		Enabled:    hc.Prometheus.Enabled,
-		IP:         hc.Prometheus.IP,
-		Port:       hc.Prometheus.Port,
-		EnablePush: hc.Prometheus.EnablePush,
-		Gateway:    hc.Prometheus.Gateway,
-		Network:    hc.Network.NetworkType,
-		Legacy:     hc.General.NoStaking,
-		NodeType:   hc.General.NodeType,
-		Shard:      nodeConfig.ShardID,
-		Instance:   myHost.GetID().Pretty(),
+	if currentNode.NodeConfig.Role() == nodeconfig.Validator {
+		currentNode.RegisterValidatorServices()
+	} else if currentNode.NodeConfig.Role() == nodeconfig.ExplorerNode {
+		currentNode.RegisterExplorerServices()
+	}
+	if hc.Prometheus.Enabled {
+		setupPrometheusService(currentNode, hc, nodeConfig.ShardID)
 	}
 
+	// TODO: replace this legacy syncing
 	currentNode.SupportSyncing()
-	currentNode.ServiceManagerSetup()
-	currentNode.RunServices()
+
+	currentNode.StartServices()
 
 	if err := currentNode.StartRPC(); err != nil {
 		utils.Logger().Warn().
@@ -422,12 +416,6 @@ func setupNodeAndRun(hc harmonyConfig) {
 		utils.Logger().Warn().
 			Err(err).
 			Msg("Start Rosetta failed")
-	}
-
-	if err := currentNode.StartPrometheus(prometheusConfig); err != nil {
-		utils.Logger().Warn().
-			Err(err).
-			Msg("Start Prometheus failed")
 	}
 
 	if err := currentNode.BootstrapConsensus(); err != nil {
@@ -708,6 +696,23 @@ func setupConsensusAndNode(hc harmonyConfig, nodeConfig *nodeconfig.ConfigType) 
 	currentConsensus.SetMode(currentConsensus.UpdateConsensusInformation())
 	currentConsensus.NextBlockDue = time.Now()
 	return currentNode
+}
+
+func setupPrometheusService(node *node.Node, hc harmonyConfig, sid uint32) {
+	prometheusConfig := prometheus.Config{
+		Enabled:    hc.Prometheus.Enabled,
+		IP:         hc.Prometheus.IP,
+		Port:       hc.Prometheus.Port,
+		EnablePush: hc.Prometheus.EnablePush,
+		Gateway:    hc.Prometheus.Gateway,
+		Network:    hc.Network.NetworkType,
+		Legacy:     hc.General.NoStaking,
+		NodeType:   hc.General.NodeType,
+		Shard:      sid,
+		Instance:   myHost.GetID().Pretty(),
+	}
+	p := prometheus.NewService(prometheusConfig)
+	node.RegisterService(service.Prometheus, p)
 }
 
 func setupBlacklist(hc harmonyConfig) (map[ethCommon.Address]struct{}, error) {

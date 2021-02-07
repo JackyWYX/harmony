@@ -15,6 +15,7 @@ const (
 	Consensus
 	BlockProposal
 	NetworkInfo
+	Prometheus
 )
 
 func (t Type) String() string {
@@ -29,6 +30,8 @@ func (t Type) String() string {
 		return "BlockProposal"
 	case NetworkInfo:
 		return "NetworkInfo"
+	case Prometheus:
+		return "Prometheus"
 	default:
 		return "Unknown"
 	}
@@ -36,8 +39,8 @@ func (t Type) String() string {
 
 // Service is the collection of functions any service needs to implement.
 type Service interface {
-	Start()
-	Stop()
+	Start() error
+	Stop() error
 	APIs() []rpc.API // the list of RPC descriptors the service provides
 }
 
@@ -59,7 +62,7 @@ func NewManager() *Manager {
 func (m *Manager) Register(t Type, service Service) {
 	utils.Logger().Info().Int("service", int(t)).Msg("Register Service")
 	if _, ok := m.serviceMap[t]; ok {
-		utils.Logger().Error().Int("servie", int(t)).Msg("This service is already included")
+		utils.Logger().Error().Int("service", int(t)).Msg("This service is already included")
 		return
 	}
 	m.services = append(m.services, service)
@@ -78,7 +81,7 @@ func (m *Manager) StartServices() {
 	}
 }
 
-// StopServices stops all services in the reverse order as the start order.
+// StopServices stops all services in the reverse order.
 func (m *Manager) StopServices() {
 	size := len(m.services)
 	for i := size - 1; i >= 0; i-- {
