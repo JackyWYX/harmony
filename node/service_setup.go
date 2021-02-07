@@ -7,7 +7,6 @@ import (
 	"github.com/harmony-one/harmony/api/service/blockproposal"
 	"github.com/harmony-one/harmony/api/service/consensus"
 	"github.com/harmony-one/harmony/api/service/explorer"
-	"github.com/harmony-one/harmony/api/service/networkinfo"
 	"github.com/harmony-one/harmony/internal/utils"
 )
 
@@ -16,14 +15,7 @@ func (node *Node) RegisterValidatorServices() {
 	if node.serviceManager == nil {
 		node.serviceManager = service.NewManager()
 	}
-	_, chanPeer, _ := node.initNodeConfiguration()
-	// Register networkinfo service. "0" is the beacon shard ID
-	node.serviceManager.Register(
-		service.NetworkInfo,
-		networkinfo.MustNew(
-			node.host, node.NodeConfig.GetShardGroupID(), chanPeer, nil, node.networkInfoDHTPath(),
-		),
-	)
+
 	// Register consensus service.
 	node.serviceManager.Register(
 		service.Consensus,
@@ -41,14 +33,7 @@ func (node *Node) RegisterExplorerServices() {
 	if node.serviceManager == nil {
 		node.serviceManager = service.NewManager()
 	}
-	_, chanPeer, _ := node.initNodeConfiguration()
 
-	// Register networkinfo service.
-	node.serviceManager.Register(
-		service.NetworkInfo,
-		networkinfo.MustNew(
-			node.host, node.NodeConfig.GetShardGroupID(), chanPeer, nil, node.networkInfoDHTPath()),
-	)
 	// Register explorer service.
 	node.serviceManager.Register(
 		service.SupportExplorer, explorer.New(&node.SelfPeer, node.stateSync, node.Blockchain()),

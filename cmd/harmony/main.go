@@ -16,7 +16,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/harmony-one/harmony/internal/params"
+	p2ptypes "github.com/harmony-one/harmony/p2p/types"
 
 	ethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
@@ -34,6 +34,7 @@ import (
 	nodeconfig "github.com/harmony-one/harmony/internal/configs/node"
 	shardingconfig "github.com/harmony-one/harmony/internal/configs/sharding"
 	"github.com/harmony-one/harmony/internal/genesis"
+	"github.com/harmony-one/harmony/internal/params"
 	"github.com/harmony-one/harmony/internal/shardchain"
 	"github.com/harmony-one/harmony/internal/utils"
 	"github.com/harmony-one/harmony/multibls"
@@ -234,12 +235,7 @@ func setupPprof(config harmonyConfig) {
 
 func setupNodeAndRun(hc harmonyConfig) {
 	var err error
-	bootNodes := hc.Network.BootNodes
-	p2p.BootNodes, err = p2p.StringsToAddrs(bootNodes)
-	if err != nil {
-		utils.FatalErrMsg(err, "cannot parse bootnode list %#v",
-			bootNodes)
-	}
+
 	nodeconfigSetShardSchedule(hc)
 	nodeconfig.SetShardingSchedule(shard.Schedule)
 	nodeconfig.SetVersion(getHarmonyVersion())
@@ -404,6 +400,7 @@ func setupNodeAndRun(hc harmonyConfig) {
 	// TODO: replace this legacy syncing
 	currentNode.SupportSyncing()
 
+	// Start the node
 	currentNode.StartServices()
 
 	if err := currentNode.StartRPC(); err != nil {
@@ -416,6 +413,12 @@ func setupNodeAndRun(hc harmonyConfig) {
 		utils.Logger().Warn().
 			Err(err).
 			Msg("Start Rosetta failed")
+	}
+
+	if err := myHost.Start(); err != nil {
+		utils.Logger().Fatal().
+			Err(err).
+			Msg("Start p2p host failed")
 	}
 
 	if err := currentNode.BootstrapConsensus(); err != nil {
@@ -564,7 +567,17 @@ func createGlobalConfig(hc harmonyConfig) (*nodeconfig.ConfigType, error) {
 		ConsensusPubKey: nodeConfig.ConsensusPriKey[0].Pub.Object,
 	}
 
-	myHost, err = p2p.NewHost(&selfPeer, nodeConfig.P2PPriKey)
+	bootNodes, err := p2ptypes.StringsToP2PAddrs(hc.Network.BootNodes)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to parse boot nodes")
+	}
+
+	myHost, err = p2p.NewHost(p2p.HostConfig{
+		Self:          &selfPeer,
+		BLSKey:        nodeConfig.P2PPriKey,
+		BootNodes:     bootNodes,
+		DataStoreFile: hc.P2P.DHTDataStore,
+	})
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot create P2P network host")
 	}
