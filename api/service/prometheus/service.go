@@ -44,6 +44,8 @@ type Service struct {
 	pusher     *push.Pusher
 	failStatus error
 	config     Config
+
+	registryOnce sync.Once
 }
 
 // Handler represents a path and handler func to serve on the same port as /metrics, /healthz, /goroutinez, etc.
@@ -53,8 +55,8 @@ type Handler struct {
 }
 
 var (
-	registryOnce sync.Once
-	svc          = &Service{}
+	initOnce sync.Once
+	svc      = &Service{}
 )
 
 func (s *Service) getJobName() string {
@@ -79,6 +81,13 @@ func (s *Service) getJobName() string {
 // NewService sets up a new instance for a given address host:port.
 // Anq empty host will match with any IP so an address like ":19000" is perfectly acceptable.
 func NewService(cfg Config, additionalHandlers ...Handler) *Service {
+	initOnce.Do(func() {
+		svc = newService(cfg, additionalHandlers...)
+	})
+	return svc
+}
+
+func newService(cfg Config, additionalHandlers ...Handler) *Service {
 	if !cfg.Enabled {
 		utils.Logger().Info().Msg("Prometheus http server disabled...")
 		return nil
@@ -113,7 +122,6 @@ func NewService(cfg Config, additionalHandlers ...Handler) *Service {
 
 // Start start the prometheus service
 func (s *Service) Start() error {
-	svc.Start()
 	go func() {
 		utils.Logger().Info().Str("address", s.server.Addr).Msg("Starting prometheus service")
 		err := s.server.ListenAndServe()
@@ -178,12 +186,16 @@ func (s *Service) APIs() []rpc.API {
 	return nil
 }
 
-// PromRegistry return the registry of prometheus service
-func PromRegistry() *prometheus.Registry {
-	registryOnce.Do(func() {
+func (s *Service) getRegistry() *prometheus.Registry {
+	s.registryOnce.Do(func() {
 		if svc.registry == nil {
 			svc.registry = prometheus.NewRegistry()
 		}
 	})
-	return svc.registry
+	return s.registry
+}
+
+// PromRegistry return the registry of prometheus service
+func PromRegistry() *prometheus.Registry {
+	return svc.getRegistry()
 }

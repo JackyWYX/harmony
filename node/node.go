@@ -1182,6 +1182,7 @@ func (node *Node) ShutDown() {
 	utils.Logger().Info().Msg("stopping services")
 	node.StopServices()
 
+	// Currently pubSub need to be stopped after consensus.
 	utils.Logger().Info().Msg("stopping pub-sub")
 	node.StopPubSub()
 
