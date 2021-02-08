@@ -306,12 +306,6 @@ func setupNodeAndRun(hc harmonyConfig) {
 		WSPort:       hc.WS.Port,
 		DebugEnabled: hc.RPCOpt.DebugEnabled,
 	}
-	if nodeConfig.ShardID != shard.BeaconChainShardID {
-		utils.Logger().Info().
-			Uint32("shardID", currentNode.Blockchain().ShardID()).
-			Uint32("shardID", nodeConfig.ShardID).Msg("SupportBeaconSyncing")
-		currentNode.SupportBeaconSyncing()
-	}
 
 	// Parse rosetta config
 	nodeConfig.RosettaServer = nodeconfig.RosettaServerConfig{
@@ -347,6 +341,8 @@ func setupNodeAndRun(hc harmonyConfig) {
 		startMsg = "==== New Explorer Node ===="
 	}
 
+	nodeconfig.SetPeerID(myHost.GetID())
+
 	utils.Logger().Info().
 		Str("BLSPubKey", nodeConfig.ConsensusPriKey.GetPublicKeys().SerializeToHexStr()).
 		Uint32("ShardID", nodeConfig.ShardID).
@@ -360,8 +356,6 @@ func setupNodeAndRun(hc harmonyConfig) {
 		).
 		Msg(startMsg)
 
-	nodeconfig.SetPeerID(myHost.GetID())
-
 	if currentNode.NodeConfig.Role() == nodeconfig.Validator {
 		currentNode.RegisterValidatorServices()
 	} else if currentNode.NodeConfig.Role() == nodeconfig.ExplorerNode {
@@ -373,6 +367,12 @@ func setupNodeAndRun(hc harmonyConfig) {
 
 	// TODO: replace this legacy syncing
 	currentNode.SupportSyncing()
+	if nodeConfig.ShardID != shard.BeaconChainShardID {
+		utils.Logger().Info().
+			Uint32("shardID", currentNode.Blockchain().ShardID()).
+			Uint32("shardID", nodeConfig.ShardID).Msg("SupportBeaconSyncing")
+		currentNode.SupportBeaconSyncing()
+	}
 
 	if err := currentNode.StartServices(); err != nil {
 		fmt.Fprint(os.Stderr, err.Error())
