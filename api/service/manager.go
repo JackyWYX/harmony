@@ -16,6 +16,7 @@ const (
 	BlockProposal
 	NetworkInfo
 	Prometheus
+	Synchronize
 )
 
 func (t Type) String() string {
@@ -32,6 +33,8 @@ func (t Type) String() string {
 		return "NetworkInfo"
 	case Prometheus:
 		return "Prometheus"
+	case Synchronize:
+		return "Synchronize"
 	default:
 		return "Unknown"
 	}
