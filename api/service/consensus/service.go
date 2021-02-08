@@ -39,7 +39,7 @@ func (s *Service) Stop() error {
 	s.stopChan <- struct{}{}
 	<-s.stoppedChan
 	utils.Logger().Info().Msg("Consensus service stopped.")
-	return nil
+	return s.consensus.Close()
 }
 
 // APIs for the services.
