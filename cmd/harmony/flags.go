@@ -42,6 +42,7 @@ var (
 		p2pPortFlag,
 		p2pIPFlag,
 		p2pKeyFileFlag,
+		p2pDHTDataStoreFlag,
 
 		legacyKeyFileFlag,
 	}
