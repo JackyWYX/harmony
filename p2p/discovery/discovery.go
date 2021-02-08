@@ -94,7 +94,7 @@ func (d *dhtDiscovery) GetRawDiscovery() discovery.Discovery {
 }
 
 // maxNBoostrappers is the maximum bootstrap peers to connect initially.
-// github.com/libp2p/go-libp2p-kad-dht@v0.8.3/dht.go:428
+// github.com/libp2p/go-libp2p-kad-dht@v0.11.1/dht_bootstrap.go:21
 const maxNBoostrappers = 2
 
 // connectBootStrapPeers connect to bootstrap peers.
