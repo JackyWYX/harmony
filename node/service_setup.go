@@ -12,10 +12,6 @@ import (
 
 // RegisterValidatorServices register the validator services.
 func (node *Node) RegisterValidatorServices() {
-	if node.serviceManager == nil {
-		node.serviceManager = service.NewManager()
-	}
-
 	// Register consensus service.
 	node.serviceManager.Register(
 		service.Consensus,
@@ -30,10 +26,6 @@ func (node *Node) RegisterValidatorServices() {
 
 // RegisterExplorerServices register the explorer services
 func (node *Node) RegisterExplorerServices() {
-	if node.serviceManager == nil {
-		node.serviceManager = service.NewManager()
-	}
-
 	// Register explorer service.
 	node.serviceManager.Register(
 		service.SupportExplorer,

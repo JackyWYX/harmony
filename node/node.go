@@ -1037,6 +1037,8 @@ func New(
 	initMetrics()
 	nodeStringCounterVec.WithLabelValues("version", nodeconfig.GetVersion()).Inc()
 
+	node.serviceManager = service.NewManager()
+
 	return &node
 }
 
