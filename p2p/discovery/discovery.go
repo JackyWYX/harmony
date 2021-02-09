@@ -93,10 +93,6 @@ func (d *dhtDiscovery) GetRawDiscovery() discovery.Discovery {
 	return d.disc
 }
 
-// maxNBoostrappers is the maximum bootstrap peers to connect initially.
-// github.com/libp2p/go-libp2p-kad-dht@v0.11.1/dht_bootstrap.go:21
-const maxNBoostrappers = 2
-
 // connectBootStrapPeers connect to bootstrap peers.
 // Currently, specifying bootstrap nodes in dht options does not connect to boot nodes
 // immediately (only after 2 min initial wait in fixLowPeersRoutine). Thus we need to
