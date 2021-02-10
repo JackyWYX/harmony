@@ -12,7 +12,7 @@ const (
 	// number is smaller than softLoCap, an active discover through DHT will be triggered.
 	checkInterval = 5 * time.Minute
 	// discTimeout is the timeout for one batch of discovery
-	discTimeout = 60 * time.Second
+	discTimeout = 10 * time.Second
 	// connectTimeout is the timeout for setting up a stream with a discovered peer
 	connectTimeout = 60 * time.Second
 )
