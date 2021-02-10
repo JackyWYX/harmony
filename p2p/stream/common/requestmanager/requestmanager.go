@@ -109,7 +109,12 @@ func (rm *requestManager) doRequestAsync(ctx context.Context, raw sttypes.Reques
 		select {
 		case <-ctx.Done(): // canceled or timeout in upper function calls
 			rm.cancelReqC <- req.ReqID()
-			resC <- response{err: ctx.Err()}
+
+			var stid sttypes.StreamID
+			if req.owner != nil {
+				stid = req.owner.ID()
+			}
+			resC <- response{stID: stid, err: ctx.Err()}
 
 		case data := <-req.respC:
 			resC <- response{raw: data.resp, stID: data.stID, err: req.err}
@@ -164,14 +169,16 @@ func (rm *requestManager) loop() {
 					rm.logger.Warn().Str("request", req.String()).Err(err).
 						Msg("request encode error")
 				}
-				fmt.Println("do request", req.Request.String(), req.ReqID())
+				fmt.Println("do request", req.Request.String(), req.ReqID(), req.owner.ID())
 				go func(reqID uint64) {
 					if err := st.WriteBytes(b); err != nil {
 						rm.logger.Warn().Str("streamID", string(st.ID())).Err(err).
 							Msg("failed to send request")
+						fmt.Println("write bytes error", err)
 						// TODO: Decide whether we also need to close the stream here based
 						//   on the error and retry times.
 						rm.retryReqC <- reqID
+						return
 					}
 					go func() {
 						select {

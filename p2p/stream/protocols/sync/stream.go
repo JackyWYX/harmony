@@ -110,6 +110,7 @@ func (st *syncStream) handleReqLoop() {
 	for {
 		select {
 		case req := <-st.reqC:
+			fmt.Println("stream handle request", req.String(), st.ID())
 			st.protocol.rl.LimitRequest(st.ID())
 			err := st.handleReq(req)
 
@@ -132,6 +133,7 @@ func (st *syncStream) handleRespLoop() {
 	for {
 		select {
 		case resp := <-st.respC:
+			fmt.Println("stream handle response", resp.String(), st.ID())
 			st.handleResp(resp)
 
 		case <-st.closeC:
