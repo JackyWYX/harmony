@@ -65,11 +65,13 @@ func (st *syncStream) readMsgLoop() {
 	for {
 		msg, err := st.readMsg()
 		if err != nil {
+			fmt.Println("read message error", err)
 			if err := st.Close(); err != nil {
 				st.logger.Err(err).Msg("failed to close sync stream")
 			}
 			return
 		}
+		fmt.Println("read message success", msg.String())
 		st.deliverMsg(msg)
 	}
 }

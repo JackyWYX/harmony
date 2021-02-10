@@ -275,6 +275,7 @@ func (sm *streamManager) discoverAndSetupStream(discCtx context.Context) error {
 		if peer.ID == sm.host.ID() {
 			continue
 		}
+		fmt.Println("discovered peer", peer.ID)
 		go func(pid libp2p_peer.ID) {
 			// The ctx here is using the module context instead of discover context
 			err := sm.setupStreamWithPeer(sm.ctx, pid)
@@ -307,8 +308,10 @@ func (sm *streamManager) setupStreamWithPeer(ctx context.Context, pid libp2p_pee
 
 	st, err := sm.host.NewStream(nCtx, pid, protocol.ID(sm.myProtoID))
 	if err != nil {
+		fmt.Println("new stream failed", err)
 		return err
 	}
+	fmt.Println("new stream received. handling stream")
 	if sm.handleStream != nil {
 		sm.handleStream(st)
 	}
