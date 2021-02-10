@@ -2,6 +2,7 @@ package sync
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -151,14 +152,17 @@ func (p *Protocol) Match(targetID string) bool {
 
 // HandleStream is the stream handle function being registered to libp2p.
 func (p *Protocol) HandleStream(raw libp2p_network.Stream) {
+	fmt.Println("protocol handle stream")
 	p.logger.Info().Str("stream", raw.ID()).Msg("handle new sync stream")
 	st := p.wrapStream(raw)
 	if err := p.sm.NewStream(st); err != nil {
 		// Possibly we have reach the hard limit of the stream
 		p.logger.Warn().Err(err).Str("stream ID", string(st.ID())).
 			Msg("failed to add new stream")
+		fmt.Println("stream not added")
 		return
 	}
+	fmt.Println("stream added and running")
 	st.run()
 }
 
@@ -180,6 +184,7 @@ func (p *Protocol) advertise() time.Duration {
 
 	pids := p.supportedProtoIDs()
 	for _, pid := range pids {
+		fmt.Println("advertising pid", pid)
 		w, e := p.disc.Advertise(p.ctx, string(pid))
 		if e != nil {
 			p.logger.Warn().Err(e).Str("protocol", string(pid)).

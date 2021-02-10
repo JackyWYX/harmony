@@ -248,11 +248,13 @@ func (sm *streamManager) handleRemoveStream(id sttypes.StreamID) error {
 func (sm *streamManager) removeAllStreamOnClose() {
 	var wg sync.WaitGroup
 
+	fmt.Println("removeAllStreamOnClose", len(sm.streams.slice()))
 	for _, st := range sm.streams.slice() {
 		wg.Add(1)
 		go func(st sttypes.Stream) {
 			defer wg.Done()
 			// Close hack here.
+			fmt.Println("closing st")
 			err := st.(io.Closer).Close()
 			if err != nil {
 				sm.logger.Warn().Err(err).Str("stream ID", string(st.ID())).
@@ -267,6 +269,7 @@ func (sm *streamManager) removeAllStreamOnClose() {
 }
 
 func (sm *streamManager) discoverAndSetupStream(discCtx context.Context) error {
+	fmt.Println("discovery and set up stream")
 	peers, err := sm.discover(discCtx)
 	if err != nil {
 		return errors.Wrap(err, "failed to discover")
