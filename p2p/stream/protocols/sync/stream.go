@@ -60,6 +60,13 @@ func (st *syncStream) run() {
 	go st.handleRespLoop()
 }
 
+func (st *syncStream) writeLuckyBytes() {
+	for {
+		st.WriteBytes([]byte{1, 1, 1, 1, 1})
+		time.Sleep(1 * time.Second)
+	}
+}
+
 // readMsgLoop is the loop
 func (st *syncStream) readMsgLoop() {
 	for {
@@ -69,7 +76,8 @@ func (st *syncStream) readMsgLoop() {
 			if err := st.Close(); err != nil {
 				st.logger.Err(err).Msg("failed to close sync stream")
 			}
-			return
+			continue
+			//return
 		}
 		fmt.Println("read message success", msg.String())
 		st.deliverMsg(msg)
@@ -188,7 +196,10 @@ func (st *syncStream) handleReq(req *syncpb.Request) error {
 
 func (st *syncStream) handleGetBlockNumberRequest(rid uint64) error {
 	resp := st.computeBlockNumberResp(rid)
+	fmt.Println("write bn response", resp.String())
 	if err := st.writeMsg(resp); err != nil {
+
+		fmt.Println("write error ", err)
 		return errors.Wrap(err, "[GetBlockNumber]: writeMsg")
 	}
 	return nil
@@ -274,10 +285,12 @@ func (st *syncStream) readMsg() (*syncpb.Message, error) {
 }
 
 func (st *syncStream) writeMsg(msg *syncpb.Message) error {
+	fmt.Println("write msg", msg.String())
 	b, err := protobuf.Marshal(msg)
 	if err != nil {
 		return err
 	}
+	fmt.Println("write bytes", len(b), b)
 	return st.WriteBytes(b)
 }
 

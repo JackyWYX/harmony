@@ -1,6 +1,7 @@
 package sttypes
 
 import (
+	"fmt"
 	"io/ioutil"
 	"sync"
 
@@ -64,7 +65,8 @@ func (st *BaseStream) Close() error {
 
 // WriteBytes write the bytes to the stream
 func (st *BaseStream) WriteBytes(b []byte) error {
-	_, err := st.raw.Write(b)
+	n, err := st.raw.Write(b)
+	fmt.Println(n)
 	return err
 }
 

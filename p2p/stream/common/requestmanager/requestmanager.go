@@ -171,6 +171,7 @@ func (rm *requestManager) loop() {
 				}
 				fmt.Println("do request", req.Request.String(), req.ReqID(), req.owner.ID())
 				go func(reqID uint64) {
+					fmt.Println("write bytes", len(b), b)
 					if err := st.WriteBytes(b); err != nil {
 						rm.logger.Warn().Str("streamID", string(st.ID())).Err(err).
 							Msg("failed to send request")
@@ -180,6 +181,7 @@ func (rm *requestManager) loop() {
 						//rm.retryReqC <- reqID
 						return
 					}
+					fmt.Println("write bytes success", len(b))
 					//go func() {
 					//	select {
 					//	case <-time.After(reqRetryTimeOut):
