@@ -41,7 +41,7 @@ type StreamID string
 
 // Meta return the StreamID of the stream
 func (st *BaseStream) ID() StreamID {
-	return StreamID(st.raw.ID())
+	return StreamID(st.raw.Conn().ID())
 }
 
 // ProtoID return the remote protocol ID of the stream

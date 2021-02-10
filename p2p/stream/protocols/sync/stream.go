@@ -65,7 +65,7 @@ func (st *syncStream) readMsgLoop() {
 	for {
 		msg, err := st.readMsg()
 		if err != nil {
-			fmt.Println("read message error", err)
+			fmt.Println("read message error, closing stream", err)
 			if err := st.Close(); err != nil {
 				st.logger.Err(err).Msg("failed to close sync stream")
 			}
@@ -154,6 +154,7 @@ func (st *syncStream) Close() error {
 		return nil
 	}
 	err := st.BaseStream.Close()
+	fmt.Println("stream closed")
 	if err := st.protocol.sm.RemoveStream(st.ID()); err != nil {
 		st.logger.Err(err).Str("stream ID", string(st.ID())).
 			Msg("failed to remove sync stream on close")

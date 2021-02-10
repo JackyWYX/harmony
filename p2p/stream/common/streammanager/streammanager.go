@@ -161,6 +161,7 @@ func (sm *streamManager) NewStream(stream sttypes.Stream) error {
 
 // RemoveStream close and remove a stream from stream manager
 func (sm *streamManager) RemoveStream(stID sttypes.StreamID) error {
+	fmt.Println("remove stream", stID)
 	task := rmStreamTask{
 		id:   stID,
 		errC: make(chan error),
@@ -217,11 +218,14 @@ func (sm *streamManager) handleAddStream(st sttypes.Stream) error {
 	if sm.streams.size() >= sm.config.HiCap {
 		return errors.New("too many streams")
 	}
+	fmt.Println("add stream size", len(sm.streams.streams))
 	if _, ok := sm.streams.get(id); ok {
 		return errors.New("stream already exist")
 	}
 
 	sm.streams.addStream(st)
+	fmt.Println("sm.streams", sm.streams.streams)
+	fmt.Println("after add stream size", len(sm.streams.streams))
 
 	sm.addStreamFeed.Send(EvtStreamAdded{st})
 	return nil
