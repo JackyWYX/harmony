@@ -72,10 +72,10 @@ func (st *syncStream) readMsgLoop() {
 	for {
 		msg, err := st.readMsg()
 		if err != nil {
-			fmt.Println("read message error, closing stream", err)
-			if err := st.Close(); err != nil {
-				st.logger.Err(err).Msg("failed to close sync stream")
-			}
+			fmt.Println("read message error", err)
+			//if err := st.Close(); err != nil {
+			//	st.logger.Err(err).Msg("failed to close sync stream")
+			//}
 			fmt.Println("sleeping")
 			time.Sleep(1 * time.Second)
 			continue
