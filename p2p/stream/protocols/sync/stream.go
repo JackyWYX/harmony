@@ -261,6 +261,7 @@ func (st *syncStream) handleResp(resp *syncpb.Response) {
 
 func (st *syncStream) readMsg() (*syncpb.Message, error) {
 	b, err := st.ReadBytes()
+	fmt.Println("!!!!!!read bytes", len(b), b)
 	if err != nil {
 		return nil, err
 	}
@@ -268,6 +269,7 @@ func (st *syncStream) readMsg() (*syncpb.Message, error) {
 	if err := protobuf.Unmarshal(b, msg); err != nil {
 		return nil, err
 	}
+	fmt.Println("!!!!!!read message", msg.String())
 	return msg, nil
 }
 

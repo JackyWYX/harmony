@@ -177,18 +177,18 @@ func (rm *requestManager) loop() {
 						fmt.Println("write bytes error", err)
 						// TODO: Decide whether we also need to close the stream here based
 						//   on the error and retry times.
-						rm.retryReqC <- reqID
+						//rm.retryReqC <- reqID
 						return
 					}
-					go func() {
-						select {
-						case <-time.After(reqRetryTimeOut):
-							// request still not received after reqRetryTimeOut, try again.
-							rm.retryReqC <- reqID
-						case <-req.waitCh:
-							// request cancelled or response received. Do nothing and return
-						}
-					}()
+					//go func() {
+					//	select {
+					//	case <-time.After(reqRetryTimeOut):
+					//		// request still not received after reqRetryTimeOut, try again.
+					//		rm.retryReqC <- reqID
+					//	case <-req.waitCh:
+					//		// request cancelled or response received. Do nothing and return
+					//	}
+					//}()
 				}(req.ReqID())
 			}
 
@@ -202,11 +202,11 @@ func (rm *requestManager) loop() {
 			fmt.Println("get delivery data", data.resp.String(), data.resp.ReqID())
 			rm.handleDeliverData(data)
 
-		case reqID := <-rm.retryReqC:
-			addedBacked := rm.handleRetryRequest(reqID)
-			if addedBacked {
-				throttle()
-			}
+		//case reqID := <-rm.retryReqC:
+		//	addedBacked := rm.handleRetryRequest(reqID)
+		//	if addedBacked {
+		//		throttle()
+		//	}
 
 		case reqID := <-rm.cancelReqC:
 			rm.handleCancelRequest(reqID)
@@ -365,7 +365,7 @@ func (rm *requestManager) removePendingRequest(req *request) {
 
 	if st := req.owner; st != nil {
 		st.clearPendingRequest()
-		req.clearOwner()
+		//req.clearOwner()
 		rm.available[st.ID()] = struct{}{}
 	}
 }
