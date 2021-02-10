@@ -154,7 +154,7 @@ func (st *syncStream) Close() error {
 		return nil
 	}
 	err := st.BaseStream.Close()
-	fmt.Println("stream closed")
+	fmt.Println("closing sync stream")
 	if err := st.protocol.sm.RemoveStream(st.ID()); err != nil {
 		st.logger.Err(err).Str("stream ID", string(st.ID())).
 			Msg("failed to remove sync stream on close")

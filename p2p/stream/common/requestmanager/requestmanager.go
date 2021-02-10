@@ -164,7 +164,7 @@ func (rm *requestManager) loop() {
 					rm.logger.Warn().Str("request", req.String()).Err(err).
 						Msg("request encode error")
 				}
-
+				fmt.Println("do request", req.Request.String(), req.ReqID())
 				go func(reqID uint64) {
 					if err := st.WriteBytes(b); err != nil {
 						rm.logger.Warn().Str("streamID", string(st.ID())).Err(err).
@@ -192,6 +192,7 @@ func (rm *requestManager) loop() {
 			}
 
 		case data := <-rm.deliveryC:
+			fmt.Println("get delivery data", data.resp.String(), data.resp.ReqID())
 			rm.handleDeliverData(data)
 
 		case reqID := <-rm.retryReqC:

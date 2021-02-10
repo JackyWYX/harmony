@@ -2,6 +2,7 @@ package downloader
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/ethereum/go-ethereum/event"
@@ -98,9 +99,18 @@ func (d *Downloader) run() {
 // waitForBootFinish wait for stream manager to finish the initial discovery and have
 // enough peers to start downloader
 func (d *Downloader) waitForBootFinish() {
-	ch := make(chan streammanager.EvtStreamAdded, 1)
-	sub := d.syncProtocol.SubscribeAddStreamEvent(ch)
+	evtCh := make(chan streammanager.EvtStreamAdded, 1)
+	sub := d.syncProtocol.SubscribeAddStreamEvent(evtCh)
 	defer sub.Unsubscribe()
+
+	checkCh := make(chan struct{}, 1)
+	trigger := func() {
+		select {
+		case checkCh <- struct{}{}:
+		default:
+		}
+	}
+	trigger()
 
 	t := time.NewTicker(10 * time.Second)
 
@@ -108,9 +118,14 @@ func (d *Downloader) waitForBootFinish() {
 		d.logger.Info().Msg("waiting for initial bootstrap discovery")
 		select {
 		case <-t.C:
-			// continue and log the message
-		case <-ch:
+			trigger()
+
+		case <-evtCh:
+			trigger()
+
+		case <-checkCh:
 			if d.syncProtocol.NumStreams() >= d.config.InitStreams {
+				fmt.Println("boot finished!!!!!")
 				return
 			}
 		case <-d.closeC:
@@ -144,9 +159,11 @@ func (d *Downloader) loop() {
 					time.Sleep(5 * time.Second)
 					trigger()
 				}()
+				continue
 			}
 			d.logger.Info().Bool("initSync", initSync).Msg("sync finished")
 
+			fmt.Println("sync added bn", initSync, addedBN)
 			if addedBN != 0 {
 				// If block number has been changed, trigger another sync
 				go trigger()

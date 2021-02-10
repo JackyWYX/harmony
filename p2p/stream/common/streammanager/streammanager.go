@@ -232,6 +232,9 @@ func (sm *streamManager) handleAddStream(st sttypes.Stream) error {
 }
 
 func (sm *streamManager) handleRemoveStream(id sttypes.StreamID) error {
+	fmt.Println("remove stream", id, sm.streams.streams)
+	fmt.Println("before remove size", len(sm.streams.streams))
+	defer fmt.Println("after remove size", len(sm.streams.streams))
 	st, ok := sm.streams.get(id)
 	if !ok {
 		return ErrStreamAlreadyRemoved

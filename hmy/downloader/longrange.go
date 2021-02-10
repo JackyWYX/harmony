@@ -17,6 +17,7 @@ import (
 // One LongRangeSync consists of several iterations.
 // For each iteration, estimate the current block number, then fetch block & insert to blockchain
 func (d *Downloader) doLongRangeSync() (int, error) {
+	fmt.Println("do long range sync")
 	var totalInserted int
 	for {
 		ctx, cancel := context.WithCancel(d.ctx)
@@ -86,9 +87,11 @@ func (lsi *lrSyncIter) estimateCurrentNumber() (uint64, error) {
 			defer wg.Done()
 			bn, stid, err := lsi.doGetCurrentNumberRequest()
 			if err != nil {
+				fmt.Println("do get current number request error", err)
 				lsi.logger.Err(err).Str("streamID", string(stid)).
 					Msg("getCurrentNumber request failed. Removing stream")
 				if err != context.Canceled {
+					fmt.Println("lsi estimate remove stream", err)
 					lsi.protocol.RemoveStream(stid)
 				}
 				return
@@ -241,6 +244,7 @@ func (w *getBlocksWorker) workLoop() {
 		blocks, stid, err := w.doBatch(batch)
 		if err != nil {
 			if err != context.Canceled {
+				fmt.Println("lsi work loop remove stream")
 				w.protocol.RemoveStream(stid)
 			}
 			err = errors.Wrap(err, "request error")

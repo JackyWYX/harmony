@@ -227,6 +227,7 @@ func (p *Protocol) protoIDByVersion(v *version.Version) sttypes.ProtoID {
 
 // RemoveStream removes the stream of the given stream ID
 func (p *Protocol) RemoveStream(stID sttypes.StreamID) error {
+	fmt.Println("protocol remove stream")
 	return p.sm.RemoveStream(stID)
 }
 
