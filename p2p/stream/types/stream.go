@@ -2,6 +2,7 @@ package sttypes
 
 import (
 	"fmt"
+	"io/ioutil"
 	"sync"
 
 	libp2p_network "github.com/libp2p/go-libp2p-core/network"
@@ -71,16 +72,9 @@ func (st *BaseStream) WriteBytes(b []byte) error {
 
 // ReadMsg read the bytes from the stream
 func (st *BaseStream) ReadBytes() ([]byte, error) {
-	//b, err := ioutil.ReadAll(st.raw)
-	//if err != nil {
-	//	return nil, err
-	//}
-	b := make([]byte, 128)
-	n, err := st.raw.Read(b)
+	b, err := ioutil.ReadAll(st.raw)
 	if err != nil {
-		fmt.Println("read error")
 		return nil, err
 	}
-	fmt.Println("read success", n)
-	return b[n:], nil
+	return b, nil
 }
