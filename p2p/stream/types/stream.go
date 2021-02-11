@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/binary"
 	"fmt"
+	"io"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -100,12 +101,14 @@ func (st *BaseStream) ReadBytes() ([]byte, error) {
 	size := bytesToInt(sb)
 
 	cb := make([]byte, size)
-	n, err := st.rw.Read(cb)
+	n, err := io.ReadFull(st.rw, cb)
 	if err != nil {
+		fmt.Println("size prefix", size, n)
 		return nil, errors.Wrap(err, "read content")
 	}
-	fmt.Println("size prefix", size, n)
+
 	if n != size {
+		fmt.Println("size prefix", size, n)
 		return nil, errors.New("ReadBytes sanity failed: byte size")
 	}
 	return cb, nil

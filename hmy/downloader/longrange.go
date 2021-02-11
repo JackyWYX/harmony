@@ -197,9 +197,17 @@ func (lsi *lrSyncIter) insertChainLoop(targetBN uint64) {
 func (lsi *lrSyncIter) processBlocks(results []*blockResult) {
 	blocks := blockResultsToBlocks(results)
 
+	fmt.Println("current number", lsi.chain.CurrentBlock().NumberU64(), lsi.chain.CurrentBlock().Hash().String())
+	for _, result := range results {
+		if result.block != nil {
+			fmt.Println("result block number", result.block.NumberU64(), result.block.ParentHash().String(), result.block.Hash().String())
+		}
+	}
+
 	n, err := lsi.chain.InsertChain(blocks, true)
 	lsi.inserted += n
 	if err != nil {
+		fmt.Println("process block err", err)
 		lsi.protocol.RemoveStream(results[n].stid)
 		lsi.gbm.HandleInsertError(results, n)
 	} else {

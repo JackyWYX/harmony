@@ -2,6 +2,7 @@ package chain
 
 import (
 	"bytes"
+	"fmt"
 	"math/big"
 	"sort"
 
@@ -44,16 +45,7 @@ func (e *engineImpl) SetBeaconchain(beaconchain engine.ChainReader) {
 // VerifyHeader checks whether a header conforms to the consensus rules of the bft engine.
 // Note that each block header contains the bls signature of the parent block
 func (e *engineImpl) VerifyHeader(chain engine.ChainReader, header *block.Header, seal bool) error {
-	parentHeader := chain.GetHeader(header.ParentHash(), header.Number().Uint64()-1)
-	if parentHeader == nil {
-		return engine.ErrUnknownAncestor
-	}
-	if seal {
-		if err := e.VerifySeal(chain, header); err != nil {
-			return err
-		}
-	}
-	return nil
+	return e.verifyHeader(chain, header, seal, nil)
 }
 
 // VerifyHeaders is similar to VerifyHeader, but verifies a batch of headers
@@ -64,7 +56,7 @@ func (e *engineImpl) VerifyHeaders(chain engine.ChainReader, headers []*block.He
 
 	go func() {
 		for i, header := range headers {
-			err := e.VerifyHeader(chain, header, seals[i])
+			err := e.verifyHeader(chain, header, seals[i], headers[:i])
 
 			select {
 			case <-abort:
@@ -75,6 +67,25 @@ func (e *engineImpl) VerifyHeaders(chain engine.ChainReader, headers []*block.He
 	}()
 
 	return abort, results
+}
+
+func (e *engineImpl) verifyHeader(chain engine.ChainReader, header *block.Header, seal bool, parents []*block.Header) error {
+	var parent *block.Header
+	if len(parents) > 0 {
+		parent = parents[len(parents)-1]
+	} else {
+		parent = chain.GetHeader(header.ParentHash(), header.Number().Uint64()-1)
+	}
+	if parent == nil {
+		fmt.Println("VerifyHeader unknown ancestor")
+		return engine.ErrUnknownAncestor
+	}
+	if seal {
+		if err := e.VerifySeal(chain, header); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // ReadPublicKeysFromLastBlock finds the public keys of last block's committee
