@@ -55,9 +55,9 @@ func (p *Protocol) wrapStream(raw libp2p_network.Stream) *syncStream {
 }
 
 func (st *syncStream) run() {
-	st.readMsgLoop()
 	go st.handleReqLoop()
 	go st.handleRespLoop()
+	st.readMsgLoop()
 }
 
 // readMsgLoop is the loop
@@ -113,6 +113,7 @@ func (st *syncStream) deliverMsg(msg protobuf.Message) {
 
 func (st *syncStream) handleReqLoop() {
 	for {
+		fmt.Println("running handle req loop")
 		select {
 		case req := <-st.reqC:
 			fmt.Println("stream handle request", req.String(), st.ID())
