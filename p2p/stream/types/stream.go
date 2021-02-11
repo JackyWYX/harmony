@@ -3,6 +3,7 @@ package sttypes
 import (
 	"bufio"
 	"encoding/binary"
+	"fmt"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -76,6 +77,7 @@ const (
 // WriteBytes write the bytes to the stream.
 // First 4 bytes is used as the size bytes, and the rest is the content
 func (st *BaseStream) WriteBytes(b []byte) error {
+	fmt.Println("write bytes", len(b))
 	if len(b) > maxMsgBytes {
 		return errors.New("message too long")
 	}
@@ -102,6 +104,7 @@ func (st *BaseStream) ReadBytes() ([]byte, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "read content")
 	}
+	fmt.Println("size prefix", size, n)
 	if n != size {
 		return nil, errors.New("ReadBytes sanity failed: byte size")
 	}

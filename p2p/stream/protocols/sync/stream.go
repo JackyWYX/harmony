@@ -284,12 +284,12 @@ func (st *syncStream) readMsg() (*syncpb.Message, error) {
 }
 
 func (st *syncStream) writeMsg(msg *syncpb.Message) error {
-	fmt.Println("write msg", msg.String())
+	fmt.Println("write msg in handle")
 	b, err := protobuf.Marshal(msg)
 	if err != nil {
 		return err
 	}
-	fmt.Println("write bytes", len(b), b)
+	fmt.Println("write bytes in handle", len(b))
 	return st.WriteBytes(b)
 }
 
