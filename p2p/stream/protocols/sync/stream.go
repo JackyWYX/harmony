@@ -129,6 +129,7 @@ func (st *syncStream) handleReqLoop() {
 			}
 
 		case <-st.closeC:
+			fmt.Println("handle req closed")
 			return
 		}
 	}
