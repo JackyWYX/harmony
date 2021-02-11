@@ -172,6 +172,7 @@ func (st *syncStream) Close() error {
 }
 
 func (st *syncStream) handleReq(req *syncpb.Request) error {
+	fmt.Println("handle request")
 	if gnReq := req.GetGetBlockNumberRequest(); gnReq != nil {
 		return st.handleGetBlockNumberRequest(req.ReqId)
 	}
