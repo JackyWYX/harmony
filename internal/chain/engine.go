@@ -2,7 +2,6 @@ package chain
 
 import (
 	"bytes"
-	"fmt"
 	"math/big"
 	"sort"
 
@@ -77,11 +76,10 @@ func (e *engineImpl) verifyHeader(chain engine.ChainReader, header *block.Header
 		parent = chain.GetHeader(header.ParentHash(), header.Number().Uint64()-1)
 	}
 	if parent == nil {
-		fmt.Println("VerifyHeader unknown ancestor")
 		return engine.ErrUnknownAncestor
 	}
 	if seal {
-		if err := e.VerifySeal(chain, header); err != nil {
+		if err := e.verifySeal(chain, header, parent); err != nil {
 			return err
 		}
 	}
@@ -137,14 +135,25 @@ func (e *engineImpl) VerifyShardState(
 // the PoS difficulty requirements, i.e. >= 2f+1 valid signatures from the committee
 // Note that each block header contains the bls signature of the parent block
 func (e *engineImpl) VerifySeal(chain engine.ChainReader, header *block.Header) error {
-	if chain.CurrentHeader().Number().Uint64() <= uint64(1) {
-		return nil
-	}
+	return e.verifySeal(chain, header, nil)
+}
+
+func (e *engineImpl) verifySeal(chain engine.ChainReader, header *block.Header, parent *block.Header) error {
 	if header == nil {
 		return errors.New("[VerifySeal] nil block header")
 	}
-	publicKeys, err := ReadPublicKeysFromLastBlock(chain, header)
+	if parent == nil {
+		parent = chain.GetHeader(header.ParentHash(), header.Number().Uint64()-1)
+		if parent == nil {
+			return engine.ErrUnknownAncestor
+		}
+	}
 
+	if chain.CurrentHeader().Number().Uint64() <= uint64(1) {
+		return nil
+	}
+
+	publicKeys, err := GetPublicKeys(chain, parent, false)
 	if err != nil {
 		return errors.New("[VerifySeal] Cannot retrieve publickeys from last block")
 	}
@@ -157,19 +166,13 @@ func (e *engineImpl) VerifySeal(chain engine.ChainReader, header *block.Header) 
 				" and LastCommitBitmap in Block Header",
 		)
 	}
-	parentHash := header.ParentHash()
-	parentHeader := chain.GetHeader(parentHash, header.Number().Uint64()-1)
-	if parentHeader == nil {
-		return errors.New(
-			"[VerifySeal] no parent header found",
-		)
-	}
-	if chain.Config().IsStaking(parentHeader.Epoch()) {
-		slotList, err := chain.ReadShardState(parentHeader.Epoch())
+
+	if chain.Config().IsStaking(parent.Epoch()) {
+		slotList, err := chain.ReadShardState(parent.Epoch())
 		if err != nil {
 			return errors.Wrapf(err, "cannot decoded shard state")
 		}
-		subComm, err := slotList.FindCommitteeByID(parentHeader.ShardID())
+		subComm, err := slotList.FindCommitteeByID(parent.ShardID())
 		if err != nil {
 			return err
 		}
@@ -190,7 +193,7 @@ func (e *engineImpl) VerifySeal(chain engine.ChainReader, header *block.Header) 
 			)
 		}
 	} else {
-		parentQuorum, err := QuorumForBlock(chain, parentHeader, false)
+		parentQuorum, err := QuorumForBlock(chain, parent, false)
 		if err != nil {
 			return errors.Wrapf(err,
 				"cannot calculate quorum for block %s", header.Number())
@@ -204,7 +207,7 @@ func (e *engineImpl) VerifySeal(chain engine.ChainReader, header *block.Header) 
 	}
 
 	lastCommitPayload := signature.ConstructCommitPayload(chain,
-		parentHeader.Epoch(), parentHeader.Hash(), parentHeader.Number().Uint64(), parentHeader.ViewID().Uint64())
+		parent.Epoch(), parent.Hash(), parent.Number().Uint64(), parent.ViewID().Uint64())
 	if !aggSig.VerifyHash(mask.AggregatePublic, lastCommitPayload) {
 		const msg = "[VerifySeal] Unable to verify aggregated signature from last block: %x"
 		return errors.Errorf(msg, payload)

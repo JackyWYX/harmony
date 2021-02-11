@@ -4,12 +4,12 @@ import (
 	"bufio"
 	"encoding/binary"
 	"fmt"
+
 	"io"
 	"sync"
 
-	"github.com/pkg/errors"
-
 	libp2p_network "github.com/libp2p/go-libp2p-core/network"
+	"github.com/pkg/errors"
 )
 
 // Stream is the interface for streams implemented in each service.
