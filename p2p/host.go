@@ -207,8 +207,10 @@ func (host *HostV2) Start() error {
 // Close close the HostV2
 func (host *HostV2) Close() error {
 	for _, proto := range host.streamProtos {
+		fmt.Println("closing proto", proto.ProtoID())
 		proto.Close()
 	}
+	fmt.Println("closing discovery")
 	host.discovery.Close()
 	host.cancel()
 	return host.h.Close()
