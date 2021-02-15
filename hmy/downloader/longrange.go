@@ -181,6 +181,7 @@ func (lsi *lrSyncIter) insertChainLoop(targetBN uint64) {
 			blockResults := gbm.PullContinuousBlocks(blocksPerInsert)
 			if len(blockResults) > 0 {
 				lsi.processBlocks(blockResults)
+				fmt.Println("inserted block", blockResults[0].getBlockNumber(), len(blockResults))
 				// more blocks is expected being able to be pulled from queue
 				trigger()
 			}

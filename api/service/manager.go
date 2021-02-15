@@ -1,6 +1,9 @@
 package service
 
 import (
+	"fmt"
+	"time"
+
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/harmony-one/harmony/internal/utils"
 )
@@ -88,6 +91,16 @@ func (m *Manager) StartServices() {
 func (m *Manager) StopServices() {
 	size := len(m.services)
 	for i := size - 1; i >= 0; i-- {
+		fmt.Println("stopping service", m.typeByService(m.services[i]).String(), time.Now())
 		m.services[i].Stop()
 	}
+}
+
+func (m *Manager) typeByService(target Service) Type {
+	for t, s := range m.serviceMap {
+		if s == target {
+			return t
+		}
+	}
+	return 32
 }
