@@ -257,6 +257,7 @@ func (st *syncStream) handleResp(resp *syncpb.Response) {
 func (st *syncStream) readMsg() (*syncpb.Message, error) {
 	b, err := st.ReadBytes()
 	if err != nil {
+		fmt.Println("read message error", err)
 		return nil, err
 	}
 	var msg = &syncpb.Message{}
