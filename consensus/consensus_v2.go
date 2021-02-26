@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/hex"
+	"math/rand"
 	"sync/atomic"
 	"time"
 
@@ -655,6 +656,10 @@ func (consensus *Consensus) verifyLastCommitSig(lastCommitSig []byte, blk *types
 	return nil
 }
 
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
+
 // tryCatchup add the last mile block in PBFT log memory cache to blockchain.
 func (consensus *Consensus) tryCatchup() error {
 	// TODO: change this to a more systematic symbol
@@ -668,6 +673,11 @@ func (consensus *Consensus) tryCatchup() error {
 	if err != nil {
 		return errors.Wrapf(err, "[TryCatchup] Failed to get last mile blocks: %v", err)
 	}
+
+	if rand.Intn(20) == 0 {
+		return errors.New("test error")
+	}
+
 	for i := range blks {
 		blk, msg := blks[i], msgs[i]
 		if blk == nil {
