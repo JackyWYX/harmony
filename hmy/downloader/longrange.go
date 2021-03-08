@@ -96,7 +96,7 @@ func (lsi *lrSyncIter) estimateCurrentNumber() (uint64, error) {
 			if err != nil {
 				lsi.logger.Err(err).Str("streamID", string(stid)).
 					Msg("getCurrentNumber request failed. Removing stream")
-				if err != context.Canceled {
+				if !errors.Is(err, context.Canceled) {
 					lsi.protocol.RemoveStream(stid)
 				}
 				return
@@ -202,13 +202,15 @@ func (lsi *lrSyncIter) insertChainLoop(targetBN uint64) {
 func (lsi *lrSyncIter) processBlocks(results []*blockResult) {
 	blocks := blockResultsToBlocks(results)
 
-	n, err := lsi.chain.InsertChain(blocks, true)
-	lsi.inserted += n
-	if err != nil {
-		lsi.protocol.RemoveStream(results[n].stid)
-		lsi.gbm.HandleInsertError(results, n)
-	} else {
-		lsi.gbm.HandleInsertResult(results)
+	for i, block := range blocks {
+		if err := lsi.downloader.verifyAndInsertBlock(block); err != nil {
+			lsi.protocol.RemoveStream(results[i].stid)
+			lsi.gbm.HandleInsertError(results, i)
+			return
+		} else {
+			lsi.inserted++
+			lsi.gbm.HandleInsertResult(results)
+		}
 	}
 }
 
@@ -248,7 +250,7 @@ func (w *getBlocksWorker) workLoop() {
 
 		blocks, stid, err := w.doBatch(batch)
 		if err != nil {
-			if err != context.Canceled {
+			if !errors.Is(err, context.Canceled) {
 				w.protocol.RemoveStream(stid)
 			}
 			err = errors.Wrap(err, "request error")

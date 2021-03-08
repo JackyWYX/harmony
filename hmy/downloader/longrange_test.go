@@ -16,6 +16,7 @@ func TestDownloader_doLongRangeSync(t *testing.T) {
 
 	d := &Downloader{
 		bc:           newTestBlockChain(1, nil),
+		ch:           &testConsensusHelper{},
 		syncProtocol: newTestSyncProtocol(targetBN, 32, nil),
 		config: Config{
 			Concurrency: 16,
@@ -125,7 +126,11 @@ func TestLrSyncIter_FetchAndInsertBlocks(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 
 	lsi := &lrSyncIter{
-		chain:    chain,
+		chain: chain,
+		downloader: &Downloader{
+			bc: chain,
+			ch: &testConsensusHelper{},
+		},
 		protocol: protocol,
 		gbm:      nil,
 		config: Config{
@@ -156,7 +161,11 @@ func TestLrSyncIter_FetchAndInsertBlocks_ErrRequest(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 
 	lsi := &lrSyncIter{
-		chain:    chain,
+		chain: chain,
+		downloader: &Downloader{
+			bc: chain,
+			ch: &testConsensusHelper{},
+		},
 		protocol: protocol,
 		gbm:      nil,
 		config: Config{
@@ -187,7 +196,11 @@ func TestLrSyncIter_FetchAndInsertBlocks_ErrInsert(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 
 	lsi := &lrSyncIter{
-		chain:    chain,
+		chain: chain,
+		downloader: &Downloader{
+			bc: chain,
+			ch: &testConsensusHelper{},
+		},
 		protocol: protocol,
 		gbm:      nil,
 		config: Config{
@@ -218,7 +231,11 @@ func TestLrSyncIter_FetchAndInsertBlocks_RandomErr(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 
 	lsi := &lrSyncIter{
-		chain:    chain,
+		chain: chain,
+		downloader: &Downloader{
+			bc: chain,
+			ch: &testConsensusHelper{},
+		},
 		protocol: protocol,
 		gbm:      nil,
 		config: Config{

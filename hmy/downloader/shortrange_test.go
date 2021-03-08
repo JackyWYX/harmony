@@ -15,6 +15,7 @@ import (
 func TestDownloader_doShortRangeSync(t *testing.T) {
 	d := &Downloader{
 		bc:           newTestBlockChain(100, nil),
+		ch:           &testConsensusHelper{},
 		syncProtocol: newTestSyncProtocol(105, 32, nil),
 		config: Config{
 			Concurrency: 16,

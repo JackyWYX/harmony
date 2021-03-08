@@ -3,7 +3,11 @@ package downloader
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"sync"
+
+	"github.com/harmony-one/harmony/internal/params"
+	"github.com/harmony-one/harmony/shard"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/event"
@@ -71,6 +75,23 @@ func (bc *testBlockChain) changeBlockNumber(val uint64) {
 func (bc *testBlockChain) ShardID() uint32 {
 	return 0
 }
+
+func (bc *testBlockChain) ReadShardState(epoch *big.Int) (*shard.State, error) {
+	return nil, nil
+}
+
+func (bc *testBlockChain) Config() *params.ChainConfig {
+	return nil
+}
+
+func (bc *testBlockChain) WriteCommitSig(blockNum uint64, lastCommits []byte) error {
+	return nil
+}
+
+type testConsensusHelper struct{}
+
+func (ch *testConsensusHelper) verifyBlockSignature(block *types.Block) error { return nil }
+func (ch *testConsensusHelper) writeBlockSignature(block *types.Block) error  { return nil }
 
 const (
 	initStreamNum = 32
