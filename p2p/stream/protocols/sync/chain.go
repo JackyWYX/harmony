@@ -5,6 +5,7 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/harmony-one/harmony/block"
 	"github.com/harmony-one/harmony/consensus/engine"
 	"github.com/harmony-one/harmony/core/types"
 	shardingconfig "github.com/harmony-one/harmony/internal/configs/sharding"
@@ -52,10 +53,12 @@ func (ch *chainHelperImpl) getBlockHashes(bns []uint64) []common.Hash {
 func (ch *chainHelperImpl) getBlocksByNumber(bns []uint64) []*types.Block {
 	blocks := make([]*types.Block, 0, len(bns))
 	for _, bn := range bns {
-		var block *types.Block
+		var (
+			block *types.Block
+		)
 		header := ch.chain.GetHeaderByNumber(bn)
 		if header != nil {
-			block = ch.chain.GetBlock(header.Hash(), header.Number().Uint64())
+			block = ch.getBlockByHeader(header)
 		}
 		blocks = append(blocks, block)
 	}
@@ -68,11 +71,28 @@ func (ch *chainHelperImpl) getBlocksByHashes(hs []common.Hash) []*types.Block {
 		var block *types.Block
 		header := ch.chain.GetHeaderByHash(h)
 		if header != nil {
-			block = ch.chain.GetBlock(header.Hash(), header.Number().Uint64())
+			block = ch.getBlockByHeader(header)
 		}
 		blocks = append(blocks, block)
 	}
 	return blocks
+}
+
+var errBlockNotFound = errors.New("block not found")
+
+func (ch *chainHelperImpl) getBlockByHeader(header *block.Header) *types.Block {
+	b := ch.chain.GetBlock(header.Hash(), header.Number().Uint64())
+	if b == nil {
+		return nil
+	}
+	commitSig, err := ch.chain.ReadCommitSig(header.Number().Uint64())
+	if err != nil {
+		return b
+	}
+	if len(b.GetCurrentCommitSig()) == 0 && len(commitSig) == 0 {
+		b.SetCurrentCommitSig(commitSig)
+	}
+	return b
 }
 
 func (ch *chainHelperImpl) getEpochState(epoch uint64) (*EpochStateResult, error) {

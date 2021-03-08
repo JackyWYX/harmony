@@ -188,7 +188,7 @@ func (lsi *lrSyncIter) insertChainLoop(targetBN uint64) {
 		case <-resultC:
 			blockResults := gbm.PullContinuousBlocks(blocksPerInsert)
 			if len(blockResults) > 0 {
-				lsi.processBlocks(blockResults)
+				lsi.processBlocks(blockResults, targetBN)
 				// more blocks is expected being able to be pulled from queue
 				trigger()
 			}
@@ -199,11 +199,15 @@ func (lsi *lrSyncIter) insertChainLoop(targetBN uint64) {
 	}
 }
 
-func (lsi *lrSyncIter) processBlocks(results []*blockResult) {
+func (lsi *lrSyncIter) processBlocks(results []*blockResult, targetBN uint64) {
 	blocks := blockResultsToBlocks(results)
 
 	for i, block := range blocks {
 		if err := lsi.downloader.verifyAndInsertBlock(block); err != nil {
+			lsi.logger.Warn().Err(err).Uint64("target block", targetBN).
+				Uint64("block number", block.NumberU64()).
+				Msg("insert blocks failed in long range")
+
 			lsi.protocol.RemoveStream(results[i].stid)
 			lsi.gbm.HandleInsertError(results, i)
 			return
