@@ -300,17 +300,24 @@ func (st *syncStream) computeRespFromBlockNumber(rid uint64, bns []uint64) (*syn
 		err := fmt.Errorf("GetBlocksByNum amount exceed cap: %v>%v", len(bns), GetBlocksByNumAmountCap)
 		return nil, err
 	}
-	blocks := st.chain.getBlocksByNumber(bns)
+	blocks, err := st.chain.getBlocksByNumber(bns)
+	if err != nil {
+		return nil, err
+	}
 
-	blocksBytes := make([][]byte, 0, len(blocks))
+	var (
+		blocksBytes = make([][]byte, 0, len(blocks))
+		sigs        = make([][]byte, 0, len(blocks))
+	)
 	for _, block := range blocks {
 		bb, err := rlp.EncodeToBytes(block)
 		if err != nil {
 			return nil, err
 		}
 		blocksBytes = append(blocksBytes, bb)
+		sigs = append(sigs, block.GetCurrentCommitSig())
 	}
-	return syncpb.MakeGetBlocksByNumResponseMessage(rid, blocksBytes), nil
+	return syncpb.MakeGetBlocksByNumResponseMessage(rid, blocksBytes, sigs), nil
 }
 
 func (st *syncStream) computeRespFromBlockHashes(rid uint64, hs []common.Hash) (*syncpb.Message, error) {
@@ -318,17 +325,24 @@ func (st *syncStream) computeRespFromBlockHashes(rid uint64, hs []common.Hash) (
 		err := fmt.Errorf("GetBlockByHashes amount exceed cap: %v > %v", len(hs), GetBlocksByHashesAmountCap)
 		return nil, err
 	}
-	blocks := st.chain.getBlocksByHashes(hs)
+	blocks, err := st.chain.getBlocksByHashes(hs)
+	if err != nil {
+		return nil, err
+	}
 
-	blocksBytes := make([][]byte, 0, len(blocks))
+	var (
+		blocksBytes = make([][]byte, 0, len(blocks))
+		sigs        = make([][]byte, 0, len(blocks))
+	)
 	for _, block := range blocks {
 		bb, err := rlp.EncodeToBytes(block)
 		if err != nil {
 			return nil, err
 		}
 		blocksBytes = append(blocksBytes, bb)
+		sigs = append(sigs, block.GetCurrentCommitSig())
 	}
-	return syncpb.MakeGetBlocksByHashesResponseMessage(rid, blocksBytes), nil
+	return syncpb.MakeGetBlocksByHashesResponseMessage(rid, blocksBytes, sigs), nil
 }
 
 func (st *syncStream) computeEpochStateResp(rid uint64, epoch uint64) (*syncpb.Message, error) {

@@ -154,30 +154,35 @@ func (req *getBlocksByNumberRequest) getBlocksFromResponse(resp sttypes.Response
 	if !ok || sResp == nil {
 		return nil, errors.New("not sync response")
 	}
-	blockBytes, err := req.parseBlockBytes(sResp)
+	blockBytes, sigs, err := req.parseBlockBytesAndSigs(sResp)
 	if err != nil {
 		return nil, err
 	}
 	blocks := make([]*types.Block, 0, len(blockBytes))
-	for _, bb := range blockBytes {
+	for i, bb := range blockBytes {
 		var block *types.Block
 		if err := rlp.DecodeBytes(bb, &block); err != nil {
 			return nil, errors.Wrap(err, "[GetBlocksByNumResponse]")
 		}
+		block.SetCurrentCommitSig(sigs[i])
 		blocks = append(blocks, block)
 	}
 	return blocks, nil
 }
 
-func (req *getBlocksByNumberRequest) parseBlockBytes(resp *syncResponse) ([][]byte, error) {
+func (req *getBlocksByNumberRequest) parseBlockBytesAndSigs(resp *syncResponse) ([][]byte, [][]byte, error) {
 	if errResp := resp.pb.GetErrorResponse(); errResp != nil {
-		return nil, errors.New(errResp.Error)
+		return nil, nil, errors.New(errResp.Error)
 	}
 	gbResp := resp.pb.GetGetBlocksByNumResponse()
 	if gbResp == nil {
-		return nil, errors.New("response not GetBlockByNumber")
+		return nil, nil, errors.New("response not GetBlockByNumber")
 	}
-	return gbResp.BlocksBytes, nil
+	if len(gbResp.BlocksBytes) != len(gbResp.CommitSig) {
+		return nil, nil, fmt.Errorf("commit sigs size not expected: %v / %v",
+			len(gbResp.CommitSig), len(gbResp.BlocksBytes))
+	}
+	return gbResp.BlocksBytes, gbResp.CommitSig, nil
 }
 
 type getEpochBlockRequest struct {
@@ -367,13 +372,20 @@ func (req *getBlocksByHashesRequest) getBlocksFromResponse(resp sttypes.Response
 	if bhResp == nil {
 		return nil, errors.New("response not GetBlocksByHashes")
 	}
-	blockBytes := bhResp.BlocksBytes
+	var (
+		blockBytes = bhResp.BlocksBytes
+		sigs       = bhResp.CommitSig
+	)
+	if len(blockBytes) != len(sigs) {
+		return nil, fmt.Errorf("sig size not expected: %v / %v", len(sigs), len(blockBytes))
+	}
 	blocks := make([]*types.Block, 0, len(blockBytes))
-	for _, bb := range blockBytes {
+	for i, bb := range blockBytes {
 		var block *types.Block
 		if err := rlp.DecodeBytes(bb, &block); err != nil {
 			return nil, errors.Wrap(err, "[GetBlocksByHashesResponse]")
 		}
+		block.SetCurrentCommitSig(sigs[i])
 		blocks = append(blocks, block)
 	}
 	return blocks, nil
