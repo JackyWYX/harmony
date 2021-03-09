@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/pkg/errors"
-
 	"github.com/ethereum/go-ethereum/event"
+	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
+
 	"github.com/harmony-one/harmony/core"
 	"github.com/harmony-one/harmony/core/types"
 	nodeconfig "github.com/harmony-one/harmony/internal/configs/node"
@@ -15,7 +16,6 @@ import (
 	"github.com/harmony-one/harmony/p2p"
 	"github.com/harmony-one/harmony/p2p/stream/common/streammanager"
 	"github.com/harmony-one/harmony/p2p/stream/protocols/sync"
-	"github.com/rs/zerolog"
 )
 
 type (
@@ -170,6 +170,7 @@ func (d *Downloader) waitForBootFinish() {
 
 		case <-checkCh:
 			if d.syncProtocol.NumStreams() >= d.config.InitStreams {
+				fmt.Println("passed initial check")
 				return
 			}
 		case <-d.closeC:

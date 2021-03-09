@@ -71,6 +71,7 @@ func (lsi *lrSyncIter) doLongRangeSync() error {
 	if err != nil {
 		return err
 	}
+	fmt.Println("estimate current number", bn)
 	lsi.downloader.status.setTargetBN(bn)
 
 	return lsi.fetchAndInsertBlocks(bn)
@@ -93,6 +94,7 @@ func (lsi *lrSyncIter) estimateCurrentNumber() (uint64, error) {
 		go func() {
 			defer wg.Done()
 			bn, stid, err := lsi.doGetCurrentNumberRequest()
+			fmt.Println(bn, stid, err)
 			if err != nil {
 				lsi.logger.Err(err).Str("streamID", string(stid)).
 					Msg("getCurrentNumber request failed. Removing stream")
@@ -252,6 +254,7 @@ func (w *getBlocksWorker) workLoop() {
 			}
 		}
 
+		fmt.Println("do get request", batch)
 		blocks, stid, err := w.doBatch(batch)
 		if err != nil {
 			if !errors.Is(err, context.Canceled) {
