@@ -67,10 +67,11 @@ func (ch *consensusHelperImpl) getDeciderByEpoch(epoch *big.Int) (quorum.Decider
 	if decider, ok := ch.deciderCache.Get(epochUint); ok && decider != nil {
 		return decider.(quorum.Decider), nil
 	}
-	decider, err := ch.readDeciderByEpoch(epoch)
+	decider, err := ch.getDeciderByEpoch(epoch)
 	if err != nil {
 		return nil, errors.Wrapf(err, "unable to read quorum of epoch %v", epoch.Uint64())
 	}
+	ch.deciderCache.Add(epochUint, decider)
 	return decider, nil
 }
 
