@@ -41,7 +41,7 @@ func (ch *consensusHelperImpl) verifyBlockSignature(block *types.Block) error {
 	commitSigBytes := signature.ConstructCommitPayload(ch.bc, block.Epoch(), block.Hash(),
 		block.NumberU64(), block.Header().ViewID().Uint64())
 
-	decider, err := ch.readDeciderByEpoch(block.Epoch())
+	decider, err := ch.getDeciderByEpoch(block.Epoch())
 	if err != nil {
 		return err
 	}
@@ -49,6 +49,7 @@ func (ch *consensusHelperImpl) verifyBlockSignature(block *types.Block) error {
 	if err != nil {
 		return err
 	}
+	fmt.Println("mask", mask)
 	if !decider.IsQuorumAchievedByMask(mask) {
 		return errors.New("quorum not achieved")
 	}
@@ -89,6 +90,7 @@ func (ch *consensusHelperImpl) readDeciderByEpoch(epoch *big.Int) (quorum.Decide
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println("updated public keys", len(pubKeys), pubKeys[0].Bytes)
 	decider.UpdateParticipants(pubKeys)
 	if _, err := decider.SetVoters(subComm, epoch); err != nil {
 		return nil, err
