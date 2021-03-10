@@ -73,6 +73,7 @@ func (lsi *lrSyncIter) doLongRangeSync() error {
 	if err != nil {
 		return err
 	}
+	lsi.logger.Info().Uint64("target number", bn).Msg("estimated remote current number")
 	lsi.d.status.setTargetBN(bn)
 
 	return lsi.fetchAndInsertBlocks(bn)
@@ -213,11 +214,11 @@ func (lsi *lrSyncIter) processBlocks(results []*blockResult, targetBN uint64) {
 			lsi.p.RemoveStream(results[i].stid)
 			lsi.gbm.HandleInsertError(results, i)
 			return
-		} else {
-			lsi.inserted++
-			lsi.gbm.HandleInsertResult(results)
 		}
+
+		lsi.inserted++
 	}
+	lsi.gbm.HandleInsertResult(results)
 }
 
 func (lsi *lrSyncIter) checkHaveEnoughStreams() error {
@@ -386,10 +387,16 @@ func (gbm *getBlocksManager) HandleInsertError(results []*blockResult, n int) {
 	defer gbm.lock.Unlock()
 
 	var (
-		inserted  = results[:n]
-		abandoned = results[n+1:] // n < len(results) since error happened when insert chain
-		errResult = results[n]
+		inserted  []*blockResult
+		errResult *blockResult
+		abandoned []*blockResult
 	)
+	inserted = results[:n]
+	errResult = results[n]
+	if n != len(results) {
+		abandoned = results[n+1:]
+	}
+
 	for _, res := range inserted {
 		delete(gbm.processing, res.getBlockNumber())
 	}

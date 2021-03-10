@@ -225,8 +225,10 @@ func (d *Downloader) loop() {
 
 func (d *Downloader) doDownload(initSync bool) (n int, err error) {
 	if initSync {
+		d.logger.Info().Uint64("current number", d.bc.CurrentBlock().NumberU64()).Msg("start long range sync")
 		n, err = d.doLongRangeSync()
 	} else {
+		d.logger.Info().Uint64("current number", d.bc.CurrentBlock().NumberU64()).Msg("start short range sync")
 		n, err = d.doShortRangeSync()
 	}
 	if err != nil {
