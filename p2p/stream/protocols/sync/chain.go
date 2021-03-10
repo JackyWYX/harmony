@@ -109,9 +109,9 @@ func (ch *chainHelperImpl) getBlockWithSigByHeader(header *block.Header) (*types
 	}
 
 	nextHeader := ch.chain.GetHeaderByNumber(header.Number().Uint64() + 1)
-	fmt.Printf("last sig %b\n", nextHeader.LastCommitSignature())
-	fmt.Printf("last bit %b\n", nextHeader.LastCommitBitmap())
-	fmt.Printf("read sig %b\n", commitSig)
+	fmt.Printf("last sig %08b\n", nextHeader.LastCommitSignature())
+	fmt.Printf("last bit %08b\n", nextHeader.LastCommitBitmap())
+	fmt.Printf("read sig %08b\n", commitSig)
 	return b, nil
 }
 
