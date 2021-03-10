@@ -13,9 +13,11 @@ import (
 )
 
 func TestDownloader_doShortRangeSync(t *testing.T) {
+	chain := newTestBlockChain(100, nil)
+
 	d := &Downloader{
-		bc:           newTestBlockChain(100, nil),
-		ch:           &testConsensusHelper{},
+		bc:           chain,
+		ih:           &testInsertHelper{chain},
 		syncProtocol: newTestSyncProtocol(105, 32, nil),
 		config: Config{
 			Concurrency: 16,

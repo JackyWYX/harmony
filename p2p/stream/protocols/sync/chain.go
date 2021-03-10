@@ -100,14 +100,42 @@ func (ch *chainHelperImpl) getBlockWithSigByHeader(header *block.Header) (*types
 	if b == nil {
 		return nil, nil
 	}
-	commitSig, err := ch.chain.ReadCommitSig(header.Number().Uint64())
+	commitSig, err := ch.getBlockSigAndBitmap(header)
 	if err != nil {
 		return nil, errors.New("missing commit signature")
 	}
-	if len(commitSig) != 0 {
-		b.SetCurrentCommitSig(commitSig)
-	}
+	b.SetCurrentCommitSig(commitSig)
 	return b, nil
+}
+
+func (ch *chainHelperImpl) getBlockSigAndBitmap(header *block.Header) ([]byte, error) {
+	sb := ch.getBlockSigFromNextBlock(header)
+	if len(sb) != 0 {
+		return sb, nil
+	}
+	// Note: some commit sig read from db is different from [nextHeader.sig, nextHeader.bitMap]
+	//       nextBlock data is better to be used.
+	return ch.getBlockSigFromDB(header)
+}
+
+func (ch *chainHelperImpl) getBlockSigFromNextBlock(header *block.Header) []byte {
+	nextBN := header.Number().Uint64() + 1
+	nextHeader := ch.chain.GetHeaderByNumber(nextBN)
+	if nextHeader == nil {
+		return nil
+	}
+
+	sigBytes := nextHeader.LastCommitSignature()
+	bitMap := nextHeader.LastCommitBitmap()
+	sb := make([]byte, len(sigBytes)+len(bitMap))
+	copy(sb[:], sigBytes[:])
+	copy(sb[len(sigBytes):], bitMap[:])
+
+	return sb
+}
+
+func (ch *chainHelperImpl) getBlockSigFromDB(header *block.Header) ([]byte, error) {
+	return ch.chain.ReadCommitSig(header.Number().Uint64())
 }
 
 func (ch *chainHelperImpl) getEpochState(epoch uint64) (*EpochStateResult, error) {

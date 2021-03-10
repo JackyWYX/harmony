@@ -2,16 +2,14 @@ package downloader
 
 import (
 	"context"
-	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/event"
+	"github.com/harmony-one/harmony/consensus/engine"
 	"github.com/harmony-one/harmony/core/types"
-	"github.com/harmony-one/harmony/internal/params"
 	"github.com/harmony-one/harmony/p2p/stream/common/streammanager"
 	syncproto "github.com/harmony-one/harmony/p2p/stream/protocols/sync"
 	sttypes "github.com/harmony-one/harmony/p2p/stream/types"
-	"github.com/harmony-one/harmony/shard"
 )
 
 type syncProtocol interface {
@@ -26,19 +24,15 @@ type syncProtocol interface {
 }
 
 type blockChain interface {
-	CurrentBlock() *types.Block
-	InsertChain(chain types.Blocks, verifyHeaders bool) (int, error)
-	ShardID() uint32
+	engine.ChainReader
+	Engine() engine.Engine
 
-	// Fields used for consensus helper to verify block signature
-	ReadShardState(epoch *big.Int) (*shard.State, error)
-	Config() *params.ChainConfig
+	InsertChain(chain types.Blocks, verifyHeaders bool) (int, error)
 	WriteCommitSig(blockNum uint64, lastCommits []byte) error
 }
 
-// consensusHelper is the interface to do extra step of block signatures
-// (block.commitSigAndBitmap)
-type consensusHelper interface {
-	verifyBlockSignature(block *types.Block) error
-	writeBlockSignature(block *types.Block) error
+// insertHelper is the interface help to verify and insert a block.
+type insertHelper interface {
+	verifyAndInsertBlocks(blocks types.Blocks) (int, error)
+	verifyAndInsertBlock(block *types.Block) error
 }

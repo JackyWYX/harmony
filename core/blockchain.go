@@ -1325,26 +1325,6 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifyHeaders bool) (int, 
 		coalescedLogs []*types.Log
 	)
 
-	var verifyHeadersResults <-chan error
-
-	// If the block header chain has not been verified, conduct header verification here.
-	if verifyHeaders {
-		headers := make([]*block.Header, len(chain))
-		seals := make([]bool, len(chain))
-
-		for i, block := range chain {
-			headers[i] = block.Header()
-			seals[i] = true
-		}
-		// Note that VerifyHeaders verifies headers in the chain in parallel
-		abort, results := bc.Engine().VerifyHeaders(bc, headers, seals)
-		verifyHeadersResults = results
-		defer close(abort)
-	}
-
-	// Start a parallel signature recovery (signer will fluke on fork transition, minimal perf loss)
-	//senderCacher.recoverFromBlocks(types.MakeSigner(bc.chainConfig, chain[0].Number()), chain)
-
 	// Iterate over the blocks and insert when the verifier permits
 	for i, block := range chain {
 		// If the chain is terminating, stop processing blocks
@@ -1357,7 +1337,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifyHeaders bool) (int, 
 
 		var err error
 		if verifyHeaders {
-			err = <-verifyHeadersResults
+			err = bc.Engine().VerifyHeader(bc, block.Header(), true)
 		}
 		if err == nil {
 			err = bc.Validator().ValidateBody(block)

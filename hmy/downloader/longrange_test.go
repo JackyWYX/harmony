@@ -13,10 +13,11 @@ import (
 
 func TestDownloader_doLongRangeSync(t *testing.T) {
 	targetBN := uint64(1000)
+	bc := newTestBlockChain(1, nil)
 
 	d := &Downloader{
-		bc:           newTestBlockChain(1, nil),
-		ch:           &testConsensusHelper{},
+		bc:           bc,
+		ih:           &testInsertHelper{bc},
 		syncProtocol: newTestSyncProtocol(targetBN, 32, nil),
 		config: Config{
 			Concurrency: 16,
@@ -38,8 +39,8 @@ func TestDownloader_doLongRangeSync(t *testing.T) {
 
 func TestLrSyncIter_EstimateCurrentNumber(t *testing.T) {
 	lsi := &lrSyncIter{
-		protocol: newTestSyncProtocol(100, 32, nil),
-		ctx:      context.Background(),
+		p:   newTestSyncProtocol(100, 32, nil),
+		ctx: context.Background(),
 		config: Config{
 			Concurrency: 16,
 			MinStreams:  10,
@@ -126,13 +127,11 @@ func TestLrSyncIter_FetchAndInsertBlocks(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 
 	lsi := &lrSyncIter{
-		chain: chain,
-		downloader: &Downloader{
-			bc: chain,
-			ch: &testConsensusHelper{},
-		},
-		protocol: protocol,
-		gbm:      nil,
+		bc:  chain,
+		ih:  &testInsertHelper{chain},
+		d:   &Downloader{},
+		p:   protocol,
+		gbm: nil,
 		config: Config{
 			Concurrency: 100,
 		},
@@ -161,13 +160,11 @@ func TestLrSyncIter_FetchAndInsertBlocks_ErrRequest(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 
 	lsi := &lrSyncIter{
-		chain: chain,
-		downloader: &Downloader{
-			bc: chain,
-			ch: &testConsensusHelper{},
-		},
-		protocol: protocol,
-		gbm:      nil,
+		bc:  chain,
+		ih:  &testInsertHelper{chain},
+		d:   &Downloader{},
+		p:   protocol,
+		gbm: nil,
 		config: Config{
 			Concurrency: 100,
 		},
@@ -196,13 +193,11 @@ func TestLrSyncIter_FetchAndInsertBlocks_ErrInsert(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 
 	lsi := &lrSyncIter{
-		chain: chain,
-		downloader: &Downloader{
-			bc: chain,
-			ch: &testConsensusHelper{},
-		},
-		protocol: protocol,
-		gbm:      nil,
+		bc:  chain,
+		ih:  &testInsertHelper{chain},
+		d:   &Downloader{},
+		p:   protocol,
+		gbm: nil,
 		config: Config{
 			Concurrency: 100,
 		},
@@ -231,13 +226,11 @@ func TestLrSyncIter_FetchAndInsertBlocks_RandomErr(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 
 	lsi := &lrSyncIter{
-		chain: chain,
-		downloader: &Downloader{
-			bc: chain,
-			ch: &testConsensusHelper{},
-		},
-		protocol: protocol,
-		gbm:      nil,
+		bc:  chain,
+		ih:  &testInsertHelper{chain},
+		d:   &Downloader{},
+		p:   protocol,
+		gbm: nil,
 		config: Config{
 			Concurrency: 100,
 		},
@@ -251,24 +244,24 @@ func TestLrSyncIter_FetchAndInsertBlocks_RandomErr(t *testing.T) {
 }
 
 func fetchAndInsertBlocksResultCheck(lsi *lrSyncIter, targetBN uint64, expNumStreams int) error {
-	if bn := lsi.chain.CurrentBlock().NumberU64(); bn != targetBN {
+	if bn := lsi.bc.CurrentBlock().NumberU64(); bn != targetBN {
 		return fmt.Errorf("did not reached targetBN: %v / %v", bn, targetBN)
 	}
 	lsi.gbm.lock.Lock()
 	defer lsi.gbm.lock.Unlock()
 	if len(lsi.gbm.processing) != 0 {
-		return fmt.Errorf("not empty processing")
+		return fmt.Errorf("not empty processing: %v", lsi.gbm.processing)
 	}
 	if len(lsi.gbm.requesting) != 0 {
-		return fmt.Errorf("not empty requesting")
+		return fmt.Errorf("not empty requesting: %v", lsi.gbm.requesting)
 	}
 	if lsi.gbm.retries.length() != 0 {
-		return fmt.Errorf("not empty retries")
+		return fmt.Errorf("not empty retries: %v", lsi.gbm.retries)
 	}
 	if lsi.gbm.rq.length() != 0 {
-		return fmt.Errorf("not empty result queue")
+		return fmt.Errorf("not empty result queue: %v", lsi.gbm.rq.results)
 	}
-	tsp := lsi.protocol.(*testSyncProtocol)
+	tsp := lsi.p.(*testSyncProtocol)
 	if len(tsp.streamIDs) != expNumStreams {
 		return fmt.Errorf("num streams not expected: %v / %v", len(tsp.streamIDs), expNumStreams)
 	}

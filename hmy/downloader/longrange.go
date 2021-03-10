@@ -26,12 +26,13 @@ func (d *Downloader) doLongRangeSync() (int, error) {
 		ctx, cancel := context.WithCancel(d.ctx)
 
 		iter := &lrSyncIter{
-			chain:      d.bc,
-			protocol:   d.syncProtocol,
-			downloader: d,
-			ctx:        ctx,
-			config:     d.config,
-			logger:     d.logger.With().Str("mode", "long range").Logger(),
+			bc:     d.bc,
+			p:      d.syncProtocol,
+			ih:     d.ih,
+			d:      d,
+			ctx:    ctx,
+			config: d.config,
+			logger: d.logger.With().Str("mode", "long range").Logger(),
 		}
 		if err := iter.doLongRangeSync(); err != nil {
 			cancel()
@@ -51,9 +52,10 @@ func (d *Downloader) doLongRangeSync() (int, error) {
 // First get a rough estimate of the current block height, and then sync to this
 // block number
 type lrSyncIter struct {
-	chain      blockChain
-	protocol   syncProtocol
-	downloader *Downloader
+	bc blockChain
+	p  syncProtocol
+	ih insertHelper
+	d  *Downloader
 
 	gbm      *getBlocksManager // initialized when finished get block number
 	inserted int
@@ -71,7 +73,7 @@ func (lsi *lrSyncIter) doLongRangeSync() error {
 	if err != nil {
 		return err
 	}
-	lsi.downloader.status.setTargetBN(bn)
+	lsi.d.status.setTargetBN(bn)
 
 	return lsi.fetchAndInsertBlocks(bn)
 }
@@ -97,7 +99,7 @@ func (lsi *lrSyncIter) estimateCurrentNumber() (uint64, error) {
 				lsi.logger.Err(err).Str("streamID", string(stid)).
 					Msg("getCurrentNumber request failed. Removing stream")
 				if !errors.Is(err, context.Canceled) {
-					lsi.protocol.RemoveStream(stid)
+					lsi.p.RemoveStream(stid)
 				}
 				return
 			}
@@ -124,7 +126,7 @@ func (lsi *lrSyncIter) doGetCurrentNumberRequest() (uint64, sttypes.StreamID, er
 	ctx, cancel := context.WithTimeout(lsi.ctx, 10*time.Second)
 	defer cancel()
 
-	bn, stid, err := lsi.protocol.GetCurrentBlockNumber(ctx, syncproto.WithHighPriority())
+	bn, stid, err := lsi.p.GetCurrentBlockNumber(ctx, syncproto.WithHighPriority())
 	if err != nil {
 		return 0, stid, err
 	}
@@ -134,14 +136,14 @@ func (lsi *lrSyncIter) doGetCurrentNumberRequest() (uint64, sttypes.StreamID, er
 // fetchAndInsertBlocks use the pipeline pattern to boost the performance of inserting blocks.
 // TODO: For resharding, use the pipeline to do fast sync (epoch loop, header loop, body loop)
 func (lsi *lrSyncIter) fetchAndInsertBlocks(targetBN uint64) error {
-	gbm := newGetBlocksManager(lsi.chain, targetBN, lsi.logger)
+	gbm := newGetBlocksManager(lsi.bc, targetBN, lsi.logger)
 	lsi.gbm = gbm
 
 	// Setup workers to fetch blocks from remote node
 	for i := 0; i != lsi.config.Concurrency; i++ {
 		worker := &getBlocksWorker{
 			gbm:      gbm,
-			protocol: lsi.protocol,
+			protocol: lsi.p,
 			ctx:      lsi.ctx,
 		}
 		go worker.workLoop()
@@ -192,7 +194,7 @@ func (lsi *lrSyncIter) insertChainLoop(targetBN uint64) {
 				// more blocks is expected being able to be pulled from queue
 				trigger()
 			}
-			if lsi.chain.CurrentBlock().NumberU64() == targetBN {
+			if lsi.bc.CurrentBlock().NumberU64() == targetBN {
 				return
 			}
 		}
@@ -203,12 +205,12 @@ func (lsi *lrSyncIter) processBlocks(results []*blockResult, targetBN uint64) {
 	blocks := blockResultsToBlocks(results)
 
 	for i, block := range blocks {
-		if err := lsi.downloader.verifyAndInsertBlock(block); err != nil {
+		if err := lsi.ih.verifyAndInsertBlock(block); err != nil {
 			lsi.logger.Warn().Err(err).Uint64("target block", targetBN).
 				Uint64("block number", block.NumberU64()).
 				Msg("insert blocks failed in long range")
 
-			lsi.protocol.RemoveStream(results[i].stid)
+			lsi.p.RemoveStream(results[i].stid)
 			lsi.gbm.HandleInsertError(results, i)
 			return
 		} else {
@@ -219,7 +221,7 @@ func (lsi *lrSyncIter) processBlocks(results []*blockResult, targetBN uint64) {
 }
 
 func (lsi *lrSyncIter) checkHaveEnoughStreams() error {
-	numStreams := lsi.protocol.NumStreams()
+	numStreams := lsi.p.NumStreams()
 	if numStreams < lsi.config.MinStreams {
 		return fmt.Errorf("number of streams smaller than minimum: %v < %v",
 			numStreams, lsi.config.MinStreams)

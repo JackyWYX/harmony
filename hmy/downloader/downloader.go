@@ -2,14 +2,10 @@ package downloader
 
 import (
 	"context"
-	"fmt"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/harmony-one/harmony/core"
-	"github.com/harmony-one/harmony/core/types"
 	nodeconfig "github.com/harmony-one/harmony/internal/configs/node"
 	"github.com/harmony-one/harmony/internal/utils"
 	"github.com/harmony-one/harmony/p2p"
@@ -22,7 +18,7 @@ type (
 	// Downloader is responsible for sync task of one shard
 	Downloader struct {
 		bc           blockChain
-		ch           consensusHelper
+		ih           insertHelper
 		syncProtocol syncProtocol
 		bh           *beaconHelper
 
@@ -44,7 +40,7 @@ type (
 func NewDownloader(host p2p.Host, bc *core.BlockChain, config Config) *Downloader {
 	config.fixValues()
 
-	ch := newConsensusHelper(bc)
+	ih := newInsertHelper(bc)
 
 	sp := sync.NewProtocol(sync.Config{
 		Chain:     bc,
@@ -69,7 +65,7 @@ func NewDownloader(host p2p.Host, bc *core.BlockChain, config Config) *Downloade
 
 	return &Downloader{
 		bc:           bc,
-		ch:           ch,
+		ih:           ih,
 		syncProtocol: sp,
 		bh:           bh,
 
@@ -247,37 +243,4 @@ func (d *Downloader) startSyncing() {
 func (d *Downloader) finishSyncing() {
 	d.status.finishSyncing()
 	d.evtDownloadFinished.Send(struct{}{})
-}
-
-// sigVerifyError is the error type of failing verify the signature of the current block.
-// Since this is a sanity field and is not included the block hash, it needs extra verification.
-// The error types is used to differentiate the error of signature verification VS insert error.
-type sigVerifyError struct {
-	err error
-}
-
-func (err *sigVerifyError) Error() string {
-	return fmt.Sprintf("failed verify signature: %v", err.err.Error())
-}
-
-func (d *Downloader) verifyAndInsertBlocks(blocks types.Blocks) (int, error) {
-	for i, block := range blocks {
-		if err := d.verifyAndInsertBlock(block); err != nil {
-			return i, err
-		}
-	}
-	return len(blocks), nil
-}
-
-func (d *Downloader) verifyAndInsertBlock(block *types.Block) error {
-	if err := d.ch.verifyBlockSignature(block); err != nil {
-		return &sigVerifyError{err}
-	}
-	if _, err := d.bc.InsertChain(types.Blocks{block}, true); err != nil {
-		return errors.Wrap(err, "insert chain")
-	}
-	if err := d.ch.writeBlockSignature(block); err != nil {
-		return errors.Wrap(err, "write block signature")
-	}
-	return nil
 }

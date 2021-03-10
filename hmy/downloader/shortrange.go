@@ -54,7 +54,7 @@ func (d *Downloader) doShortRangeSync() (int, error) {
 		}
 		return 0, errors.Wrap(err, "getBlocksByHashes")
 	}
-	n, err := d.verifyAndInsertBlocks(blocks)
+	n, err := d.ih.verifyAndInsertBlocks(blocks)
 	if err != nil {
 		if !errors.As(err, &sigVerifyError{}) {
 			sh.removeStreams(whitelist) // Data provided by remote nodes is corrupted
