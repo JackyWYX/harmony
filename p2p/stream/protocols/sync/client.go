@@ -164,7 +164,6 @@ func (req *getBlocksByNumberRequest) getBlocksFromResponse(resp sttypes.Response
 		if err := rlp.DecodeBytes(bb, &block); err != nil {
 			return nil, errors.Wrap(err, "[GetBlocksByNumResponse]")
 		}
-		fmt.Println("sig", sigs[i])
 		block.SetCurrentCommitSig(sigs[i])
 		blocks = append(blocks, block)
 	}

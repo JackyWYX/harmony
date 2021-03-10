@@ -45,11 +45,11 @@ func (ch *consensusHelperImpl) verifyBlockSignature(block *types.Block) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("commit sig", block.GetCurrentCommitSig())
 	sig, mask, err := decodeCommitSig(block.GetCurrentCommitSig(), decider.Participants())
 	if err != nil {
 		return err
 	}
+	fmt.Println("mask", mask.Bitmap)
 	if !decider.IsQuorumAchievedByMask(mask) {
 		return errors.New("quorum not achieved")
 	}
