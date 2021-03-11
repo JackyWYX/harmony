@@ -42,7 +42,7 @@ var (
 	testBlock          = types.NewBlockWithHeader(testHeader)
 	testHeaderBytes, _ = rlp.EncodeToBytes(testHeader)
 	testBlockBytes, _  = rlp.EncodeToBytes(testBlock)
-	testBlockResponse  = syncpb.MakeGetBlocksByNumResponse(0, [][]byte{testBlockBytes})
+	testBlockResponse  = syncpb.MakeGetBlocksByNumResponse(0, [][]byte{testBlockBytes}, make([][]byte, 1))
 
 	testEpochState = &shard.State{
 		Epoch:  new(big.Int).SetInt64(1),
@@ -57,7 +57,7 @@ var (
 	testHash                = numberToHash(100)
 	testBlockHashesResponse = syncpb.MakeGetBlockHashesResponse(0, []common.Hash{testHash})
 
-	testBlocksByHashesResponse = syncpb.MakeGetBlocksByHashesResponse(0, [][]byte{testBlockBytes})
+	testBlocksByHashesResponse = syncpb.MakeGetBlocksByHashesResponse(0, [][]byte{testBlockBytes}, make([][]byte, 1))
 
 	testErrorResponse = syncpb.MakeErrorResponse(0, errors.New("test error"))
 )

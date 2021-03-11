@@ -18,6 +18,7 @@ type (
 	// Downloader is responsible for sync task of one shard
 	Downloader struct {
 		bc           blockChain
+		ih           insertHelper
 		syncProtocol syncProtocol
 		bh           *beaconHelper
 
@@ -38,6 +39,8 @@ type (
 // NewDownloader creates a new downloader
 func NewDownloader(host p2p.Host, bc *core.BlockChain, config Config) *Downloader {
 	config.fixValues()
+
+	ih := newInsertHelper(bc)
 
 	sp := sync.NewProtocol(sync.Config{
 		Chain:     bc,
@@ -62,6 +65,7 @@ func NewDownloader(host p2p.Host, bc *core.BlockChain, config Config) *Downloade
 
 	return &Downloader{
 		bc:           bc,
+		ih:           ih,
 		syncProtocol: sp,
 		bh:           bh,
 
@@ -221,8 +225,12 @@ func (d *Downloader) loop() {
 
 func (d *Downloader) doDownload(initSync bool) (n int, err error) {
 	if initSync {
+		d.logger.Info().Uint64("current number", d.bc.CurrentBlock().NumberU64()).
+			Uint32("shard ID", d.bc.ShardID()).Msg("start long range sync")
 		n, err = d.doLongRangeSync()
 	} else {
+		d.logger.Info().Uint64("current number", d.bc.CurrentBlock().NumberU64()).
+			Uint32("shard ID", d.bc.ShardID()).Msg("start short range sync")
 		n, err = d.doShortRangeSync()
 	}
 	if err != nil {

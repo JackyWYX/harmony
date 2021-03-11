@@ -5,6 +5,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/event"
+	"github.com/harmony-one/harmony/consensus/engine"
 	"github.com/harmony-one/harmony/core/types"
 	"github.com/harmony-one/harmony/p2p/stream/common/streammanager"
 	syncproto "github.com/harmony-one/harmony/p2p/stream/protocols/sync"
@@ -23,7 +24,15 @@ type syncProtocol interface {
 }
 
 type blockChain interface {
-	CurrentBlock() *types.Block
+	engine.ChainReader
+	Engine() engine.Engine
+
 	InsertChain(chain types.Blocks, verifyHeaders bool) (int, error)
-	ShardID() uint32
+	WriteCommitSig(blockNum uint64, lastCommits []byte) error
+}
+
+// insertHelper is the interface help to verify and insert a block.
+type insertHelper interface {
+	verifyAndInsertBlocks(blocks types.Blocks) (int, error)
+	verifyAndInsertBlock(block *types.Block) error
 }

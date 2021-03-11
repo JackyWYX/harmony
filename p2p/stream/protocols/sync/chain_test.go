@@ -22,12 +22,12 @@ func (tch *testChainHelper) getCurrentBlockNumber() uint64 {
 	return 100
 }
 
-func (tch *testChainHelper) getBlocksByNumber(bns []uint64) []*types.Block {
+func (tch *testChainHelper) getBlocksByNumber(bns []uint64) ([]*types.Block, error) {
 	blocks := make([]*types.Block, 0, len(bns))
 	for _, bn := range bns {
 		blocks = append(blocks, makeTestBlock(bn))
 	}
-	return blocks
+	return blocks, nil
 }
 
 func (tch *testChainHelper) getEpochState(epoch uint64) (*EpochStateResult, error) {
@@ -51,13 +51,13 @@ func (tch *testChainHelper) getBlockHashes(bns []uint64) []common.Hash {
 	return hs
 }
 
-func (tch *testChainHelper) getBlocksByHashes(hs []common.Hash) []*types.Block {
+func (tch *testChainHelper) getBlocksByHashes(hs []common.Hash) ([]*types.Block, error) {
 	bs := make([]*types.Block, 0, len(hs))
 	for _, h := range hs {
 		bn := hashToNumber(h)
 		bs = append(bs, makeTestBlock(bn))
 	}
-	return bs
+	return bs, nil
 }
 
 func numberToHash(bn uint64) common.Hash {

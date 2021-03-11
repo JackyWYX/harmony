@@ -49,14 +49,14 @@ func (d *Downloader) doShortRangeSync() (int, error) {
 
 	blocks, err := sh.getBlocksByHashes(hashChain, whitelist)
 	if err != nil {
-		if err != context.Canceled {
+		if !errors.Is(err, context.Canceled) {
 			sh.removeStreams(whitelist) // Remote nodes cannot provide blocks with target hashes
 		}
 		return 0, errors.Wrap(err, "getBlocksByHashes")
 	}
-	n, err := d.bc.InsertChain(blocks, true)
+	n, err := d.ih.verifyAndInsertBlocks(blocks)
 	if err != nil {
-		if err != context.Canceled {
+		if !errors.As(err, &sigVerifyError{}) {
 			sh.removeStreams(whitelist) // Data provided by remote nodes is corrupted
 		}
 		return n, errors.Wrap(err, "InsertChain")

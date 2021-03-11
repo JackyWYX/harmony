@@ -50,6 +50,9 @@ func (e *engineImpl) VerifyHeader(chain engine.ChainReader, header *block.Header
 // VerifyHeaders is similar to VerifyHeader, but verifies a batch of headers
 // concurrently. The method returns a quit channel to abort the operations and
 // a results channel to retrieve the async verifications.
+// TODO: BROKEN method. Header verification requires state shard data to be already in db.
+//       so VerifyHeader can only be called after the last header is already inserted.
+//       Implement VerifyHeaders on the fly later. (effects InsertChain and sync logic)
 func (e *engineImpl) VerifyHeaders(chain engine.ChainReader, headers []*block.Header, seals []bool) (chan<- struct{}, <-chan error) {
 	abort, results := make(chan struct{}), make(chan error, len(headers))
 

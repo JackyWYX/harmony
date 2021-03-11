@@ -3,14 +3,23 @@ package downloader
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"sync"
+
+	"github.com/harmony-one/harmony/consensus/engine"
+	staking "github.com/harmony-one/harmony/staking/types"
+
+	"github.com/harmony-one/harmony/block"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/event"
+
 	"github.com/harmony-one/harmony/core/types"
+	"github.com/harmony-one/harmony/internal/params"
 	"github.com/harmony-one/harmony/p2p/stream/common/streammanager"
 	syncproto "github.com/harmony-one/harmony/p2p/stream/protocols/sync"
 	sttypes "github.com/harmony-one/harmony/p2p/stream/types"
+	"github.com/harmony-one/harmony/shard"
 )
 
 type testBlockChain struct {
@@ -31,6 +40,13 @@ func (bc *testBlockChain) CurrentBlock() *types.Block {
 	defer bc.lock.Unlock()
 
 	return makeTestBlock(bc.curBN)
+}
+
+func (bc *testBlockChain) CurrentHeader() *block.Header {
+	bc.lock.Lock()
+	defer bc.lock.Unlock()
+
+	return makeTestBlock(bc.curBN).Header()
 }
 
 func (bc *testBlockChain) currentBlockNumber() uint64 {
@@ -68,8 +84,45 @@ func (bc *testBlockChain) changeBlockNumber(val uint64) {
 	bc.curBN = val
 }
 
-func (bc *testBlockChain) ShardID() uint32 {
-	return 0
+func (bc *testBlockChain) ShardID() uint32                                          { return 0 }
+func (bc *testBlockChain) ReadShardState(epoch *big.Int) (*shard.State, error)      { return nil, nil }
+func (bc *testBlockChain) Config() *params.ChainConfig                              { return nil }
+func (bc *testBlockChain) WriteCommitSig(blockNum uint64, lastCommits []byte) error { return nil }
+func (bc *testBlockChain) GetHeader(hash common.Hash, number uint64) *block.Header  { return nil }
+func (bc *testBlockChain) GetHeaderByNumber(number uint64) *block.Header            { return nil }
+func (bc *testBlockChain) GetHeaderByHash(hash common.Hash) *block.Header           { return nil }
+func (bc *testBlockChain) GetBlock(hash common.Hash, number uint64) *types.Block    { return nil }
+func (bc *testBlockChain) ReadValidatorList() ([]common.Address, error)             { return nil, nil }
+func (bc *testBlockChain) ReadCommitSig(blockNum uint64) ([]byte, error)            { return nil, nil }
+func (bc *testBlockChain) ReadBlockRewardAccumulator(uint64) (*big.Int, error)      { return nil, nil }
+func (bc *testBlockChain) ValidatorCandidates() []common.Address                    { return nil }
+func (bc *testBlockChain) Engine() engine.Engine                                    { return nil }
+func (bc *testBlockChain) ReadValidatorInformation(addr common.Address) (*staking.ValidatorWrapper, error) {
+	return nil, nil
+}
+func (bc *testBlockChain) ReadValidatorSnapshot(addr common.Address) (*staking.ValidatorSnapshot, error) {
+	return nil, nil
+}
+func (bc *testBlockChain) ReadValidatorSnapshotAtEpoch(epoch *big.Int, addr common.Address) (*staking.ValidatorSnapshot, error) {
+	return nil, nil
+}
+func (bc *testBlockChain) ReadValidatorStats(addr common.Address) (*staking.ValidatorStats, error) {
+	return nil, nil
+}
+func (bc *testBlockChain) SuperCommitteeForNextEpoch(beacon engine.ChainReader, header *block.Header, isVerify bool) (*shard.State, error) {
+	return nil, nil
+}
+
+type testInsertHelper struct {
+	bc *testBlockChain
+}
+
+func (ch *testInsertHelper) verifyAndInsertBlock(block *types.Block) error {
+	_, err := ch.bc.InsertChain(types.Blocks{block}, true)
+	return err
+}
+func (ch *testInsertHelper) verifyAndInsertBlocks(blocks types.Blocks) (int, error) {
+	return ch.bc.InsertChain(blocks, true)
 }
 
 const (
