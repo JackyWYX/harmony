@@ -203,8 +203,9 @@ func (lsi *lrSyncIter) insertChainLoop(targetBN uint64) {
 }
 
 var (
-	elapsedProcessTime time.Duration
-	nodeStartTime      = time.Now()
+	elapsedBlockProcessed = 0
+	elapsedProcessTime    time.Duration
+	nodeStartTime         = time.Now()
 )
 
 func (lsi *lrSyncIter) processBlocks(results []*blockResult, targetBN uint64) {
@@ -213,6 +214,8 @@ func (lsi *lrSyncIter) processBlocks(results []*blockResult, targetBN uint64) {
 		elapsedProcessTime += time.Since(insertStart)
 		totalTime := time.Since(nodeStartTime)
 		fmt.Printf("portion of process %v / %v = %v\n", elapsedProcessTime, totalTime, elapsedProcessTime*100/totalTime)
+		elapsedBlockProcessed += len(results)
+		fmt.Printf("per block %v\n", time.Duration(int64(elapsedProcessTime)/int64(elapsedBlockProcessed)))
 	}()
 
 	blocks := blockResultsToBlocks(results)
