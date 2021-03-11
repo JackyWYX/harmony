@@ -70,7 +70,7 @@ func (ch *insertHelperImpl) verifyAndInsertBlock(block *types.Block) error {
 	ch.markBlockSigVerified(block, block.GetCurrentCommitSig())
 
 	// verify header. Skip verify the previous seal if we have already verified
-	verifySeal := ch.isBlockLastSigVerified(block)
+	verifySeal := !ch.isBlockLastSigVerified(block)
 	if err := ch.bc.Engine().VerifyHeader(ch.bc, block.Header(), verifySeal); err != nil {
 		return err
 	}

@@ -274,6 +274,7 @@ func (sm *streamManager) discoverAndSetupStream(discCtx context.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to discover")
 	}
+	sm.logger.Info().Str("protocol", string(sm.myProtoID)).Msg("discovering new streams")
 	for peer := range peers {
 		if peer.ID == sm.host.ID() {
 			continue
