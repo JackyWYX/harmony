@@ -315,7 +315,12 @@ func (st *syncStream) computeRespFromBlockNumber(rid uint64, bns []uint64) (*syn
 			return nil, err
 		}
 		blocksBytes = append(blocksBytes, bb)
-		sigs = append(sigs, block.GetCurrentCommitSig())
+
+		var sig []byte
+		if block != nil {
+			sig = block.GetCurrentCommitSig()
+		}
+		sigs = append(sigs, sig)
 	}
 	return syncpb.MakeGetBlocksByNumResponseMessage(rid, blocksBytes, sigs), nil
 }
@@ -340,7 +345,12 @@ func (st *syncStream) computeRespFromBlockHashes(rid uint64, hs []common.Hash) (
 			return nil, err
 		}
 		blocksBytes = append(blocksBytes, bb)
-		sigs = append(sigs, block.GetCurrentCommitSig())
+
+		var sig []byte
+		if block != nil {
+			sig = block.GetCurrentCommitSig()
+		}
+		sigs = append(sigs, sig)
 	}
 	return syncpb.MakeGetBlocksByHashesResponseMessage(rid, blocksBytes, sigs), nil
 }
