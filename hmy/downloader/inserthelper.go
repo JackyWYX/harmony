@@ -64,10 +64,10 @@ func (ch *insertHelperImpl) verifyAndInsertBlocks(blocks types.Blocks) (int, err
 
 func (ch *insertHelperImpl) verifyAndInsertBlock(block *types.Block) error {
 	// verify the commit sig of current block
-	//if err := ch.verifyBlockSignature(block); err != nil {
-	//	return &sigVerifyError{err}
-	//}
-	//ch.markBlockSigVerified(block, block.GetCurrentCommitSig())
+	if err := ch.verifyBlockSignature(block); err != nil {
+		return &sigVerifyError{err}
+	}
+	ch.markBlockSigVerified(block, block.GetCurrentCommitSig())
 
 	// verify header. Skip verify the previous seal if we have already verified
 	verifySeal := ch.isBlockLastSigVerified(block)
