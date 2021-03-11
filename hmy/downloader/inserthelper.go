@@ -71,6 +71,7 @@ func (ch *insertHelperImpl) verifyAndInsertBlock(block *types.Block) error {
 
 	// verify header. Skip verify the previous seal if we have already verified
 	verifySeal := !ch.isBlockLastSigVerified(block)
+	fmt.Println("\tverifySeal", verifySeal)
 	if err := ch.bc.Engine().VerifyHeader(ch.bc, block.Header(), verifySeal); err != nil {
 		return err
 	}
