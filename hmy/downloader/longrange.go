@@ -195,7 +195,7 @@ func (lsi *lrSyncIter) insertChainLoop(targetBN uint64) {
 				// more blocks is expected being able to be pulled from queue
 				trigger()
 			}
-			if lsi.bc.CurrentBlock().NumberU64() == targetBN {
+			if lsi.bc.CurrentBlock().NumberU64() >= targetBN {
 				return
 			}
 		}
