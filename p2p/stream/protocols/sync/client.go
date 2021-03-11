@@ -164,7 +164,9 @@ func (req *getBlocksByNumberRequest) getBlocksFromResponse(resp sttypes.Response
 		if err := rlp.DecodeBytes(bb, &block); err != nil {
 			return nil, errors.Wrap(err, "[GetBlocksByNumResponse]")
 		}
-		block.SetCurrentCommitSig(sigs[i])
+		if block != nil {
+			block.SetCurrentCommitSig(sigs[i])
+		}
 		blocks = append(blocks, block)
 	}
 	return blocks, nil
@@ -385,7 +387,9 @@ func (req *getBlocksByHashesRequest) getBlocksFromResponse(resp sttypes.Response
 		if err := rlp.DecodeBytes(bb, &block); err != nil {
 			return nil, errors.Wrap(err, "[GetBlocksByHashesResponse]")
 		}
-		block.SetCurrentCommitSig(sigs[i])
+		if block != nil {
+			block.SetCurrentCommitSig(sigs[i])
+		}
 		blocks = append(blocks, block)
 	}
 	return blocks, nil
