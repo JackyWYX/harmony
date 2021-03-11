@@ -118,25 +118,25 @@ var (
 	defaultTestNetSyncConfig = syncConfig{
 		LegacyServer:   true,
 		LegacyClient:   false,
-		Concurrency:    2,
-		MinPeers:       2,
-		InitStreams:    2,
-		DiscSoftLowCap: 2,
-		DiscHardLowCap: 2,
+		Concurrency:    4,
+		MinPeers:       4,
+		InitStreams:    4,
+		DiscSoftLowCap: 4,
+		DiscHardLowCap: 4,
 		DiscHighCap:    1024,
-		DiscBatch:      5,
+		DiscBatch:      8,
 	}
 
 	defaultElseSyncConfig = syncConfig{
 		LegacyServer:   true,
 		LegacyClient:   false,
-		Concurrency:    2,
-		MinPeers:       2,
-		InitStreams:    2,
-		DiscSoftLowCap: 2,
-		DiscHardLowCap: 2,
+		Concurrency:    4,
+		MinPeers:       4,
+		InitStreams:    4,
+		DiscSoftLowCap: 4,
+		DiscHardLowCap: 4,
 		DiscHighCap:    1024,
-		DiscBatch:      5,
+		DiscBatch:      8,
 	}
 )
 
