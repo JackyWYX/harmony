@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/hex"
+	"math/rand"
 	"sync/atomic"
 	"time"
 
@@ -656,8 +657,16 @@ func (consensus *Consensus) verifyLastCommitSig(lastCommitSig []byte, blk *types
 	return nil
 }
 
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
+
 // tryCatchup add the last mile block in PBFT log memory cache to blockchain.
 func (consensus *Consensus) tryCatchup() error {
+	if rand.Intn(20) == 0 {
+		return errors.New("skipped intended")
+	}
+
 	// TODO: change this to a more systematic symbol
 	if consensus.BlockVerifier == nil {
 		return errors.New("consensus haven't finished initialization")
