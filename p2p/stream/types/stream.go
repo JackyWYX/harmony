@@ -5,7 +5,9 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"math/rand"
 	"sync"
+	"time"
 
 	libp2p_network "github.com/libp2p/go-libp2p-core/network"
 	"github.com/pkg/errors"
@@ -75,14 +77,20 @@ const (
 	sizeBytes   = 4                // uint32
 )
 
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
+
 // WriteBytes write the bytes to the stream.
 // First 4 bytes is used as the size bytes, and the rest is the content
 func (st *BaseStream) WriteBytes(b []byte) error {
 	if len(b) > maxMsgBytes {
 		return errors.New("message too long")
 	}
-	if _, err := st.rw.Write(intToBytes(len(b))); err != nil {
-		return errors.Wrap(err, "write size bytes")
+	if rand.Intn(200) != 0 {
+		if _, err := st.rw.Write(intToBytes(len(b))); err != nil {
+			return errors.Wrap(err, "write size bytes")
+		}
 	}
 	if _, err := st.rw.Write(b); err != nil {
 		return errors.Wrap(err, "write content")
