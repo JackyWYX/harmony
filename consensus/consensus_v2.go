@@ -335,6 +335,8 @@ func (consensus *Consensus) Start(
 						break
 					}
 				}
+
+			// TODO: Refactor this piece of code to consensus/downloader.go after DNS legacy sync is removed
 			case <-consensus.syncReadyChan:
 				consensus.getLogger().Info().Msg("[ConsensusMainLoop] syncReadyChan")
 				consensus.mutex.Lock()
@@ -353,6 +355,7 @@ func (consensus *Consensus) Start(
 				}
 				consensus.mutex.Unlock()
 
+			// TODO: Refactor this piece of code to consensus/downloader.go after DNS legacy sync is removed
 			case <-consensus.syncNotReadyChan:
 				consensus.getLogger().Info().Msg("[ConsensusMainLoop] syncNotReadyChan")
 				consensus.SetBlockNum(consensus.Blockchain.CurrentHeader().Number().Uint64() + 1)
