@@ -189,6 +189,7 @@ func getHarmonyConfig(cmd *cobra.Command) (harmonyConfig, error) {
 }
 
 func applyRootFlags(cmd *cobra.Command, config *harmonyConfig) {
+	fmt.Println("apply root flags")
 	// Misc flags shall be applied first since legacy ip / port is overwritten
 	// by new ip / port flags
 	applyLegacyMiscFlags(cmd, config)
@@ -282,6 +283,7 @@ func setupNodeAndRun(hc harmonyConfig) {
 	currentNode := setupConsensusAndNode(hc, nodeConfig)
 	nodeconfig.GetDefaultConfig().ShardID = nodeConfig.ShardID
 	nodeconfig.GetDefaultConfig().IsOffline = nodeConfig.IsOffline
+	nodeconfig.GetDefaultConfig().Downloader = nodeConfig.Downloader
 
 	// Check NTP configuration
 	accurate, err := ntp.CheckLocalTimeAccurate(nodeConfig.NtpServer)
@@ -538,6 +540,7 @@ func createGlobalConfig(hc harmonyConfig) (*nodeconfig.ConfigType, error) {
 	nodeConfig.SetShardID(initialAccounts[0].ShardID) // sets shard ID
 	nodeConfig.SetArchival(hc.General.IsBeaconArchival, hc.General.IsArchival)
 	nodeConfig.IsOffline = hc.General.IsOffline
+	nodeConfig.Downloader = hc.Sync.Downloader
 
 	// P2P private key is used for secure message transfer between p2p nodes.
 	nodeConfig.P2PPriKey, _, err = utils.LoadKeyFromFile(hc.P2P.KeyFile)
@@ -709,11 +712,13 @@ func setupPrometheusService(node *node.Node, hc harmonyConfig, sid uint32) {
 }
 
 func setupSyncService(node *node.Node, host p2p.Host, hc harmonyConfig) {
-	blockchains := []*core.BlockChain{
-		node.Blockchain(),
-		node.Beaconchain(),
-	} // The duplicate blockchain will be skipped in config parsing
+	blockchains := []*core.BlockChain{node.Blockchain()}
+	if node.NodeConfig.ShardID != 0 {
+		blockchains = append(blockchains, node.Beaconchain())
+	}
+
 	dConfig := downloader.Config{
+		ServerOnly:   !hc.Sync.Downloader,
 		Network:      nodeconfig.NetworkType(hc.Network.NetworkType),
 		Concurrency:  hc.Sync.Concurrency,
 		MinStreams:   hc.Sync.MinPeers,
