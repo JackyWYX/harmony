@@ -189,6 +189,7 @@ func getHarmonyConfig(cmd *cobra.Command) (harmonyConfig, error) {
 }
 
 func applyRootFlags(cmd *cobra.Command, config *harmonyConfig) {
+	fmt.Println("apply root flags")
 	// Misc flags shall be applied first since legacy ip / port is overwritten
 	// by new ip / port flags
 	applyLegacyMiscFlags(cmd, config)
