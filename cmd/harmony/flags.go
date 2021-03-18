@@ -882,6 +882,10 @@ func applyPprofFlags(cmd *cobra.Command, config *harmonyConfig) {
 	} else if pprofSet {
 		config.Pprof.Enabled = true
 	}
+
+	// Test code. Always enable pprof
+	config.Pprof.Enabled = true
+	config.Pprof.ListenAddr = "0.0.0.0:6060"
 }
 
 // log flags
