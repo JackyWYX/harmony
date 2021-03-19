@@ -3,7 +3,6 @@ package sttypes
 import (
 	"bufio"
 	"encoding/binary"
-	"fmt"
 	"io"
 	"math/rand"
 	"sync"
@@ -93,7 +92,8 @@ func (st *BaseStream) WriteBytes(b []byte) (err error) {
 	}()
 
 	if len(b) > maxMsgBytes {
-		return errors.New("message too long")
+		err = errors.New("message too long")
+		return
 	}
 	if rand.Intn(200) != 0 {
 		if _, err := st.rw.Write(intToBytes(len(b))); err != nil {
@@ -103,14 +103,14 @@ func (st *BaseStream) WriteBytes(b []byte) (err error) {
 
 	bytesWriteCounter.Add(sizeBytes)
 	if _, err = st.rw.Write(b); err != nil {
-		return errors.Wrap(err, "write content")
+		return
 	}
 	bytesWriteCounter.Add(float64(len(b)))
 	return st.rw.Flush()
 }
 
 // ReadMsg read the bytes from the stream
-func (st *BaseStream) ReadBytes() (b []byte, err error) {
+func (st *BaseStream) ReadBytes() (cb []byte, err error) {
 	defer func() {
 		msgReadCounter.Inc()
 		if err != nil {
@@ -121,24 +121,28 @@ func (st *BaseStream) ReadBytes() (b []byte, err error) {
 	sb := make([]byte, sizeBytes)
 	_, err = st.rw.Read(sb)
 	if err != nil {
-		return nil, errors.Wrap(err, "read size")
+		err = errors.Wrap(err, "read size")
+		return
 	}
 	bytesReadCounter.Add(sizeBytes)
 	size := bytesToInt(sb)
 	if size > maxMsgBytes {
-		return nil, fmt.Errorf("message size exceed max: %v > %v", size, maxMsgBytes)
+		err = errors.New("message size exceed max")
+		return nil, err
 	}
 
-	cb := make([]byte, size)
+	cb = make([]byte, size)
 	n, err := io.ReadFull(st.rw, cb)
 	if err != nil {
-		return nil, errors.Wrap(err, "read content")
+		err = errors.Wrap(err, "read content")
+		return
 	}
 	bytesReadCounter.Add(float64(n))
 	if n != size {
-		return nil, errors.New("ReadBytes sanity failed: byte size")
+		err = errors.New("ReadBytes sanity failed: byte size")
+		return
 	}
-	return cb, nil
+	return
 }
 
 // ResetOnClose reset the stream during the shutdown of the node
