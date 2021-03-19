@@ -95,10 +95,14 @@ func (st *BaseStream) WriteBytes(b []byte) (err error) {
 		err = errors.New("message too long")
 		return
 	}
-	if rand.Intn(200) != 0 {
-		if _, err := st.rw.Write(intToBytes(len(b))); err != nil {
-			return errors.Wrap(err, "write size bytes")
-		}
+	//if rand.Intn(200) != 0 {
+	//	if _, err := st.rw.Write(intToBytes(len(b))); err != nil {
+	//		return errors.Wrap(err, "write size bytes")
+	//	}
+	//}
+
+	if _, err := st.rw.Write(intToBytes(len(b))); err != nil {
+		return errors.Wrap(err, "write size bytes")
 	}
 
 	bytesWriteCounter.Add(sizeBytes)
