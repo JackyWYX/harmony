@@ -17,7 +17,6 @@ func TestDownloader_doLongRangeSync(t *testing.T) {
 
 	d := &Downloader{
 		bc:           bc,
-		ih:           &testInsertHelper{bc},
 		syncProtocol: newTestSyncProtocol(targetBN, 32, nil),
 		config: Config{
 			Concurrency: 16,
@@ -128,8 +127,7 @@ func TestLrSyncIter_FetchAndInsertBlocks(t *testing.T) {
 
 	lsi := &lrSyncIter{
 		bc:  chain,
-		ih:  &testInsertHelper{chain},
-		d:   &Downloader{},
+		d:   &Downloader{bc: chain},
 		p:   protocol,
 		gbm: nil,
 		config: Config{
@@ -161,8 +159,7 @@ func TestLrSyncIter_FetchAndInsertBlocks_ErrRequest(t *testing.T) {
 
 	lsi := &lrSyncIter{
 		bc:  chain,
-		ih:  &testInsertHelper{chain},
-		d:   &Downloader{},
+		d:   &Downloader{bc: chain},
 		p:   protocol,
 		gbm: nil,
 		config: Config{
@@ -194,8 +191,7 @@ func TestLrSyncIter_FetchAndInsertBlocks_ErrInsert(t *testing.T) {
 
 	lsi := &lrSyncIter{
 		bc:  chain,
-		ih:  &testInsertHelper{chain},
-		d:   &Downloader{},
+		d:   &Downloader{bc: chain},
 		p:   protocol,
 		gbm: nil,
 		config: Config{
@@ -227,8 +223,7 @@ func TestLrSyncIter_FetchAndInsertBlocks_RandomErr(t *testing.T) {
 
 	lsi := &lrSyncIter{
 		bc:  chain,
-		ih:  &testInsertHelper{chain},
-		d:   &Downloader{},
+		d:   &Downloader{bc: chain},
 		p:   protocol,
 		gbm: nil,
 		config: Config{
@@ -299,7 +294,7 @@ func TestComputeBNMaxVote(t *testing.T) {
 	}
 
 	for i, test := range tests {
-		res := computeBNMaxVote(test.votes)
+		res := computeBlockNumberByMaxVote(test.votes)
 		if res != test.exp {
 			t.Errorf("Test %v: unexpected bn %v / %v", i, res, test.exp)
 		}

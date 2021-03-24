@@ -28,7 +28,6 @@ func (d *Downloader) doLongRangeSync() (int, error) {
 		iter := &lrSyncIter{
 			bc:     d.bc,
 			p:      d.syncProtocol,
-			ih:     d.ih,
 			d:      d,
 			ctx:    ctx,
 			config: d.config,
@@ -54,7 +53,6 @@ func (d *Downloader) doLongRangeSync() (int, error) {
 type lrSyncIter struct {
 	bc blockChain
 	p  syncProtocol
-	ih insertHelper
 	d  *Downloader
 
 	gbm      *getBlocksManager // initialized when finished get block number
@@ -119,7 +117,7 @@ func (lsi *lrSyncIter) estimateCurrentNumber() (uint64, error) {
 		}
 		return 0, errors.New("zero block number response from remote nodes")
 	}
-	bn := computeBNMaxVote(cnResults)
+	bn := computeBlockNumberByMaxVote(cnResults)
 	return bn, nil
 }
 
@@ -206,7 +204,7 @@ func (lsi *lrSyncIter) processBlocks(results []*blockResult, targetBN uint64) {
 	blocks := blockResultsToBlocks(results)
 
 	for i, block := range blocks {
-		if err := lsi.ih.verifyAndInsertBlock(block); err != nil {
+		if err := verifyAndInsertBlock(lsi.bc, block); err != nil {
 			lsi.logger.Warn().Err(err).Uint64("target block", targetBN).
 				Uint64("block number", block.NumberU64()).
 				Msg("insert blocks failed in long range")
@@ -432,6 +430,7 @@ func (gbm *getBlocksManager) PullContinuousBlocks(cap int) []*blockResult {
 	return results
 }
 
+// getBatchFromRetries get the block number batch to be requested from retries.
 func (gbm *getBlocksManager) getBatchFromRetries(cap int) []uint64 {
 	var (
 		requestBNs []uint64
@@ -450,6 +449,7 @@ func (gbm *getBlocksManager) getBatchFromRetries(cap int) []uint64 {
 	return requestBNs
 }
 
+// getBatchFromRetries get the block number batch to be requested from unprocessed.
 func (gbm *getBlocksManager) getBatchFromUnprocessed(cap int) []uint64 {
 	var (
 		requestBNs []uint64
@@ -494,7 +494,8 @@ func validateGetBlocksResult(requested []uint64, result []*types.Block) error {
 	return nil
 }
 
-func computeBNMaxVote(votes map[sttypes.StreamID]uint64) uint64 {
+// computeBlockNumberByMaxVote compute the target block number by max vote.
+func computeBlockNumberByMaxVote(votes map[sttypes.StreamID]uint64) uint64 {
 	var (
 		nm     = make(map[uint64]int)
 		res    uint64

@@ -13,6 +13,14 @@ import (
 	protobuf "github.com/golang/protobuf/proto"
 	"github.com/harmony-one/abool"
 	bls_core "github.com/harmony-one/bls/ffi/go/bls"
+	lru "github.com/hashicorp/golang-lru"
+	libp2p_peer "github.com/libp2p/go-libp2p-core/peer"
+	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/rcrowley/go-metrics"
+	"golang.org/x/sync/semaphore"
+
 	"github.com/harmony-one/harmony/api/proto"
 	msg_pb "github.com/harmony-one/harmony/api/proto/message"
 	proto_node "github.com/harmony-one/harmony/api/proto/node"
@@ -38,14 +46,6 @@ import (
 	"github.com/harmony-one/harmony/staking/slash"
 	staking "github.com/harmony-one/harmony/staking/types"
 	"github.com/harmony-one/harmony/webhooks"
-	lru "github.com/hashicorp/golang-lru"
-	libp2p_peer "github.com/libp2p/go-libp2p-core/peer"
-	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
-	"github.com/pkg/errors"
-	"github.com/prometheus/client_golang/prometheus"
-	"golang.org/x/sync/semaphore"
-
-	"github.com/rcrowley/go-metrics"
 )
 
 const (
@@ -217,7 +217,7 @@ func (node *Node) addPendingTransactions(newTxs types.Transactions) []error {
 
 // Add new staking transactions to the pending staking transaction list.
 func (node *Node) addPendingStakingTransactions(newStakingTxs staking.StakingTransactions) []error {
-	if node.NodeConfig.ShardID == shard.BeaconChainShardID {
+	if node.IsRunningBeaconChain() {
 		if node.Blockchain().Config().IsPreStaking(node.Blockchain().CurrentHeader().Epoch()) {
 			poolTxs := types.PoolTransactions{}
 			for _, tx := range newStakingTxs {
@@ -245,7 +245,7 @@ func (node *Node) addPendingStakingTransactions(newStakingTxs staking.StakingTra
 func (node *Node) AddPendingStakingTransaction(
 	newStakingTx *staking.StakingTransaction,
 ) error {
-	if node.NodeConfig.ShardID == shard.BeaconChainShardID {
+	if node.IsRunningBeaconChain() {
 		errs := node.addPendingStakingTransactions(staking.StakingTransactions{newStakingTx})
 		var err error
 		for i := range errs {
@@ -404,7 +404,7 @@ func (node *Node) validateNodeMessage(ctx context.Context, payload []byte) (
 		case proto_node.SlashCandidate:
 			nodeNodeMessageCounterVec.With(prometheus.Labels{"type": "slash"}).Inc()
 			// only beacon chain node process slash candidate messages
-			if node.NodeConfig.ShardID != shard.BeaconChainShardID {
+			if !node.IsRunningBeaconChain() {
 				return nil, 0, errIgnoreBeaconMsg
 			}
 		case proto_node.Receipt:
@@ -412,7 +412,7 @@ func (node *Node) validateNodeMessage(ctx context.Context, payload []byte) (
 		case proto_node.CrossLink:
 			nodeNodeMessageCounterVec.With(prometheus.Labels{"type": "crosslink"}).Inc()
 			// only beacon chain node process crosslink messages
-			if node.NodeConfig.ShardID != shard.BeaconChainShardID ||
+			if !node.IsRunningBeaconChain() ||
 				node.NodeConfig.Role() == nodeconfig.ExplorerNode {
 				return nil, 0, errIgnoreBeaconMsg
 			}
@@ -931,8 +931,10 @@ func New(
 	chainConfig := networkType.ChainConfig()
 	node.chainConfig = chainConfig
 
+	engine := chain.NewEngine(consensusObj.ShardID)
+
 	collection := shardchain.NewCollection(
-		chainDBFactory, &genesisInitializer{&node}, chain.Engine, &chainConfig,
+		chainDBFactory, &genesisInitializer{&node}, engine, &chainConfig,
 	)
 
 	for shardID, archival := range isArchival {
@@ -971,21 +973,21 @@ func New(
 		txPoolConfig.Journal = fmt.Sprintf("%v/%v", node.NodeConfig.DBDir, txPoolConfig.Journal)
 		node.TxPool = core.NewTxPool(txPoolConfig, node.Blockchain().Config(), blockchain, node.TransactionErrorSink)
 		node.CxPool = core.NewCxPool(core.CxPoolSize)
-		node.Worker = worker.New(node.Blockchain().Config(), blockchain, chain.Engine)
+		node.Worker = worker.New(node.Blockchain().Config(), blockchain, engine)
 
 		node.deciderCache, _ = lru.New(16)
 		node.committeeCache, _ = lru.New(16)
 
 		if node.Blockchain().ShardID() != shard.BeaconChainShardID {
 			node.BeaconWorker = worker.New(
-				node.Beaconchain().Config(), beaconChain, chain.Engine,
+				node.Beaconchain().Config(), beaconChain, engine,
 			)
 		}
 
 		node.pendingCXReceipts = map[string]*types.CXReceiptsProof{}
 		node.proposedBlock = map[uint64]*types.Block{}
 		node.Consensus.VerifiedNewBlock = make(chan *types.Block, 1)
-		chain.Engine.SetBeaconchain(beaconChain)
+		engine.SetBeaconchain(beaconChain)
 		// the sequence number is the next block number to be added in consensus protocol, which is
 		// always one more than current chain header block
 		node.Consensus.SetBlockNum(blockchain.CurrentBlock().NumberU64() + 1)
@@ -1016,7 +1018,7 @@ func New(
 						go func() { webhooks.DoPost(url, &doubleSign) }()
 					}
 				}
-				if node.NodeConfig.ShardID != shard.BeaconChainShardID {
+				if !node.IsRunningBeaconChain() {
 					go node.BroadcastSlash(&doubleSign)
 				} else {
 					records := slash.Records{doubleSign}
@@ -1281,4 +1283,9 @@ func (node *Node) GetAddresses(epoch *big.Int) map[string]common.Address {
 	}
 	// self addresses map can never be nil
 	return node.KeysToAddrs
+}
+
+// IsRunningBeaconChain returns whether the node is running on beacon chain.
+func (node *Node) IsRunningBeaconChain() bool {
+	return node.NodeConfig.ShardID == shard.BeaconChainShardID
 }
