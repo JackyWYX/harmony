@@ -11,8 +11,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/harmony-one/harmony/internal/chain"
-
 	"github.com/Workiva/go-datastructures/queue"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -22,6 +20,7 @@ import (
 	"github.com/harmony-one/harmony/consensus/engine"
 	"github.com/harmony-one/harmony/core"
 	"github.com/harmony-one/harmony/core/types"
+	"github.com/harmony-one/harmony/internal/chain"
 	"github.com/harmony-one/harmony/internal/utils"
 	"github.com/harmony-one/harmony/node/worker"
 	"github.com/harmony-one/harmony/p2p"
@@ -758,6 +757,40 @@ func (ss *StateSync) getBlockFromOldBlocksByParentHash(parentHash common.Hash) *
 	return nil
 }
 
+func (ss *StateSync) getCommonBlockIter(parentHash common.Hash) *commonBlockIter {
+	return newCommonBlockIter(ss.commonBlocks, parentHash)
+}
+
+type commonBlockIter struct {
+	parentToChild map[common.Hash]*types.Block
+	curParentHash common.Hash
+}
+
+func newCommonBlockIter(blocks map[int]*types.Block, startHash common.Hash) *commonBlockIter {
+	m := make(map[common.Hash]*types.Block)
+	for _, block := range blocks {
+		m[block.ParentHash()] = block
+	}
+	return &commonBlockIter{
+		parentToChild: m,
+		curParentHash: startHash,
+	}
+}
+
+func (iter *commonBlockIter) Next() *types.Block {
+	curBlock, ok := iter.parentToChild[iter.curParentHash]
+	if !ok || curBlock == nil {
+		return nil
+	}
+	iter.curParentHash = curBlock.Hash()
+	return curBlock
+}
+
+func (iter *commonBlockIter) HasNext() bool {
+	_, ok := iter.parentToChild[iter.curParentHash]
+	return ok
+}
+
 func (ss *StateSync) getBlockFromLastMileBlocksByParentHash(parentHash common.Hash) *types.Block {
 	for _, block := range ss.lastMileBlocks {
 		ph := block.ParentHash()
@@ -769,7 +802,7 @@ func (ss *StateSync) getBlockFromLastMileBlocksByParentHash(parentHash common.Ha
 }
 
 // UpdateBlockAndStatus ...
-func (ss *StateSync) UpdateBlockAndStatus(block *types.Block, bc *core.BlockChain, worker *worker.Worker, verifyAllSig bool) error {
+func (ss *StateSync) UpdateBlockAndStatus(block *types.Block, bc *core.BlockChain, verifyAllSig, haveCurrentSig bool) error {
 	if block.NumberU64() != bc.CurrentBlock().NumberU64()+1 {
 		utils.Logger().Info().Uint64("curBlockNum", bc.CurrentBlock().NumberU64()).Uint64("receivedBlockNum", block.NumberU64()).Msg("[SYNC] Inappropriate block number, ignore!")
 		return nil
@@ -778,11 +811,9 @@ func (ss *StateSync) UpdateBlockAndStatus(block *types.Block, bc *core.BlockChai
 	// Verify block signatures
 	if block.NumberU64() > 1 {
 		// Verify signature every 100 blocks
-		verifySig := block.NumberU64()%verifyHeaderBatchSize == 0
-		if verifyAllSig {
-			verifySig = true
-		}
-		if verifySig {
+		verifySeal := block.NumberU64()%verifyHeaderBatchSize == 0 || verifyAllSig
+		verifyCurrentSig := verifyAllSig && verifySeal
+		if verifyCurrentSig {
 			sig, bitmap, err := chain.ParseCommitSigAndBitmap(block.GetCurrentCommitSig())
 			if err != nil {
 				return errors.Wrap(err, "parse commitSigAndBitmap")
@@ -791,7 +822,7 @@ func (ss *StateSync) UpdateBlockAndStatus(block *types.Block, bc *core.BlockChai
 				return errors.Wrapf(err, "verify header signature %v", block.Hash().String())
 			}
 		}
-		err := bc.Engine().VerifyHeader(bc, block.Header(), verifySig)
+		err := bc.Engine().VerifyHeader(bc, block.Header(), verifySeal)
 		if err == engine.ErrUnknownAncestor {
 			return err
 		} else if err != nil {
@@ -828,11 +859,6 @@ func (ss *StateSync) UpdateBlockAndStatus(block *types.Block, bc *core.BlockChai
 		Uint32("ShardID", block.ShardID()).
 		Msg("[SYNC] UpdateBlockAndStatus: New Block Added to Blockchain")
 
-	if verifyAllSig {
-		if err := bc.WriteCommitSig(block.NumberU64(), block.GetCurrentCommitSig()); err != nil {
-			return err
-		}
-	}
 	for i, tx := range block.StakingTransactions() {
 		utils.Logger().Info().
 			Msgf(
@@ -848,20 +874,21 @@ func (ss *StateSync) generateNewState(bc *core.BlockChain, worker *worker.Worker
 	parentHash := bc.CurrentBlock().Hash()
 
 	var err error
-	for block := ss.getBlockFromOldBlocksByParentHash(parentHash); ; {
+
+	commonIter := ss.getCommonBlockIter(parentHash)
+	for {
+		block := commonIter.Next()
 		if block == nil {
 			break
 		}
-		next := ss.getBlockFromOldBlocksByParentHash(block.Hash())
 		// Enforce sig check for the last block in a batch
-		enforceSigCheck := next == nil
-
-		err = ss.UpdateBlockAndStatus(block, bc, worker, enforceSigCheck)
+		enforceSigCheck := !commonIter.HasNext()
+		err = ss.UpdateBlockAndStatus(block, bc, enforceSigCheck, true)
 		if err != nil {
 			break
 		}
-		block = next
 	}
+
 	ss.syncMux.Lock()
 	ss.commonBlocks = make(map[int]*types.Block)
 	ss.syncMux.Unlock()
@@ -873,7 +900,7 @@ func (ss *StateSync) generateNewState(bc *core.BlockChain, worker *worker.Worker
 		if block == nil {
 			break
 		}
-		err = ss.UpdateBlockAndStatus(block, bc, worker, true)
+		err = ss.UpdateBlockAndStatus(block, bc, true, true)
 		if err != nil {
 			break
 		}
@@ -894,7 +921,7 @@ func (ss *StateSync) generateNewState(bc *core.BlockChain, worker *worker.Worker
 		if block == nil {
 			break
 		}
-		err = ss.UpdateBlockAndStatus(block, bc, worker, true)
+		err = ss.UpdateBlockAndStatus(block, bc, false, false)
 		if err != nil {
 			break
 		}

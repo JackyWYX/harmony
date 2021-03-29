@@ -200,7 +200,7 @@ func (node *Node) doBeaconSyncing() {
 			for beaconBlock := range node.BeaconBlockChannel {
 				if node.beaconSync != nil {
 					err := node.beaconSync.UpdateBlockAndStatus(
-						beaconBlock, node.Beaconchain(), node.BeaconWorker, true,
+						beaconBlock, node.Beaconchain(), true, false,
 					)
 					if err != nil {
 						node.beaconSync.AddLastMileBlock(beaconBlock)
@@ -352,9 +352,14 @@ func (node *Node) StartSyncingServer() {
 func (node *Node) SendNewBlockToUnsync() {
 	for {
 		block := <-node.Consensus.VerifiedNewBlock
-		blockHash, err := rlp.EncodeToBytes(block)
+		blockBytes, err := rlp.EncodeToBytes(block)
 		if err != nil {
 			utils.Logger().Warn().Msg("[SYNC] unable to encode block to hashes")
+			continue
+		}
+		blockWithSigBytes, err := node.getEncodedBlockWithSigFromBlock(block)
+		if err != nil {
+			utils.Logger().Warn().Err(err).Msg("[SYNC] rlp encode BlockWithSig")
 			continue
 		}
 
@@ -367,7 +372,11 @@ func (node *Node) SendNewBlockToUnsync() {
 				delete(node.peerRegistrationRecord, peerID)
 				continue
 			}
-			response, err := config.client.PushNewBlock(node.GetSyncID(), blockHash, false)
+			sendBytes := blockBytes
+			if config.withSig {
+				sendBytes = blockWithSigBytes
+			}
+			response, err := config.client.PushNewBlock(node.GetSyncID(), sendBytes, false)
 			// close the connection if cannot push new block to unsync node
 			if err != nil {
 				node.peerRegistrationRecord[peerID].client.Close()
@@ -470,18 +479,21 @@ func (node *Node) CalculateResponse(request *downloader_pb.DownloaderRequest, in
 			response.Type = downloader_pb.DownloaderResponse_INSYNC
 			return response, nil
 		}
-		var blockObj types.Block
-		err := rlp.DecodeBytes(request.BlockHash, &blockObj)
+		var bws legacysync.BlockWithSig
+		err := rlp.DecodeBytes(request.BlockHash, &bws)
 		if err != nil {
 			utils.Logger().Warn().Msg("[SYNC] unable to decode received new block")
 			return response, err
 		}
-		node.stateSync.AddNewBlock(request.PeerHash, &blockObj)
+		blockObj := bws.Block
+		blockObj.SetCurrentCommitSig(bws.CommitSigAndBitmap)
+		node.stateSync.AddNewBlock(request.PeerHash, blockObj)
 
 	case downloader_pb.DownloaderRequest_REGISTER:
 		peerID := string(request.PeerHash[:])
 		ip := request.Ip
 		port := request.Port
+		withSig := request.RegisterWithSig
 		node.stateMutex.Lock()
 		defer node.stateMutex.Unlock()
 		if _, ok := node.peerRegistrationRecord[peerID]; ok {
@@ -509,7 +521,7 @@ func (node *Node) CalculateResponse(request *downloader_pb.DownloaderRequest, in
 					Msg("[SYNC] unable to setup client for peerID")
 				return response, nil
 			}
-			config := &syncConfig{timestamp: time.Now().UnixNano(), client: client}
+			config := &syncConfig{timestamp: time.Now().UnixNano(), client: client, withSig: withSig}
 			node.peerRegistrationRecord[peerID] = config
 			utils.Logger().Debug().
 				Str("ip", ip).
@@ -587,7 +599,8 @@ func (node *Node) getEncodedBlockWithSigByHash(hash common.Hash) ([]byte, error)
 	if blk == nil {
 		return nil, errBlockNotExist
 	}
-	sab, err := node.getCommitSigAndBitmap(blk)
+
+	sab, err := node.getCommitSigAndBitmapFromChildOrDB(blk)
 	if err != nil {
 		return nil, err
 	}
@@ -603,7 +616,15 @@ func (node *Node) getEncodedBlockWithSigByHash(hash common.Hash) ([]byte, error)
 	return b, nil
 }
 
-func (node *Node) getCommitSigAndBitmap(block *types.Block) ([]byte, error) {
+func (node *Node) getEncodedBlockWithSigFromBlock(block *types.Block) ([]byte, error) {
+	bwh := legacysync.BlockWithSig{
+		Block:              block,
+		CommitSigAndBitmap: block.GetCurrentCommitSig(),
+	}
+	return rlp.EncodeToBytes(bwh)
+}
+
+func (node *Node) getCommitSigAndBitmapFromChildOrDB(block *types.Block) ([]byte, error) {
 	child := node.Blockchain().GetBlockByNumber(block.NumberU64() + 1)
 	if child != nil {
 		return node.getCommitSigFromChild(block, child)
