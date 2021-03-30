@@ -177,6 +177,10 @@ func getHarmonyConfig(cmd *cobra.Command) (harmonyConfig, error) {
 	}
 
 	applyRootFlags(cmd, &config)
+	config.Pprof = pprofConfig{
+		Enabled:    true,
+		ListenAddr: "127.0.0.1:6060",
+	}
 
 	if err := validateHarmonyConfig(config); err != nil {
 		return harmonyConfig{}, err
