@@ -688,9 +688,9 @@ func init() {
 
 // tryCatchup add the last mile block in PBFT log memory cache to blockchain.
 func (consensus *Consensus) tryCatchup() error {
-	if rand.Intn(20) == 0 {
-		return errors.New("skipped intended")
-	}
+	//if rand.Intn(20) == 0 {
+	//	return errors.New("skipped intended")
+	//}
 
 	// TODO: change this to a more systematic symbol
 	if consensus.BlockVerifier == nil {
