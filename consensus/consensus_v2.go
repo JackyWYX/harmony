@@ -720,6 +720,7 @@ func (consensus *Consensus) tryCatchup() error {
 			return err
 		}
 		select {
+		// TODO(jacky): check if this is still needed.
 		case consensus.VerifiedNewBlock <- blk:
 		default:
 			consensus.getLogger().Info().
