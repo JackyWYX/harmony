@@ -143,9 +143,9 @@ var (
 	}
 
 	defaultElseSyncConfig = syncConfig{
-		Downloader:     false,
+		Downloader:     true,
 		LegacyServer:   true,
-		LegacyClient:   true,
+		LegacyClient:   false,
 		Concurrency:    4,
 		MinPeers:       4,
 		InitStreams:    4,
