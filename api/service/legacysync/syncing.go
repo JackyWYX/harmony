@@ -831,6 +831,7 @@ func (ss *StateSync) UpdateBlockAndStatus(block *types.Block, bc *core.BlockChai
 		// Verify signature every 100 blocks
 		verifySeal := block.NumberU64()%verifyHeaderBatchSize == 0 || verifyAllSig
 		verifyCurrentSig := verifyAllSig && haveCurrentSig
+		fmt.Println("verify sig", verifySeal, verifyCurrentSig)
 		if verifyCurrentSig {
 			sig, bitmap, err := chain.ParseCommitSigAndBitmap(block.GetCurrentCommitSig())
 			if err != nil {
@@ -893,6 +894,7 @@ func (ss *StateSync) generateNewState(bc *core.BlockChain, worker *worker.Worker
 
 	var err error
 
+	fmt.Println("generate new state")
 	commonIter := ss.getCommonBlockIter(parentHash)
 	for {
 		block := commonIter.Next()
@@ -901,6 +903,7 @@ func (ss *StateSync) generateNewState(bc *core.BlockChain, worker *worker.Worker
 		}
 		// Enforce sig check for the last block in a batch
 		enforceSigCheck := !commonIter.HasNext()
+		fmt.Println("enforce?", enforceSigCheck)
 		err = ss.UpdateBlockAndStatus(block, bc, enforceSigCheck)
 		if err != nil {
 			break
