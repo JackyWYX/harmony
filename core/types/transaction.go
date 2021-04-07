@@ -493,6 +493,7 @@ func (tx *Transaction) Cost() (*big.Int, error) {
 
 // PrintCost print the cost details
 func (tx *Transaction) PrintCost() {
+	fmt.Println("\ttoAddr", tx.To().String())
 	fmt.Println("\tPrince", tx.data.Price)
 	fmt.Println("\tGasLim", tx.data.GasLimit)
 	fmt.Println("\tAmount", tx.data.Amount)
