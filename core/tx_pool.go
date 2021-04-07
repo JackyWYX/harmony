@@ -659,8 +659,7 @@ func (pool *TxPool) Locals() []common.Address {
 func (pool *TxPool) PrintSize() {
 	pendingSize := pool.pendingSize()
 	nonProcessable := pool.nonProcessableSize()
-	fmt.Println("processable size", pendingSize)
-	fmt.Println("non-processable size", nonProcessable)
+	fmt.Println("txPool size", len(pool.pending), pendingSize, len(pool.queue), nonProcessable)
 }
 
 func (pool *TxPool) pendingSize() int {
@@ -946,10 +945,12 @@ func (pool *TxPool) add(tx types.PoolTransaction, local bool) (bool, error) {
 	if err := pool.validateTx(tx, local); err != nil {
 		logger.Warn().Err(err).Str("hash", hash.Hex()).Msg("Discarding invalid transaction")
 		invalidTxCounter.Inc(1)
+		fmt.Println("\ndiscarded txn")
 		return false, err
 	}
 	// If the transaction pool is full, discard underpriced transactions
 	if uint64(pool.all.Count()) >= pool.config.GlobalSlots+pool.config.GlobalQueue {
+		fmt.Println("txPool is full")
 		// If the new transaction is underpriced, don't accept it
 		if !local && pool.priced.Underpriced(tx, pool.locals) {
 			gasPrice := new(big.Float).SetInt64(tx.GasPrice().Int64())
@@ -987,6 +988,8 @@ func (pool *TxPool) add(tx types.PoolTransaction, local bool) (bool, error) {
 		}
 		// New transaction is better, replace old one
 		if old != nil {
+			fmt.Println("force replaced old transaction")
+
 			pool.all.Remove(old.Hash())
 			pool.priced.Removed()
 			pendingReplaceCounter.Inc(1)
@@ -1018,6 +1021,7 @@ func (pool *TxPool) add(tx types.PoolTransaction, local bool) (bool, error) {
 		return old != nil, nil
 	}
 	// New transaction isn't replacing a pending one, push into queue
+	fmt.Println("enqueue transaction")
 	replace, err := pool.enqueueTx(tx)
 	if err != nil {
 		return false, err
