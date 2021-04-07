@@ -656,6 +656,30 @@ func (pool *TxPool) Locals() []common.Address {
 	return pool.locals.flatten()
 }
 
+func (pool *TxPool) PrintSize() {
+	pendingSize := pool.pendingSize()
+	nonProcessable := pool.nonProcessableSize()
+	fmt.Println("processable size", pendingSize)
+	fmt.Println("non-processable size", nonProcessable)
+}
+
+func (pool *TxPool) pendingSize() int {
+	total := 0
+
+	for _, txns := range pool.pending {
+		total += txns.Len()
+	}
+	return total
+}
+
+func (pool *TxPool) nonProcessableSize() int {
+	total := 0
+	for _, txns := range pool.queue {
+		total += txns.Len()
+	}
+	return total
+}
+
 // local retrieves all currently known local transactions, grouped by origin
 // account and sorted by nonce. The returned transaction set is a copy and can be
 // freely modified by calling code.
@@ -735,8 +759,8 @@ func (pool *TxPool) validateTx(tx types.PoolTransaction, local bool) error {
 	stakingTx, isStakingTx := tx.(*staking.StakingTransaction)
 	if !isStakingTx || (isStakingTx && stakingTx.StakingType() != staking.DirectiveDelegate) {
 		if bal := pool.currentState.GetBalance(from); bal.Cmp(cost) < 0 {
-			fmt.Println("not enough balance", bal, cost)
-			tx.PrintCost()
+			//fmt.Println("not enough balance", bal, cost)
+			//tx.PrintCost()
 			return errors.Wrapf(
 				ErrInsufficientFunds,
 				"current shard-id: %d",
@@ -906,6 +930,7 @@ func (pool *TxPool) pendingEpoch() *big.Int {
 // whitelisted, preventing any associated transaction from being dropped out of
 // the pool due to pricing constraints.
 func (pool *TxPool) add(tx types.PoolTransaction, local bool) (bool, error) {
+	pool.PrintSize()
 	logger := utils.Logger().With().Stack().Logger()
 	// If the transaction is in the error sink, remove it as it may succeed
 	if pool.txErrorSink.Contains(tx.Hash().String()) {
