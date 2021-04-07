@@ -734,7 +734,9 @@ func (pool *TxPool) validateTx(tx types.PoolTransaction, local bool) error {
 	}
 	stakingTx, isStakingTx := tx.(*staking.StakingTransaction)
 	if !isStakingTx || (isStakingTx && stakingTx.StakingType() != staking.DirectiveDelegate) {
-		if pool.currentState.GetBalance(from).Cmp(cost) < 0 {
+		if bal := pool.currentState.GetBalance(from); bal.Cmp(cost) < 0 {
+			fmt.Println("not enough balance", bal, cost)
+			tx.PrintCost()
 			return errors.Wrapf(
 				ErrInsufficientFunds,
 				"current shard-id: %d",

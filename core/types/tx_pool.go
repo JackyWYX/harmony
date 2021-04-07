@@ -29,6 +29,7 @@ type PoolTransaction interface {
 	SenderAddress() (common.Address, error)
 	Size() common.StorageSize
 	Cost() (*big.Int, error)
+	PrintCost()
 	EncodeRLP(w io.Writer) error
 	DecodeRLP(s *rlp.Stream) error
 }

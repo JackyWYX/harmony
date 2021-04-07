@@ -2,6 +2,7 @@ package types
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"math/big"
 	"sync/atomic"
@@ -179,6 +180,12 @@ func (tx *StakingTransaction) Cost() (*big.Int, error) {
 		total.Add(total, stkMsg.Amount)
 	}
 	return total, nil
+}
+
+// PrintCost print the cost details
+func (tx *StakingTransaction) PrintCost() {
+	fmt.Println("\tPrince", tx.data.Price)
+	fmt.Println("\tGasLim", tx.data.GasLimit)
 }
 
 // ChainID is what chain this staking transaction for

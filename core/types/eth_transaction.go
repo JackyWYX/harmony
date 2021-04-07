@@ -17,6 +17,7 @@
 package types
 
 import (
+	"fmt"
 	"io"
 	"math/big"
 	"sync/atomic"
@@ -313,6 +314,13 @@ func (tx *EthTransaction) Cost() (*big.Int, error) {
 	total := new(big.Int).Mul(tx.data.Price, new(big.Int).SetUint64(tx.data.GasLimit))
 	total.Add(total, tx.data.Amount)
 	return total, nil
+}
+
+// PrintCost print the cost details
+func (tx *EthTransaction) PrintCost() {
+	fmt.Println("\tPrince", tx.data.Price)
+	fmt.Println("\tGasLim", tx.data.GasLimit)
+	fmt.Println("\tAmount", tx.data.Amount)
 }
 
 // SenderAddress returns the address of transaction sender

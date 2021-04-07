@@ -491,6 +491,13 @@ func (tx *Transaction) Cost() (*big.Int, error) {
 	return total, nil
 }
 
+// PrintCost print the cost details
+func (tx *Transaction) PrintCost() {
+	fmt.Println("\tPrince", tx.data.Price)
+	fmt.Println("\tGasLim", tx.data.GasLimit)
+	fmt.Println("\tAmount", tx.data.Amount)
+}
+
 // RawSignatureValues return raw signature values.
 func (tx *Transaction) RawSignatureValues() (*big.Int, *big.Int, *big.Int) {
 	return tx.data.V, tx.data.R, tx.data.S
