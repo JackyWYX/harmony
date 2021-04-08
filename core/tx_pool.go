@@ -656,10 +656,35 @@ func (pool *TxPool) Locals() []common.Address {
 	return pool.locals.flatten()
 }
 
-func (pool *TxPool) PrintSize() {
+func (pool *TxPool) printSize() {
 	pendingSize := pool.pendingSize()
 	nonProcessable := pool.nonProcessableSize()
 	fmt.Println("txPool size", len(pool.pending), pendingSize, len(pool.queue), nonProcessable)
+}
+
+func (pool *TxPool) printPendings() {
+	for addr, txList := range pool.pending {
+		fmt.Println("\t", addr.String())
+		for _, tx := range txList.Flatten() {
+			txHash := tx.Hash()
+			nonce := tx.Nonce()
+			txType := transactionType(tx)
+			fmt.Println("\t\t", txHash, nonce, txType)
+		}
+	}
+}
+
+func transactionType(tx types.PoolTransaction) string {
+	switch tx.(type) {
+	case *types.EthTransaction:
+		return "Eth transaction"
+	case *staking.StakingTransaction:
+		return "staking transaction"
+	case *types.Transaction:
+		return "normal transaction"
+	default:
+	}
+	return ""
 }
 
 func (pool *TxPool) pendingSize() int {
@@ -929,7 +954,9 @@ func (pool *TxPool) pendingEpoch() *big.Int {
 // whitelisted, preventing any associated transaction from being dropped out of
 // the pool due to pricing constraints.
 func (pool *TxPool) add(tx types.PoolTransaction, local bool) (bool, error) {
-	pool.PrintSize()
+	pool.printSize()
+	pool.printPendings()
+
 	logger := utils.Logger().With().Stack().Logger()
 	// If the transaction is in the error sink, remove it as it may succeed
 	if pool.txErrorSink.Contains(tx.Hash().String()) {
