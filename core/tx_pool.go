@@ -669,7 +669,7 @@ func (pool *TxPool) printPendings() {
 			txHash := tx.Hash()
 			nonce := tx.Nonce()
 			txType := transactionType(tx)
-			fmt.Println("\t\t", txHash, nonce, txType)
+			fmt.Println("\t\t", txHash.String(), nonce, txType)
 		}
 	}
 }
