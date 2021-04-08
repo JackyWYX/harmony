@@ -664,7 +664,8 @@ func (pool *TxPool) printSize() {
 
 func (pool *TxPool) printPendings() {
 	for addr, txList := range pool.pending {
-		fmt.Println("\t", addr.String())
+		accNonce := pool.currentState.GetNonce(addr)
+		fmt.Println("\t", addr.String(), accNonce)
 		for _, tx := range txList.Flatten() {
 			txHash := tx.Hash()
 			nonce := tx.Nonce()
