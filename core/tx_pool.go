@@ -652,20 +652,27 @@ func (pool *TxPool) Stats() (int, int) {
 // number of queued (non-executable) transactions.
 func (pool *TxPool) stats() (int, int) {
 	pending := 0
+	for addr, list := range pool.pending {
+		pending += list.Len()
+	}
+	queued := 0
+	for addr, list := range pool.queue {
+		queued += list.Len()
+	}
+	return pending, queued
+}
+
+func (pool *TxPool) printStats() {
 	fmt.Println("=================================")
 	fmt.Println("pending")
 	for addr, list := range pool.pending {
-		pending += list.Len()
 		printItemAndFlatten(addr, list)
 	}
-	queued := 0
 	fmt.Println("=================================")
 	fmt.Println("queued")
 	for addr, list := range pool.queue {
-		queued += list.Len()
 		printItemAndFlatten(addr, list)
 	}
-	return pending, queued
 }
 
 func printItemAndFlatten(addr common.Address, list *txList) {
