@@ -669,13 +669,20 @@ func (pool *TxPool) stats() (int, int) {
 }
 
 func printItemAndFlatten(addr common.Address, list *txList) {
+	flattened := list.Flatten()
+	itemSize := len(list.txs.items)
+	flattenedSize := len(flattened)
+	if itemSize == flattenedSize {
+		fmt.Println("\t", addr.String(), itemSize, flattenedSize, "----------------")
+		return
+	}
+
 	fmt.Println("\t", addr.String(), "-------------------")
 	fmt.Println("\t\titems")
 	for nonce, item := range list.txs.items {
 		fmt.Println("\t\t\t", nonce, "\t", item.Hash().String())
 	}
 	fmt.Println("\t\tflattened")
-	flattened := list.Flatten()
 	for _, item := range flattened {
 		fmt.Println("\t\t\t", item.Nonce(), "\t", item.Hash().String())
 	}
