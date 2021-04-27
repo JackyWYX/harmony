@@ -179,7 +179,8 @@ func (node *Node) broadcastPlainTx(tx *types.Transaction) {
 	msg := proto_node.ConstructTransactionListMessageAccount(types.Transactions{tx})
 	finalMsg := p2p.ConstructMessage(msg)
 
-	utils.Logger().Info().Str("shardGroupID", string(shardGroupID)).Msg("broadcastPlainTx")
+	utils.Logger().Info().Str("txHash", tx.Hash().String()).
+		Str("shardGroupID", string(shardGroupID)).Msg("broadcastPlainTx")
 
 	if err := node.host.SendMessageToGroups(groups, finalMsg); err != nil {
 		utils.Logger().Error().Err(err).Msg("Error when trying to broadcast tx")

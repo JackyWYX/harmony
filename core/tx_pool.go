@@ -652,14 +652,33 @@ func (pool *TxPool) Stats() (int, int) {
 // number of queued (non-executable) transactions.
 func (pool *TxPool) stats() (int, int) {
 	pending := 0
-	for _, list := range pool.pending {
+	fmt.Println("=================================")
+	fmt.Println("pending")
+	for addr, list := range pool.pending {
 		pending += list.Len()
+		printItemAndFlatten(addr, list)
 	}
 	queued := 0
-	for _, list := range pool.queue {
+	fmt.Println("=================================")
+	fmt.Println("queued")
+	for addr, list := range pool.queue {
 		queued += list.Len()
+		printItemAndFlatten(addr, list)
 	}
 	return pending, queued
+}
+
+func printItemAndFlatten(addr common.Address, list *txList) {
+	fmt.Println("\t", addr.String(), "-------------------")
+	fmt.Println("\t\titems")
+	for nonce, item := range list.txs.items {
+		fmt.Println("\t\t\t", nonce, "\t", item.Hash().String())
+	}
+	fmt.Println("\t\tflattened")
+	flattened := list.Flatten()
+	for _, item := range flattened {
+		fmt.Println("\t\t\t", item.Nonce(), "\t", item.Hash().String())
+	}
 }
 
 // Content retrieves the data content of the transaction pool, returning all the
