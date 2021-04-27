@@ -382,6 +382,7 @@ func (pool *TxPool) loop() {
 				pendings, queued := pool.stats()
 				pendingTxGauge.Set(float64(pendings))
 				queuedTxGauge.Set(float64(queued))
+				pool.printStats()
 
 				pool.mu.Unlock()
 			}
@@ -652,11 +653,11 @@ func (pool *TxPool) Stats() (int, int) {
 // number of queued (non-executable) transactions.
 func (pool *TxPool) stats() (int, int) {
 	pending := 0
-	for addr, list := range pool.pending {
+	for _, list := range pool.pending {
 		pending += list.Len()
 	}
 	queued := 0
-	for addr, list := range pool.queue {
+	for _, list := range pool.queue {
 		queued += list.Len()
 	}
 	return pending, queued
