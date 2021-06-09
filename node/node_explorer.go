@@ -37,48 +37,9 @@ var (
 // explorerMessageHandler passes received message in node_handler to explorer service
 func (node *Node) explorerMessageHandler(ctx context.Context, msg *msg_pb.Message) error {
 	if msg.Type == msg_pb.MessageType_COMMITTED {
-		parsedMsg, err := node.Consensus.ParseFBFTMessage(msg)
-		if err != nil {
-			return errors.New("failed to parse FBFT message")
-		}
-
-		defer fmt.Println("---------")
-
-		node.Consensus.Mutex.Lock()
-		defer node.Consensus.Mutex.Unlock()
-		fmt.Println("[COMMITTED]", parsedMsg.BlockNum, node.Blockchain().CurrentBlock().NumberU64())
-		if err := node.explorerHelper.verifyCommittedMsg(parsedMsg); err != nil {
-			fmt.Println("\t", err)
-			if err == errBlockNotReady {
-				utils.Logger().Info().Uint64("block number", parsedMsg.BlockNum).
-					Str("blockHash", parsedMsg.BlockHash.Hex()).
-					Msg("committed message received before prepared")
-				return nil
-			}
-			return errors.Wrap(err, "verify committed message for explorer")
-		}
-		fmt.Println("\tverified")
-		if err := node.explorerHelper.tryCatchup(); err != nil {
-			return errors.Wrap(err, "failed to catchup for explorer")
-		}
+		return node.explorerHelper.AddCommittedMsg(msg)
 	} else if msg.Type == msg_pb.MessageType_PREPARED {
-		parsedMsg, err := node.Consensus.ParseFBFTMessage(msg)
-		if err != nil {
-			return errors.New("failed to parse FBFT message")
-		}
-		defer fmt.Println("------------")
-
-		//node.Consensus.Mutex.Lock()
-		//defer node.Consensus.Mutex.Unlock()
-		fmt.Println("[PREPARED] ", parsedMsg.BlockNum, node.Blockchain().CurrentBlock().NumberU64())
-		if err := node.explorerHelper.verifyPreparedMsg(parsedMsg); err != nil {
-			fmt.Println("\t", err)
-			return errors.Wrap(err, "verify prepared message for explorer")
-		}
-		fmt.Println("\tverified")
-		if err := node.explorerHelper.tryCatchup(); err != nil {
-			return errors.Wrap(err, "failed to catchup for explorer")
-		}
+		return node.explorerHelper.AddPreparedMsg(msg)
 	}
 	return nil
 }
@@ -248,6 +209,8 @@ type explorerHelper struct {
 	n      *Node
 	engine engine.Engine
 	c      *consensus.Consensus
+
+	lock sync.Mutex
 }
 
 func newExplorerHelper(n *Node) *explorerHelper {
@@ -256,6 +219,59 @@ func newExplorerHelper(n *Node) *explorerHelper {
 		n:      n,
 		engine: n.Blockchain().Engine(),
 		c:      n.Consensus,
+	}
+}
+
+func (eh *explorerHelper) AddCommittedMsg(msg *msg_pb.Message) error {
+	eh.lock.Lock()
+	defer eh.lock.Unlock()
+
+	parsedMsg, err := eh.c.ParseFBFTMessage(msg)
+	if err != nil {
+		return errors.New("failed to parse FBFT message")
+	}
+
+	defer fmt.Println("---------")
+
+	eh.lock.Lock()
+	defer eh.lock.Unlock()
+	fmt.Println("[COMMITTED]", parsedMsg.BlockNum, eh.bc.CurrentBlock().NumberU64())
+	if err := eh.verifyCommittedMsg(parsedMsg); err != nil {
+		fmt.Println("\t", err)
+		if err == errBlockNotReady {
+			utils.Logger().Info().Uint64("block number", parsedMsg.BlockNum).
+				Str("blockHash", parsedMsg.BlockHash.Hex()).
+				Msg("committed message received before prepared")
+			return nil
+		}
+		return errors.Wrap(err, "verify committed message for explorer")
+	}
+	fmt.Println("\tverified")
+	if err := eh.tryCatchup(); err != nil {
+		return errors.Wrap(err, "failed to catchup for explorer")
+	}
+}
+
+func (eh *explorerHelper) AddPreparedMsg(msg *msg_pb.Message) error {
+	eh.lock.Lock()
+	defer eh.lock.Unlock()
+
+	parsedMsg, err := eh.c.ParseFBFTMessage(msg)
+	if err != nil {
+		return errors.New("failed to parse FBFT message")
+	}
+	defer fmt.Println("------------")
+
+	//node.Consensus.Mutex.Lock()
+	//defer node.Consensus.Mutex.Unlock()
+	fmt.Println("[PREPARED] ", parsedMsg.BlockNum, eh.bc.CurrentBlock().NumberU64())
+	if err := eh.verifyPreparedMsg(parsedMsg); err != nil {
+		fmt.Println("\t", err)
+		return errors.Wrap(err, "verify prepared message for explorer")
+	}
+	fmt.Println("\tverified")
+	if err := eh.tryCatchup(); err != nil {
+		return errors.Wrap(err, "failed to catchup for explorer")
 	}
 }
 
@@ -357,6 +373,9 @@ func (eh *explorerHelper) tryCatchup() error {
 		blk, msg := blks[i], msgs[i]
 		if blk == nil {
 			return nil
+		}
+		if blk.NumberU64() <= eh.bc.CurrentBlock().NumberU64() {
+			continue
 		}
 		if !msg.Verified {
 			if err := eh.verifyCommittedMsg(msg); err != nil {
