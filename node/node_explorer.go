@@ -53,8 +53,10 @@ func (node *Node) AddNewBlockForExplorer(block *types.Block) {
 		if block.IsLastBlockInEpoch() {
 			node.Consensus.UpdateConsensusInformation()
 		}
+		fmt.Println("before delete")
 		// Clean up the blocks to avoid OOM.
 		node.Consensus.FBFTLog.DeleteBlockByNumber(block.NumberU64())
+		fmt.Println("after delete")
 		// Do dump all blocks from state syncing for explorer one time
 		// TODO: some blocks can be dumped before state syncing finished.
 		// And they would be dumped again here. Please fix it.
