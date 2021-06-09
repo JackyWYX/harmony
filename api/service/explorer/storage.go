@@ -90,23 +90,30 @@ func (storage *Storage) Dump(block *types.Block, height uint64) {
 		return
 	}
 
-	storage.lock.Lock()
-	defer storage.lock.Unlock()
 	if block == nil {
 		return
 	}
 
+	fmt.Println("before dump log")
+	storage.lock.Lock()
+	defer storage.lock.Unlock()
+	fmt.Println("after dump log")
+
 	acntsTxns, acntsStakingTxns := computeAccountsTransactionsMapForBlock(block)
 
+	fmt.Println("dump 1")
 	for address, txRecords := range acntsTxns {
 		storage.UpdateTxAddressStorage(address, txRecords, false /* isStaking */)
 	}
+	fmt.Println("dump 2")
 	for address, txRecords := range acntsStakingTxns {
 		storage.UpdateTxAddressStorage(address, txRecords, true /* isStaking */)
 	}
 
+	fmt.Println("dump 3")
 	// save checkpoint of block dumped
 	storage.GetDB().Put([]byte(blockCheckpoint), []byte{}, nil)
+	fmt.Println("dump 4")
 }
 
 // UpdateTxAddressStorage updates specific addr tx Address.
