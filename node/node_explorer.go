@@ -70,7 +70,7 @@ func (node *Node) explorerMessageHandler(ctx context.Context, msg *msg_pb.Messag
 
 		//node.Consensus.Mutex.Lock()
 		//defer node.Consensus.Mutex.Unlock()
-		fmt.Println("[PREPARED]", parsedMsg.BlockNum, node.Blockchain().CurrentBlock().NumberU64())
+		fmt.Println("[PREPARED] ", parsedMsg.BlockNum, node.Blockchain().CurrentBlock().NumberU64())
 		if err := node.explorerHelper.verifyPreparedMsg(parsedMsg); err != nil {
 			fmt.Println("\t", err)
 			return errors.Wrap(err, "verify prepared message for explorer")
@@ -349,7 +349,7 @@ func (eh *explorerHelper) tryCatchup() error {
 	if err != nil {
 		return errors.Wrapf(err, "Failed to get last mile blocks")
 	}
-	fmt.Println("\ttryCatchup")
+	fmt.Println("\ttryCatchup from", initBN)
 	for _, blk := range blks {
 		fmt.Println("\t\t", blk.NumberU64())
 	}
