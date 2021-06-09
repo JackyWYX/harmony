@@ -42,6 +42,8 @@ func (node *Node) explorerMessageHandler(ctx context.Context, msg *msg_pb.Messag
 			return errors.New("failed to parse FBFT message")
 		}
 
+		defer fmt.Println("---------")
+
 		node.Consensus.Mutex.Lock()
 		defer node.Consensus.Mutex.Unlock()
 		fmt.Println("[COMMITTED]", parsedMsg.BlockNum)
@@ -64,6 +66,7 @@ func (node *Node) explorerMessageHandler(ctx context.Context, msg *msg_pb.Messag
 		if err != nil {
 			return errors.New("failed to parse FBFT message")
 		}
+		defer fmt.Println("------------")
 
 		//node.Consensus.Mutex.Lock()
 		//defer node.Consensus.Mutex.Unlock()
