@@ -65,8 +65,8 @@ func (node *Node) explorerMessageHandler(ctx context.Context, msg *msg_pb.Messag
 			return errors.New("failed to parse FBFT message")
 		}
 
-		node.Consensus.Mutex.Lock()
-		defer node.Consensus.Mutex.Unlock()
+		//node.Consensus.Mutex.Lock()
+		//defer node.Consensus.Mutex.Unlock()
 		fmt.Println("[PREPARED]", parsedMsg.BlockNum)
 		if err := node.explorerHelper.verifyPreparedMsg(parsedMsg); err != nil {
 			fmt.Println("\t", err)
@@ -265,9 +265,9 @@ func (eh *explorerHelper) verifyCommittedMsg(recvMsg *consensus.FBFTMessage) err
 		// TODO: also add trigger to stream downloader module
 		utils.Logger().Info().Uint64("received number", recvMsg.BlockNum).
 			Uint64("current number", curNumber).Msg("sync spin up on explorer committed")
-		select {
-		case eh.c.BlockNumLowChan <- struct{}{}:
-		default:
+		//select {
+		//case eh.c.BlockNumLowChan <- struct{}{}:
+		//default:
 		}
 	}
 	eh.c.FBFTLog.AddNotVerifiedMessage(recvMsg)
@@ -307,10 +307,10 @@ func (eh *explorerHelper) verifyPreparedMsg(recvMsg *consensus.FBFTMessage) erro
 		// TODO: also add trigger to stream downloader module
 		utils.Logger().Info().Uint64("received number", recvMsg.BlockNum).
 			Uint64("current number", curNumber).Msg("sync spin up on explorer prepared")
-		select {
-		case eh.c.BlockNumLowChan <- struct{}{}:
-		default:
-		}
+		//select {
+		//case eh.c.BlockNumLowChan <- struct{}{}:
+		//default:
+		//}
 	}
 
 	eh.c.FBFTLog.AddBlock(blockObj)
