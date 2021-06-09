@@ -70,6 +70,7 @@ func (node *Node) AddNewBlockForExplorer(block *types.Block) {
 				}
 			}()
 		})
+		fmt.Println("finished once")
 	} else {
 		fmt.Println("insert block error", err)
 		utils.Logger().Error().Err(err).Msg("[Explorer] Error when adding new block for explorer node")
@@ -81,15 +82,18 @@ func (node *Node) commitBlockForExplorer(block *types.Block) {
 	if block.ShardID() != node.NodeConfig.ShardID {
 		return
 	}
+	fmt.Println("commit 1")
 	// Dump new block into level db.
 	utils.Logger().Info().Uint64("blockNum", block.NumberU64()).Msg("[Explorer] Committing block into explorer DB")
 	explorer.GetStorageInstance(node.SelfPeer.IP, node.SelfPeer.Port).Dump(block, block.NumberU64())
 
+	fmt.Println("commit 2")
 	curNum := block.NumberU64()
 	if curNum-100 > 0 {
 		node.Consensus.FBFTLog.DeleteBlocksLessThan(curNum - 100)
 		node.Consensus.FBFTLog.DeleteMessagesLessThan(curNum - 100)
 	}
+	fmt.Println("commit 3")
 }
 
 // GetTransactionsHistory returns list of transactions hashes of address.
