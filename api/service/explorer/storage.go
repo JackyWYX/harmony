@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"path"
 	"sync"
+	"time"
 
 	lru "github.com/hashicorp/golang-lru"
 
@@ -83,7 +84,8 @@ func (storage *Storage) GetDB() *leveldb.DB {
 // Dump extracts information from block and index them into lvdb for explorer.
 func (storage *Storage) Dump(block *types.Block, height uint64) {
 	fmt.Println("\t\t\t\tdumping", block.NumberU64())
-	defer fmt.Println("\t\t\t\tfinished dumping", block.NumberU64())
+	timeStart := time.Now()
+	defer fmt.Println("\t\t\t\tfinished dumping", block.NumberU64(), time.Since(timeStart))
 	// Skip dump for redundant blocks with lower block number than the checkpoint block number
 	blockCheckpoint := GetCheckpointKey(block.Header().Number())
 	if _, err := storage.GetDB().Get([]byte(blockCheckpoint), nil); err == nil {
