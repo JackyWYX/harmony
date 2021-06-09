@@ -233,8 +233,6 @@ func (eh *explorerHelper) AddCommittedMsg(msg *msg_pb.Message) error {
 	fmt.Println("===========")
 	defer fmt.Println("---------")
 
-	eh.lock.Lock()
-	defer eh.lock.Unlock()
 	fmt.Println("[COMMITTED]", parsedMsg.BlockNum, eh.bc.CurrentBlock().NumberU64())
 	if err := eh.verifyCommittedMsg(parsedMsg); err != nil {
 		fmt.Println("\t", err)
