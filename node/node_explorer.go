@@ -343,6 +343,10 @@ func (eh *explorerHelper) tryCatchup() error {
 	if err != nil {
 		return errors.Wrapf(err, "Failed to get last mile blocks")
 	}
+	fmt.Println("try catchup getLastMile")
+	for _, blk := range blks {
+		fmt.Println("\t", blk.NumberU64())
+	}
 	for i := range blks {
 		blk, msg := blks[i], msgs[i]
 		if blk == nil {
@@ -350,6 +354,7 @@ func (eh *explorerHelper) tryCatchup() error {
 		}
 		if !msg.Verified {
 			if err := eh.verifyCommittedMsg(msg); err != nil {
+				fmt.Println("verify committed msg error", err)
 				return errors.New("failed to verify committed message")
 			}
 		}
