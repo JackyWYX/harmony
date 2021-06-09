@@ -60,16 +60,16 @@ func (node *Node) AddNewBlockForExplorer(block *types.Block) {
 		// Do dump all blocks from state syncing for explorer one time
 		// TODO: some blocks can be dumped before state syncing finished.
 		// And they would be dumped again here. Please fix it.
-		once.Do(func() {
-			utils.Logger().Info().Int64("starting height", int64(block.NumberU64())-1).
-				Msg("[Explorer] Populating explorer data from state synced blocks")
-			go func() {
-				for blockHeight := int64(block.NumberU64()) - 1; blockHeight >= 0; blockHeight-- {
-					explorer.GetStorageInstance(node.SelfPeer.IP, node.SelfPeer.Port).Dump(
-						node.Blockchain().GetBlockByNumber(uint64(blockHeight)), uint64(blockHeight))
-				}
-			}()
-		})
+		//once.Do(func() {
+		//	utils.Logger().Info().Int64("starting height", int64(block.NumberU64())-1).
+		//		Msg("[Explorer] Populating explorer data from state synced blocks")
+		//	go func() {
+		//		for blockHeight := int64(block.NumberU64()) - 1; blockHeight >= 0; blockHeight-- {
+		//			explorer.GetStorageInstance(node.SelfPeer.IP, node.SelfPeer.Port).Dump(
+		//				node.Blockchain().GetBlockByNumber(uint64(blockHeight)), uint64(blockHeight))
+		//		}
+		//	}()
+		//})
 		fmt.Println("finished once")
 	} else {
 		fmt.Println("insert block error", err)
