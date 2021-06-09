@@ -42,11 +42,12 @@ func (node *Node) explorerMessageHandler(ctx context.Context, msg *msg_pb.Messag
 			return errors.New("failed to parse FBFT message")
 		}
 
-		fmt.Println("received committed message", parsedMsg.BlockNum)
+		fmt.Println("[COMMITTED]", parsedMsg.BlockNum)
 		node.Consensus.Mutex.Lock()
 		defer node.Consensus.Mutex.Unlock()
 
 		if err := node.explorerHelper.verifyCommittedMsg(parsedMsg); err != nil {
+			fmt.Println("\t", err)
 			if err == errBlockNotReady {
 				utils.Logger().Info().Uint64("block number", parsedMsg.BlockNum).
 					Str("blockHash", parsedMsg.BlockHash.Hex()).
@@ -55,6 +56,7 @@ func (node *Node) explorerMessageHandler(ctx context.Context, msg *msg_pb.Messag
 			}
 			return errors.Wrap(err, "verify committed message for explorer")
 		}
+		fmt.Println("\tverified")
 		if err := node.explorerHelper.tryCatchup(); err != nil {
 			return errors.Wrap(err, "failed to catchup for explorer")
 		}
@@ -64,13 +66,15 @@ func (node *Node) explorerMessageHandler(ctx context.Context, msg *msg_pb.Messag
 			return errors.New("failed to parse FBFT message")
 		}
 
-		fmt.Println("received prepared message", parsedMsg.BlockNum)
+		fmt.Println("[PREPARED]", parsedMsg.BlockNum)
 		node.Consensus.Mutex.Lock()
 		defer node.Consensus.Mutex.Unlock()
 
 		if err := node.explorerHelper.verifyPreparedMsg(parsedMsg); err != nil {
+			fmt.Println("\t", err)
 			return errors.Wrap(err, "verify prepared message for explorer")
 		}
+		fmt.Println("\tverified")
 		if err := node.explorerHelper.tryCatchup(); err != nil {
 			return errors.Wrap(err, "failed to catchup for explorer")
 		}
@@ -343,9 +347,9 @@ func (eh *explorerHelper) tryCatchup() error {
 	if err != nil {
 		return errors.Wrapf(err, "Failed to get last mile blocks")
 	}
-	fmt.Println("try catchup getLastMile")
+	fmt.Println("\ttryCatchup")
 	for _, blk := range blks {
-		fmt.Println("\t", blk.NumberU64())
+		fmt.Println("\t\t", blk.NumberU64())
 	}
 	for i := range blks {
 		blk, msg := blks[i], msgs[i]
