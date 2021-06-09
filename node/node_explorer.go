@@ -260,7 +260,7 @@ func newExplorerHelper(n *Node) *explorerHelper {
 // TODO: this is the copied code from c.OnCommitted. Refactor later.
 func (eh *explorerHelper) verifyCommittedMsg(recvMsg *consensus.FBFTMessage) error {
 	if recvMsg.BlockNum <= eh.bc.CurrentBlock().NumberU64() {
-		return errors.New("stale committed message received from pub-sub")
+		return fmt.Errorf("stale committed message (%v) received from pub-sub", recvMsg.BlockNum)
 	}
 	if curNumber := eh.bc.CurrentBlock().NumberU64(); recvMsg.BlockNum > curNumber+1 {
 		// TODO: also add trigger to stream downloader module
@@ -302,7 +302,7 @@ func (eh *explorerHelper) verifyPreparedMsg(recvMsg *consensus.FBFTMessage) erro
 		return err
 	}
 	if blockObj.NumberU64() <= eh.bc.CurrentBlock().NumberU64() {
-		return errors.New("stale prepared message received from pub-sub")
+		return fmt.Errorf("stale prepared message (%v) received from pub-sub", blockObj.NumberU64())
 	}
 	if curNumber := eh.bc.CurrentBlock().NumberU64(); blockObj.NumberU64() > curNumber+1 {
 		// TODO: also add trigger to stream downloader module
