@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"sync"
 
@@ -41,6 +42,7 @@ func (node *Node) explorerMessageHandler(ctx context.Context, msg *msg_pb.Messag
 			return errors.New("failed to parse FBFT message")
 		}
 
+		fmt.Println("received committed message", parsedMsg.BlockNum)
 		node.Consensus.Mutex.Lock()
 		defer node.Consensus.Mutex.Unlock()
 
@@ -62,6 +64,7 @@ func (node *Node) explorerMessageHandler(ctx context.Context, msg *msg_pb.Messag
 			return errors.New("failed to parse FBFT message")
 		}
 
+		fmt.Println("received prepared message", parsedMsg.BlockNum)
 		node.Consensus.Mutex.Lock()
 		defer node.Consensus.Mutex.Unlock()
 
@@ -79,6 +82,7 @@ func (node *Node) explorerMessageHandler(ctx context.Context, msg *msg_pb.Messag
 func (node *Node) AddNewBlockForExplorer(block *types.Block) {
 	utils.Logger().Info().Uint64("blockHeight", block.NumberU64()).Msg("[Explorer] Adding new block for explorer node")
 	if _, err := node.Blockchain().InsertChain([]*types.Block{block}, false); err == nil {
+		fmt.Println("explorer inserted block", block.NumberU64())
 		if block.IsLastBlockInEpoch() {
 			node.Consensus.UpdateConsensusInformation()
 		}
@@ -98,6 +102,7 @@ func (node *Node) AddNewBlockForExplorer(block *types.Block) {
 			}()
 		})
 	} else {
+		fmt.Println("insert block error", err)
 		utils.Logger().Error().Err(err).Msg("[Explorer] Error when adding new block for explorer node")
 	}
 }

@@ -394,6 +394,7 @@ func (node *Node) validateNodeMessage(ctx context.Context, payload []byte) (
 	case proto_node.Transaction:
 		// nothing much to validate transaction message unless decode the RLP
 		nodeNodeMessageCounterVec.With(prometheus.Labels{"type": "tx"}).Inc()
+
 	case proto_node.Staking:
 		// nothing much to validate staking message unless decode the RLP
 		nodeNodeMessageCounterVec.With(prometheus.Labels{"type": "staking_tx"}).Inc()
