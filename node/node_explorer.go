@@ -271,7 +271,7 @@ func (eh *explorerHelper) verifyCommittedMsg(recvMsg *consensus.FBFTMessage) err
 		//select {
 		//case eh.c.BlockNumLowChan <- struct{}{}:
 		//default:
-		}
+		//}
 	}
 	eh.c.FBFTLog.AddNotVerifiedMessage(recvMsg)
 
