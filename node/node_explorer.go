@@ -250,6 +250,7 @@ func (eh *explorerHelper) AddCommittedMsg(msg *msg_pb.Message) error {
 	if err := eh.tryCatchup(); err != nil {
 		return errors.Wrap(err, "failed to catchup for explorer")
 	}
+	return nil
 }
 
 func (eh *explorerHelper) AddPreparedMsg(msg *msg_pb.Message) error {
@@ -274,6 +275,7 @@ func (eh *explorerHelper) AddPreparedMsg(msg *msg_pb.Message) error {
 	if err := eh.tryCatchup(); err != nil {
 		return errors.Wrap(err, "failed to catchup for explorer")
 	}
+	return nil
 }
 
 // TODO: this is the copied code from c.OnCommitted. Refactor later.
