@@ -223,14 +223,14 @@ func newExplorerHelper(n *Node) *explorerHelper {
 }
 
 func (eh *explorerHelper) AddCommittedMsg(msg *msg_pb.Message) error {
-	eh.lock.Lock()
-	defer eh.lock.Unlock()
-
 	parsedMsg, err := eh.c.ParseFBFTMessage(msg)
 	if err != nil {
 		return errors.New("failed to parse FBFT message")
 	}
+	eh.lock.Lock()
+	defer eh.lock.Unlock()
 
+	fmt.Println("===========")
 	defer fmt.Println("---------")
 
 	eh.lock.Lock()
@@ -253,13 +253,14 @@ func (eh *explorerHelper) AddCommittedMsg(msg *msg_pb.Message) error {
 }
 
 func (eh *explorerHelper) AddPreparedMsg(msg *msg_pb.Message) error {
-	eh.lock.Lock()
-	defer eh.lock.Unlock()
-
 	parsedMsg, err := eh.c.ParseFBFTMessage(msg)
 	if err != nil {
 		return errors.New("failed to parse FBFT message")
 	}
+	eh.lock.Lock()
+	defer eh.lock.Unlock()
+
+	fmt.Println("===========")
 	defer fmt.Println("------------")
 
 	//node.Consensus.Mutex.Lock()
