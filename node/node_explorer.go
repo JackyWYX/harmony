@@ -42,10 +42,9 @@ func (node *Node) explorerMessageHandler(ctx context.Context, msg *msg_pb.Messag
 			return errors.New("failed to parse FBFT message")
 		}
 
-		fmt.Println("[COMMITTED]", parsedMsg.BlockNum)
 		node.Consensus.Mutex.Lock()
 		defer node.Consensus.Mutex.Unlock()
-
+		fmt.Println("[COMMITTED]", parsedMsg.BlockNum)
 		if err := node.explorerHelper.verifyCommittedMsg(parsedMsg); err != nil {
 			fmt.Println("\t", err)
 			if err == errBlockNotReady {
@@ -66,10 +65,9 @@ func (node *Node) explorerMessageHandler(ctx context.Context, msg *msg_pb.Messag
 			return errors.New("failed to parse FBFT message")
 		}
 
-		fmt.Println("[PREPARED]", parsedMsg.BlockNum)
 		node.Consensus.Mutex.Lock()
 		defer node.Consensus.Mutex.Unlock()
-
+		fmt.Println("[PREPARED]", parsedMsg.BlockNum)
 		if err := node.explorerHelper.verifyPreparedMsg(parsedMsg); err != nil {
 			fmt.Println("\t", err)
 			return errors.Wrap(err, "verify prepared message for explorer")
@@ -84,6 +82,7 @@ func (node *Node) explorerMessageHandler(ctx context.Context, msg *msg_pb.Messag
 
 // AddNewBlockForExplorer add new block for explorer.
 func (node *Node) AddNewBlockForExplorer(block *types.Block) {
+	fmt.Println("try insert block", block.NumberU64())
 	utils.Logger().Info().Uint64("blockHeight", block.NumberU64()).Msg("[Explorer] Adding new block for explorer node")
 	if _, err := node.Blockchain().InsertChain([]*types.Block{block}, false); err == nil {
 		fmt.Println("explorer inserted block", block.NumberU64())
