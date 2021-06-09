@@ -46,7 +46,7 @@ func (node *Node) explorerMessageHandler(ctx context.Context, msg *msg_pb.Messag
 
 		node.Consensus.Mutex.Lock()
 		defer node.Consensus.Mutex.Unlock()
-		fmt.Println("[COMMITTED]", parsedMsg.BlockNum)
+		fmt.Println("[COMMITTED]", parsedMsg.BlockNum, node.Blockchain().CurrentBlock().NumberU64())
 		if err := node.explorerHelper.verifyCommittedMsg(parsedMsg); err != nil {
 			fmt.Println("\t", err)
 			if err == errBlockNotReady {
@@ -70,7 +70,7 @@ func (node *Node) explorerMessageHandler(ctx context.Context, msg *msg_pb.Messag
 
 		//node.Consensus.Mutex.Lock()
 		//defer node.Consensus.Mutex.Unlock()
-		fmt.Println("[PREPARED]", parsedMsg.BlockNum)
+		fmt.Println("[PREPARED]", parsedMsg.BlockNum, node.Blockchain().CurrentBlock().NumberU64())
 		if err := node.explorerHelper.verifyPreparedMsg(parsedMsg); err != nil {
 			fmt.Println("\t", err)
 			return errors.Wrap(err, "verify prepared message for explorer")
