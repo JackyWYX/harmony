@@ -88,7 +88,7 @@ func (node *Node) AddNewBlockForExplorer(block *types.Block) {
 	fmt.Println("try insert block", block.NumberU64())
 	utils.Logger().Info().Uint64("blockHeight", block.NumberU64()).Msg("[Explorer] Adding new block for explorer node")
 	if _, err := node.Blockchain().InsertChain([]*types.Block{block}, false); err == nil {
-		fmt.Println("explorer inserted block", block.NumberU64())
+		fmt.Println("inserted block", block.NumberU64())
 		if block.IsLastBlockInEpoch() {
 			node.Consensus.UpdateConsensusInformation()
 		}
