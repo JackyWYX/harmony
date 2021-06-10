@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/harmony-one/abool"
-
 	libp2p_peer "github.com/libp2p/go-libp2p-core/peer"
 	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"golang.org/x/time/rate"
@@ -13,7 +12,7 @@ import (
 
 const (
 	pubSubRateLimit  = 5  // 5 messages per second
-	pubSubBurstLimit = 20 // 20 messages at burst
+	pubSubBurstLimit = 10 // 10 messages at burst
 
 	// When a node is bootstrapped, it will be flooded with some pub-sub message from the past.
 	// Ease the rate limit at the initial bootstrap.
