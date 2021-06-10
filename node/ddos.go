@@ -2,6 +2,9 @@ package node
 
 import (
 	"sync"
+	"time"
+
+	"github.com/harmony-one/abool"
 
 	libp2p_peer "github.com/libp2p/go-libp2p-core/peer"
 	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -9,8 +12,12 @@ import (
 )
 
 const (
-	pubSubRateLimit  = 5   // 10 messages per second
-	pubSubBurstLimit = 100 // 20 messages at burst
+	pubSubRateLimit  = 5  // 5 messages per second
+	pubSubBurstLimit = 20 // 20 messages at burst
+
+	// When a node is bootstrapped, it will be flooded with some pub-sub message from the past.
+	// Ease the rate limit at the initial bootstrap.
+	rateLimiterEasyPeriod = 5 * time.Second
 )
 
 // Preconfigured internal nodes
@@ -31,18 +38,35 @@ type psRateLimiter struct {
 	limiters     map[libp2p_peer.ID]*rate.Limiter
 	trustedPeers map[libp2p_peer.ID]struct{}
 
-	lock sync.Mutex
+	started *abool.AtomicBool
+	lock    sync.Mutex
 }
 
 func newPSRateLimiter() *psRateLimiter {
 	return &psRateLimiter{
 		limiters:     make(map[libp2p_peer.ID]*rate.Limiter),
 		trustedPeers: getDefaultTrustedPeerMap(),
+
+		started: abool.NewBool(false),
 	}
+}
+
+// Start start the rate limiter. Before start, the rate limiter does not actually limit the rate.
+// This is for the bootstrap grace period.
+func (rl *psRateLimiter) Start() {
+	rl.started.Set()
+}
+
+func (rl *psRateLimiter) isStarted() bool {
+	return rl.started.IsSet()
 }
 
 // Allow returns whether a pub-sub message is allowed to be processed
 func (rl *psRateLimiter) Allow(id libp2p_peer.ID) bool {
+	// skip limiting for bootstrap grace period
+	if !rl.isStarted() {
+		return true
+	}
 	rl.lock.Lock()
 	defer rl.lock.Unlock()
 
