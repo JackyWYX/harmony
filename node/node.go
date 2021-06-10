@@ -416,11 +416,15 @@ func (node *Node) validateNodeMessage(ctx context.Context, payload []byte) (
 			curBeaconHeight := node.Beaconchain().CurrentBlock().NumberU64()
 			for _, block := range blocks {
 				// Ban blocks number that is smaller than tolerance
+				fmt.Println("block", block.NumberU64(), curBeaconHeight)
 				if block.NumberU64()+beaconBlockHeightTolerance <= curBeaconHeight {
+					fmt.Println("banned")
 					return nil, 0, errors.New("beacon block height smaller than current height beyond tolerance")
 				} else if block.NumberU64() <= curBeaconHeight {
+					fmt.Println("tolerated")
 					return nil, 0, errIgnoreBeaconMsg
 				}
+				fmt.Println("passed")
 			}
 
 		case proto_node.SlashCandidate:
