@@ -584,7 +584,7 @@ func (node *Node) StartPubSub() error {
 
 	var (
 		rateLimiter = newPSRateLimiter()
-		blacklist   = newBlacklist(node.host.Blacklist())
+		blacklist   = newBlacklist()
 	)
 
 	// groupID and whether this topic is used for consensus
