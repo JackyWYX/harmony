@@ -12,7 +12,7 @@ import (
 
 const (
 	pubSubRateLimit  = 5  // 5 messages per second
-	pubSubBurstLimit = 10 // 10 messages at burst
+	pubSubBurstLimit = 20 // 20 messages at burst
 
 	// When a node is bootstrapped, it will be flooded with some pub-sub message from the past.
 	// Ease the rate limit at the initial bootstrap.
