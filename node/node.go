@@ -806,9 +806,6 @@ func (node *Node) StartPubSub() error {
 			return err
 		}
 
-		semConsensus := semaphore.NewWeighted(p2p.SetAsideForConsensus)
-		msgChanConsensus := make(chan validated, MsgChanBuffer)
-
 		go func() {
 			select {
 			case <-node.psCtx.Done():
@@ -816,6 +813,9 @@ func (node *Node) StartPubSub() error {
 				rateLimiter.Start()
 			}
 		}()
+
+		semConsensus := semaphore.NewWeighted(p2p.SetAsideForConsensus)
+		msgChanConsensus := make(chan validated, MsgChanBuffer)
 
 		// goroutine to handle consensus messages
 		go func() {
