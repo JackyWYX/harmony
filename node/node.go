@@ -662,6 +662,15 @@ func (node *Node) StartPubSub() error {
 	isThisNodeAnExplorerNode := node.NodeConfig.Role() == nodeconfig.ExplorerNode
 	nodeStringCounterVec.WithLabelValues("peerid", nodeconfig.GetPeerID().String()).Inc()
 
+	type validity struct {
+		isTrust     bool
+		isBlacklist bool
+		isValid     bool
+	}
+
+	validityMap := make(map[validity]int)
+	var lock sync.Mutex
+
 	for i := range allTopics {
 		sub, err := allTopics[i].Topic.Subscribe()
 		if err != nil {
@@ -680,12 +689,31 @@ func (node *Node) StartPubSub() error {
 			topicNamed,
 			// this is the validation function called to quickly validate every p2p message
 			func(ctx context.Context, peer libp2p_peer.ID, msg *libp2p_pubsub.Message) libp2p_pubsub.ValidationResult {
+				msgValidation := validity{
+					isTrust:     false,
+					isBlacklist: false,
+					isValid:     true,
+				}
+				defer func() {
+					lock.Lock()
+					defer lock.Unlock()
+
+					if _, ok := validityMap[msgValidation]; ok {
+						validityMap[msgValidation] += 1
+					} else {
+						validityMap[msgValidation] = 1
+					}
+				}()
+
 				nodeP2PMessageCounterVec.With(prometheus.Labels{"type": "total"}).Inc()
 
+				if rateLimiter.isTrusted(peer) {
+					msgValidation.isTrust = true
+				}
 				// blacklist is already registered in pub-sub. This is used for more customized blacklist logic.
 				if blacklist.Contains(peer) {
 					blacklistRejectedCounterVec.With(prometheus.Labels{"topic": topicNamed}).Inc()
-					return libp2p_pubsub.ValidationReject
+					msgValidation.isBlacklist = true
 				}
 				if !rateLimiter.Allow(peer) {
 					// TODO: it would be better to have a cool down and ignored before directly go to blacklist
@@ -693,9 +721,8 @@ func (node *Node) StartPubSub() error {
 					peerInfo := node.host.GetPeerInfo(peer)
 					utils.Logger().Warn().Str("peerInfo", peerInfo.String()).
 						Msg("peer banned from pub-sub for exceeding rate limit")
-
+					msgValidation.isBlacklist = true
 					blacklist.Add(peer)
-					return libp2p_pubsub.ValidationReject
 				}
 
 				hmyMsg := msg.GetData()
@@ -704,6 +731,7 @@ func (node *Node) StartPubSub() error {
 				if len(hmyMsg) < p2pMsgPrefixSize {
 					// TODO (lc): block peers sending empty messages
 					nodeP2PMessageCounterVec.With(prometheus.Labels{"type": "invalid_size"}).Inc()
+					msgValidation.isValid = false
 					return libp2p_pubsub.ValidationReject
 				}
 
@@ -718,6 +746,7 @@ func (node *Node) StartPubSub() error {
 						errChan <- withError{
 							errors.WithStack(errConsensusMessageOnUnexpectedTopic), msg,
 						}
+						msgValidation.isValid = false
 						return libp2p_pubsub.ValidationReject
 					}
 					nodeP2PMessageCounterVec.With(prometheus.Labels{"type": "consensus_total"}).Inc()
@@ -729,6 +758,7 @@ func (node *Node) StartPubSub() error {
 
 					if err != nil {
 						errChan <- withError{err, msg.GetFrom()}
+						msgValidation.isValid = false
 						return libp2p_pubsub.ValidationReject
 					}
 
@@ -749,6 +779,7 @@ func (node *Node) StartPubSub() error {
 					// node message is almost empty
 					if len(openBox) <= p2pNodeMsgPrefixSize {
 						nodeP2PMessageCounterVec.With(prometheus.Labels{"type": "invalid_size"}).Inc()
+						msgValidation.isValid = false
 						return libp2p_pubsub.ValidationReject
 					}
 					nodeP2PMessageCounterVec.With(prometheus.Labels{"type": "node_total"}).Inc()
@@ -764,6 +795,7 @@ func (node *Node) StartPubSub() error {
 						default:
 							// TODO (lc): block peers sending error messages
 							errChan <- withError{err, msg.GetFrom()}
+							msgValidation.isValid = false
 							return libp2p_pubsub.ValidationReject
 						}
 					}
@@ -777,6 +809,7 @@ func (node *Node) StartPubSub() error {
 				default:
 					// ignore garbled messages
 					nodeP2PMessageCounterVec.With(prometheus.Labels{"type": "ignored"}).Inc()
+					msgValidation.isValid = false
 					return libp2p_pubsub.ValidationReject
 				}
 				select {
@@ -811,6 +844,16 @@ func (node *Node) StartPubSub() error {
 			case <-node.psCtx.Done():
 			case <-time.After(rateLimiterEasyPeriod):
 				rateLimiter.Start()
+			}
+		}()
+
+		go func() {
+			for range time.Tick(10 * time.Second) {
+				lock.Lock()
+				for key, val := range validityMap {
+					fmt.Printf("%+v: %v\n", key, val)
+				}
+				lock.Unlock()
 			}
 		}()
 
