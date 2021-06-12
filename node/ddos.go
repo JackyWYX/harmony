@@ -103,10 +103,10 @@ func (rl *psRateLimiter) Allow(id libp2p_peer.ID) bool {
 	}
 	rl.lock.Lock()
 	defer rl.lock.Unlock()
-
-	if rl.isTrusted(id) {
-		return true
-	}
+	//
+	//if rl.isTrusted(id) {
+	//	return true
+	//}
 	l := rl.getLimiter(id)
 	return l.Allow()
 }
@@ -154,10 +154,10 @@ func newBlacklist() *blacklist {
 }
 
 func (bl *blacklist) Add(id libp2p_peer.ID) bool {
-	_, trusted := bl.trustedPeers[id.String()]
-	if trusted {
-		return false
-	}
+	//_, trusted := bl.trustedPeers[id.String()]
+	//if trusted {
+	//	return false
+	//}
 	return bl.bl.Add(id)
 }
 

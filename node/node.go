@@ -848,10 +848,11 @@ func (node *Node) StartPubSub() error {
 		}()
 
 		go func() {
-			for range time.Tick(10 * time.Second) {
-				fmt.Println("------------------------------")
+			for {
+				time.Sleep(10 * time.Second)
 				lock.Lock()
 				for key, val := range validityMap {
+					fmt.Println("------------------------------")
 					fmt.Printf("%+v: %v\n", key, val)
 				}
 				lock.Unlock()
