@@ -851,8 +851,8 @@ func (node *Node) StartPubSub() error {
 			for {
 				time.Sleep(10 * time.Second)
 				lock.Lock()
+				fmt.Println("------------------------------")
 				for key, val := range validityMap {
-					fmt.Println("------------------------------")
 					fmt.Printf("%+v: %v\n", key, val)
 				}
 				lock.Unlock()
