@@ -1,6 +1,7 @@
 package node
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -105,6 +106,7 @@ func (rl *psRateLimiter) Allow(id libp2p_peer.ID) bool {
 	defer rl.lock.Unlock()
 
 	if rl.isTrusted(id) {
+		fmt.Println("hit trust")
 		return true
 	}
 	l := rl.getLimiter(id)
