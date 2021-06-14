@@ -57,7 +57,7 @@ func (helper *explorerHelper) loop() {
 		select {
 		case b := <-helper.blockC:
 			number := b.NumberU64()
-			if number <= helper.lastCommitNum+10 {
+			if number < helper.lastCommitNum+10 {
 				continue
 			}
 			helper.lastCommitNum = number
