@@ -47,6 +47,8 @@ type Service struct {
 	messageChan chan *msg_pb.Message
 	blockchain  *core.BlockChain
 	backend     hmy.NodeAPI
+
+	helper *explorerHelper
 }
 
 // New returns explorer service.
@@ -56,6 +58,7 @@ func New(selfPeer *p2p.Peer, bc *core.BlockChain, backend hmy.NodeAPI) *Service 
 		Port:       selfPeer.Port,
 		blockchain: bc,
 		backend:    backend,
+		helper:     newExplorerHelper(),
 	}
 }
 
@@ -64,6 +67,7 @@ func (s *Service) Start() error {
 	utils.Logger().Info().Msg("Starting explorer service.")
 	s.Init()
 	s.server = s.Run()
+	s.helper.Start()
 	return nil
 }
 
@@ -75,6 +79,7 @@ func (s *Service) Stop() error {
 	} else {
 		utils.Logger().Info().Msg("Shutting down explorer server successfully")
 	}
+	s.helper.Stop()
 	return nil
 }
 
@@ -85,6 +90,10 @@ func GetExplorerPort(nodePort string) string {
 	}
 	utils.Logger().Error().Msg("error on parsing.")
 	return ""
+}
+
+func (s *Service) GetHelper() InsertHelper {
+	return s.helper
 }
 
 // Init is to initialize for ExplorerService.

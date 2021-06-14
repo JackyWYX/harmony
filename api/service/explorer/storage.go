@@ -81,6 +81,8 @@ func (storage *Storage) GetDB() *leveldb.DB {
 }
 
 // Dump extracts information from block and index them into lvdb for explorer.
+// 1. Order new + 1, old +1
+// 2. Not commit all data
 func (storage *Storage) Dump(block *types.Block, height uint64) {
 	// Skip dump for redundant blocks with lower block number than the checkpoint block number
 	blockCheckpoint := GetCheckpointKey(block.Header().Number())
@@ -88,13 +90,13 @@ func (storage *Storage) Dump(block *types.Block, height uint64) {
 		return
 	}
 
+	acntsTxns, acntsStakingTxns := computeAccountsTransactionsMapForBlock(block)
+
 	storage.lock.Lock()
 	defer storage.lock.Unlock()
 	if block == nil {
 		return
 	}
-
-	acntsTxns, acntsStakingTxns := computeAccountsTransactionsMapForBlock(block)
 
 	for address, txRecords := range acntsTxns {
 		storage.UpdateTxAddressStorage(address, txRecords, false /* isStaking */)
@@ -137,6 +139,16 @@ func (storage *Storage) UpdateTxAddressStorage(addr string, txRecords TxRecords,
 		utils.Logger().Error().
 			Bool("isStaking", isStaking).Err(err).Msg("cannot encode address")
 	}
+}
+
+func (storage *Storage) WriteDatas(keys, datas [][]byte) error {
+	batch := storage.db.NewBatch()
+
+	for {
+		batch.Put(key, data)
+	}
+
+	return batch.Write()
 }
 
 // GetAddresses returns size of addresses from address with prefix.

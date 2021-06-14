@@ -5,6 +5,8 @@ import (
 	"sort"
 	"sync"
 
+	"github.com/harmony-one/harmony/api/service"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
 	msg_pb "github.com/harmony-one/harmony/api/proto/message"
@@ -144,6 +146,16 @@ func (node *Node) AddNewBlockForExplorer(block *types.Block) {
 	} else {
 		utils.Logger().Error().Err(err).Msg("[Explorer] Error when adding new block for explorer node")
 	}
+}
+
+func (node *Node) dump(block *types.Block) {
+	node.getExplorerHelper().Dump(block)
+}
+
+func (node *Node) getExplorerHelper() explorer.InsertHelper {
+	raw := node.serviceManager.GetService(service.SupportExplorer)
+	s := raw.(*explorer.Service)
+	return s.GetHelper()
 }
 
 // ExplorerMessageHandler passes received message in node_handler to explorer service.
