@@ -2,8 +2,10 @@ package node
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"sync"
+	"sync/atomic"
 
 	"github.com/harmony-one/harmony/api/service"
 
@@ -148,8 +150,16 @@ func (node *Node) AddNewBlockForExplorer(block *types.Block) {
 	}
 }
 
+var commitRoutine int64
+
 // ExplorerMessageHandler passes received message in node_handler to explorer service.
 func (node *Node) commitBlockForExplorer(block *types.Block) {
+	atomic.AddInt64(&commitRoutine, 1)
+	defer func() {
+		numRoutine := atomic.LoadInt64(&commitRoutine)
+		fmt.Println("number of routine", numRoutine)
+		atomic.AddInt64(&commitRoutine, -1)
+	}()
 	if block.ShardID() != node.NodeConfig.ShardID {
 		return
 	}
