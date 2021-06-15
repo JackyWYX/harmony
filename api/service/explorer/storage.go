@@ -268,6 +268,7 @@ func (storage *Storage) flushLocked() error {
 	defer storage.lock.Unlock()
 
 	start := time.Now()
+	fmt.Println("flush start")
 	defer func() {
 		fmt.Println("flush take time", time.Since(start).String())
 	}()
