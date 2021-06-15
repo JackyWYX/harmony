@@ -213,6 +213,10 @@ func (storage *Storage) isBlockComputed(bn uint64) bool {
 }
 
 func (storage *Storage) handleBlock(b *types.Block) error {
+	time1 := time.Now()
+	defer func() {
+		fmt.Println("handle block time", time.Since(time1).String(), b.NumberU64())
+	}()
 	txs, stks := computeAccountsTransactionsMapForBlock(b)
 	return storage.handleBlockResultLocked(b.NumberU64(), txs, stks)
 }
@@ -262,6 +266,11 @@ func (storage *Storage) UpdateTxAddressStorage(addr oneAddress, txRecords TxReco
 func (storage *Storage) flushLocked() error {
 	storage.lock.Lock()
 	defer storage.lock.Unlock()
+
+	start := time.Now()
+	defer func() {
+		fmt.Println("flush take time", time.Since(start).String())
+	}()
 
 	batch := new(leveldb.Batch)
 	for addr, addressInfo := range storage.dirty {
