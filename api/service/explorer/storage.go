@@ -6,6 +6,7 @@ import (
 	"os"
 	"path"
 	"sync"
+	"time"
 
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/harmony-one/harmony/core/types"
@@ -123,12 +124,15 @@ func (storage *Storage) loop() {
 		close(storage.closeC)
 	}()
 
+	var lastFlush time.Time
 	for {
 		// flush when reached threshold
 		storage.lock.RLock()
 		numDirty := len(storage.dirtyBNs)
 		storage.lock.RUnlock()
 		if numDirty >= flushThreshold {
+			fmt.Println("last flush", time.Since(lastFlush).String())
+			lastFlush = time.Now()
 			if err := storage.flushLocked(); err != nil {
 				utils.Logger().Error().Err(err).Msg("[explorer] failed to flush")
 			}
