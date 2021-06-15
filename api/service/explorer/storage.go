@@ -69,7 +69,6 @@ func GetStorageInstance(ip, port string) *Storage {
 			fmt.Println("failed to open explorer db:", err.Error())
 			os.Exit(1)
 		}
-		go storage.loop()
 	})
 	return storage
 }
@@ -109,6 +108,10 @@ func newStorageDB(ip, port string) (*leveldb.DB, error) {
 		return nil, err
 	}
 	return db, nil
+}
+
+func (storage *Storage) Start() {
+	go storage.loop()
 }
 
 func (storage *Storage) Close() {
