@@ -272,6 +272,7 @@ func (storage *Storage) flushLocked() error {
 		fmt.Println("flush take time", time.Since(start).String())
 	}()
 
+	dataAmount := 0
 	batch := new(leveldb.Batch)
 	for addr, addressInfo := range storage.dirty {
 		key := GetAddressKey(addr)
@@ -280,15 +281,18 @@ func (storage *Storage) flushLocked() error {
 			utils.Logger().Error().Err(err).Msg("error when flushing explorer")
 			return err
 		}
+		dataAmount += len(encoded)
 		batch.Put(key, encoded)
 	}
 	for bn := range storage.dirtyBNs {
 		key := GetCheckpointKey(new(big.Int).SetUint64(bn))
 		batch.Put(key, []byte{})
 	}
+	fmt.Println("start to write data of size", dataAmount/1024/1024)
 	if err := storage.db.Write(batch, nil); err != nil {
 		return errors.Wrap(err, "failed to write explorer data")
 	}
+	fmt.Println("finished writing")
 	// clean up
 	for addr, addressInfo := range storage.dirty {
 		storage.clean.Add(addr, addressInfo)
