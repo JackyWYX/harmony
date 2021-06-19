@@ -235,6 +235,7 @@ func (m *migrationV100) migrateLegacyStakingTx(addr oneAddress, legTx *LegTxReco
 }
 
 func (m *migrationV100) flushDBIfBatchFull() error {
+	fmt.Println(m.btc.ValueSize())
 	if m.btc.ValueSize() > writeThreshold {
 		fmt.Println("flushing batch", m.btc.ValueSize())
 		if err := m.btc.Write(); err != nil {
