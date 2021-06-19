@@ -293,9 +293,6 @@ func (m *migrationV100) checkMigratedAddress(addr oneAddress, addrInfo *Address)
 }
 
 func (m *migrationV100) checkHashes(newHashes []common.Hash, oldTxs []*LegTxRecord) error {
-	if len(newHashes) != len(oldTxs) {
-		return fmt.Errorf("transaction number not expected: %v / %v", len(newHashes), len(oldTxs))
-	}
 	oldHashMap := make(map[common.Hash]struct{})
 	for _, tx := range oldTxs {
 		h := common.HexToHash(tx.Hash)
