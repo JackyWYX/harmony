@@ -302,6 +302,10 @@ func (m *migrationV100) checkHashes(newHashes []common.Hash, oldTxs []*LegTxReco
 		oldHashMap[h] = struct{}{}
 	}
 	if len(newHashes) != len(oldHashMap) {
+		for _, tx := range oldTxs {
+			fmt.Println("|", tx.Hash, "|")
+		}
+		fmt.Println("old", len(oldHashMap))
 		return fmt.Errorf("transaction number not expected: %v / %v", len(newHashes), len(oldHashMap))
 	}
 	for _, h := range newHashes {
