@@ -292,7 +292,7 @@ func (bc *blockComputer) computeNormalTx(btc batch, b *types.Block, tx *types.Tr
 		fmt.Println(tx.HashByType().String())
 	}
 	from := ethToOneAddress(ethFrom)
-	to := ethToOneAddress(ethTo)
+	to := ethToOneAddress(*ethTo)
 
 	_ = writeAddressEntry(btc, from)
 	_ = writeAddressEntry(btc, to)
