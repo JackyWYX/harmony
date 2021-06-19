@@ -83,7 +83,7 @@ func (s *storage) DumpCatchupBlock(b *types.Block) {
 			fmt.Println("no more pending task. break")
 			break
 		}
-		time.Sleep(1 * time.Second)
+		time.Sleep(500 * time.Millisecond)
 	}
 	fmt.Println("dumping catchup")
 	s.tm.AddCatchupTask(b)
@@ -189,7 +189,7 @@ func (tm *taskManager) HasPendingTasks() bool {
 	tm.lock.Lock()
 	defer tm.lock.Unlock()
 
-	fmt.Println(len(tm.blocksLP) == 0 && len(tm.blocksHP) == 0)
+	fmt.Println(len(tm.blocksLP) == 0 && len(tm.blocksHP) == 0, len(tm.blocksLP), len(tm.blocksHP))
 	return len(tm.blocksLP) == 0 && len(tm.blocksHP) == 0
 }
 
