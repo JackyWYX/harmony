@@ -133,6 +133,7 @@ func (s *storage) loop() {
 		select {
 		case res := <-s.resultC:
 			s.log.Info().Uint64("block number", res.bn).Msg("writing explorer DB")
+			fmt.Println("writing", res.bn)
 			if err := res.btc.Write(); err != nil {
 				s.log.Error().Err(err).Msg("explorer db failed to write")
 			}
