@@ -62,16 +62,19 @@ func (m *migrationV100) do() error {
 
 	m.log.Info().Str("progress", fmt.Sprintf("%v / %v", 0, m.totalNum)).
 		Msg("Start migration")
+	fmt.Println("start migration")
 	if err := m.doMigration(); err != nil {
 		return errors.Wrap(err, "failed to migrate to V1.0.0")
 	}
 
+	fmt.Println("finished migration")
 	m.log.Info().Msg("Finished migration. Starting value check")
 	m.isMigrateFinished.Set()
 
 	if err := m.checkResult(); err != nil {
 		return errors.Wrap(err, "check result failed")
 	}
+	fmt.Println("finished check")
 	m.log.Info().Msg("Finished result checking. Start writing version")
 	if err := writeVersion(m.db, versionV100); err != nil {
 		return errors.Wrap(err, "write version")
@@ -88,10 +91,12 @@ func (m *migrationV100) progressReportLoop() {
 		case <-t.C:
 			if m.isMigrateFinished.IsSet() {
 				checked := atomic.LoadUint64(&m.checkedNum)
+				fmt.Printf("progress check: %v / %v\n", checked, m.totalNum)
 				m.log.Info().Str("progress", fmt.Sprintf("%v / %v", checked, m.totalNum)).
 					Msg("checking in progress")
 			} else {
 				migrated := atomic.LoadUint64(&m.migratedNum)
+				fmt.Printf("progress migrate: %v / %v\n", migrated, m.totalNum)
 				m.log.Info().Str("progress", fmt.Sprintf("%v / %v", migrated, m.totalNum)).
 					Msg("migration in progress")
 			}
@@ -101,7 +106,7 @@ func (m *migrationV100) progressReportLoop() {
 			return
 
 		case <-m.closeC:
-			m.log.Info().Msg("context done")
+			m.log.Info().Msg("migration interrupted")
 			return
 		}
 	}
