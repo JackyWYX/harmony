@@ -78,7 +78,7 @@ func (s *storage) DumpNewBlock(b *types.Block) {
 }
 
 func (s *storage) DumpCatchupBlock(b *types.Block) {
-	for s.tm.HasPendingTasks() {
+	for !s.tm.HasPendingTasks() {
 		time.Sleep(100 * time.Millisecond)
 	}
 	s.tm.AddCatchupTask(b)
