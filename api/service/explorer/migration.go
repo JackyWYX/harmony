@@ -239,8 +239,10 @@ func (m *migrationV100) flushDBIfBatchFull() error {
 	if m.btc.ValueSize() > writeThreshold {
 		fmt.Println("flushing batch", m.btc.ValueSize())
 		if err := m.btc.Write(); err != nil {
+			fmt.Println("after flushing batch")
 			return err
 		}
+		fmt.Println("after flushing batch")
 		m.btc = m.db.NewBatch()
 	}
 	return nil
