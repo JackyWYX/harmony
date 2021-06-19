@@ -137,7 +137,6 @@ func (s *storage) loop() {
 		case res := <-s.resultC:
 			s.log.Info().Uint64("block number", res.bn).Msg("writing explorer DB")
 			writeStart := time.Now()
-			fmt.Println("writing", res.bn)
 			if err := res.btc.Write(); err != nil {
 				s.log.Error().Err(err).Msg("explorer db failed to write")
 			}
