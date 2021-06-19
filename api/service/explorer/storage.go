@@ -287,7 +287,10 @@ func (bc *blockComputer) computeBlock(b *types.Block) (*blockResult, error) {
 
 func (bc *blockComputer) computeNormalTx(btc batch, b *types.Block, tx *types.Transaction) {
 	ethFrom, _ := tx.SenderAddress()
-	ethTo := *tx.To()
+	ethTo := tx.To()
+	if ethTo == nil {
+		fmt.Println(tx.HashByType().String())
+	}
 	from := ethToOneAddress(ethFrom)
 	to := ethToOneAddress(ethTo)
 
