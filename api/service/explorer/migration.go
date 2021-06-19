@@ -265,6 +265,10 @@ func (m *migrationV100) checkResult() error {
 }
 
 func (m *migrationV100) checkMigratedAddress(addr oneAddress, addrInfo *Address) error {
+	if addr == "" {
+		// Dirty data. Skip checking
+		return nil
+	}
 	txns, _, err := getNormalTxnHashesByAccount(m.db, addr)
 	if err != nil {
 		return errors.Wrapf(err, "get normal txn hashes: %v", addr)
