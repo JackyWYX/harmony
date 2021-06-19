@@ -13,9 +13,9 @@ import (
 	"github.com/rs/zerolog"
 )
 
-// flush to db when batch reached 100 MiB
 const (
-	writeThreshold      = 10 * 1024 * 1024
+	// flush to db when batch reached 1 MiB
+	writeThreshold      = 1 * 1024 * 1024
 	legAddressPrefixLen = 3
 )
 
