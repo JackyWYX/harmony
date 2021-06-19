@@ -115,12 +115,8 @@ func (m *migrationV100) progressReportLoop() {
 
 func (m *migrationV100) doMigration() error {
 	err := m.forEachLegacyAddressInfo(func(addr oneAddress, addrInfo *Address) error {
-		if m.btc.ValueSize() > writeThreshold {
-			fmt.Println("writing batch", m.btc.ValueSize())
-			if err := m.btc.Write(); err != nil {
-				return err
-			}
-			m.btc = m.db.NewBatch()
+		if err := m.flushDBIfBatchFull(); err != nil {
+			return err
 		}
 		select {
 		case <-m.closeC:
@@ -182,7 +178,6 @@ func (m *migrationV100) migrateLegacyAddressToBatch(addr oneAddress, addrInfo *A
 	if written || err != nil {
 		return err
 	}
-	_ = writeAddressEntry(m.btc, addr)
 
 	if len(addrInfo.TXs)+len(addrInfo.StakingTXs) > 1000 {
 		fmt.Println("large address found:", addr, len(addrInfo.TXs)+len(addrInfo.StakingTXs))
@@ -198,6 +193,7 @@ func (m *migrationV100) migrateLegacyAddressToBatch(addr oneAddress, addrInfo *A
 			return errors.Wrapf(err, "failed to migrate staking tx [%v]", legTx.Hash)
 		}
 	}
+	_ = writeAddressEntry(m.btc, addr)
 	return nil
 }
 
@@ -215,7 +211,8 @@ func (m *migrationV100) migrateLegacyNormalTx(addr oneAddress, legTx *LegTxRecor
 		txnHash:     txHash,
 	}, tt)
 	_ = writeTxn(m.btc, txHash, tx)
-	return nil
+
+	return m.flushDBIfBatchFull()
 }
 
 func (m *migrationV100) migrateLegacyStakingTx(addr oneAddress, legTx *LegTxRecord) error {
@@ -233,6 +230,17 @@ func (m *migrationV100) migrateLegacyStakingTx(addr oneAddress, legTx *LegTxReco
 		txnHash:     txHash,
 	}, tt)
 	_ = writeTxn(m.btc, txHash, tx)
+	return m.flushDBIfBatchFull()
+}
+
+func (m *migrationV100) flushDBIfBatchFull() error {
+	if m.btc.ValueSize() > writeThreshold {
+		fmt.Println("flushing batch", m.btc.ValueSize())
+		if err := m.btc.Write(); err != nil {
+			return err
+		}
+		m.btc = m.db.NewBatch()
+	}
 	return nil
 }
 
