@@ -78,8 +78,12 @@ func (s *storage) DumpNewBlock(b *types.Block) {
 }
 
 func (s *storage) DumpCatchupBlock(b *types.Block) {
-	for s.tm.HasPendingTasks() {
-		time.Sleep(100 * time.Millisecond)
+	for {
+		if !s.tm.HasPendingTasks() {
+			fmt.Println("no more pending task. break")
+			break
+		}
+		time.Sleep(1 * time.Second)
 	}
 	fmt.Println("dumping catchup")
 	s.tm.AddCatchupTask(b)
