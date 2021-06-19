@@ -184,7 +184,6 @@ func (tm *taskManager) HasPendingTasks() bool {
 	tm.lock.Lock()
 	defer tm.lock.Unlock()
 
-	fmt.Println(len(tm.blocksLP), len(tm.blocksHP))
 	return len(tm.blocksLP) == 0 && len(tm.blocksHP) == 0
 }
 
