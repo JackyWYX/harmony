@@ -85,18 +85,19 @@ func (m *migrationV100) do() error {
 
 func (m *migrationV100) progressReportLoop() {
 	t := time.NewTicker(2 * time.Second)
+	timeStart := time.Now()
 	defer t.Stop()
 	for {
 		select {
 		case <-t.C:
 			if m.isMigrateFinished.IsSet() {
 				checked := atomic.LoadUint64(&m.checkedNum)
-				fmt.Printf("progress check: %v / %v\n", checked, m.totalNum)
+				fmt.Printf("progress check: %v / %v. Time elapsed: %v\n", checked, m.totalNum, time.Since(timeStart))
 				m.log.Info().Str("progress", fmt.Sprintf("%v / %v", checked, m.totalNum)).
 					Msg("checking in progress")
 			} else {
 				migrated := atomic.LoadUint64(&m.migratedNum)
-				fmt.Printf("progress migrate: %v / %v\n", migrated, m.totalNum)
+				fmt.Printf("progress migrate: %v / %v Time elapsed: %v\n", migrated, m.totalNum, time.Since(timeStart))
 				m.log.Info().Str("progress", fmt.Sprintf("%v / %v", migrated, m.totalNum)).
 					Msg("migration in progress")
 			}
