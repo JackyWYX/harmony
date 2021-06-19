@@ -14,8 +14,8 @@ import (
 )
 
 const (
-	// flush to db when batch reached 1 MiB
-	writeThreshold      = 1 * 1024 * 1024
+	// flush to db when batch reached 10 MiB
+	writeThreshold      = 10 * 1024 * 1024
 	legAddressPrefixLen = 3
 )
 
@@ -231,6 +231,7 @@ func (m *migrationV100) migrateLegacyStakingTx(addr oneAddress, legTx *LegTxReco
 		txnHash:     txHash,
 	}, tt)
 	_ = writeTxn(m.btc, txHash, tx)
+
 	return m.flushDBIfBatchFull()
 }
 
