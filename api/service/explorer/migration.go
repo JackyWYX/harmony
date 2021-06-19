@@ -176,7 +176,6 @@ func (m *migrationV100) forEachLegacyAddressInfo(f func(addr oneAddress, addrInf
 func (m *migrationV100) migrateLegacyAddressToBatch(addr oneAddress, addrInfo *Address) error {
 	written, err := isAddressWritten(m.db, addr)
 	if written || err != nil {
-		fmt.Println("address written", addr)
 		return err
 	}
 
@@ -295,6 +294,9 @@ func (m *migrationV100) checkMigratedAddress(addr oneAddress, addrInfo *Address)
 
 func (m *migrationV100) checkHashes(newHashes []common.Hash, oldTxs []*LegTxRecord) error {
 	if len(newHashes) != len(oldTxs) {
+		for _, tx := range oldTxs {
+			fmt.Println(tx.Hash)
+		}
 		return fmt.Errorf("transaction number not expected: %v / %v", len(newHashes), len(oldTxs))
 	}
 	newHashMap := make(map[common.Hash]struct{})
