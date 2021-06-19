@@ -116,7 +116,7 @@ func (m *migrationV100) progressReportLoop() {
 func (m *migrationV100) doMigration() error {
 	err := m.forEachLegacyAddressInfo(func(addr oneAddress, addrInfo *Address) error {
 		if m.btc.ValueSize() > writeThreshold {
-			fmt.Println("writing")
+			fmt.Println("writing batch", m.btc.ValueSize())
 			if err := m.btc.Write(); err != nil {
 				return err
 			}
