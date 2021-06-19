@@ -176,6 +176,7 @@ func (m *migrationV100) forEachLegacyAddressInfo(f func(addr oneAddress, addrInf
 func (m *migrationV100) migrateLegacyAddressToBatch(addr oneAddress, addrInfo *Address) error {
 	written, err := isAddressWritten(m.db, addr)
 	if written || err != nil {
+		fmt.Println("address written", addr)
 		return err
 	}
 
