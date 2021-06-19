@@ -15,7 +15,7 @@ import (
 
 // flush to db when batch reached 100 MiB
 const (
-	writeThreshold      = 100 * 1024 * 1024
+	writeThreshold      = 10 * 1024 * 1024
 	legAddressPrefixLen = 3
 )
 
@@ -235,7 +235,6 @@ func (m *migrationV100) migrateLegacyStakingTx(addr oneAddress, legTx *LegTxReco
 }
 
 func (m *migrationV100) flushDBIfBatchFull() error {
-	fmt.Println(m.btc.ValueSize())
 	if m.btc.ValueSize() > writeThreshold {
 		fmt.Println("flushing batch", m.btc.ValueSize())
 		if err := m.btc.Write(); err != nil {
