@@ -80,12 +80,10 @@ func (s *storage) DumpNewBlock(b *types.Block) {
 func (s *storage) DumpCatchupBlock(b *types.Block) {
 	for {
 		if !s.tm.HasPendingTasks() {
-			fmt.Println("no more pending task. break")
 			break
 		}
 		time.Sleep(500 * time.Millisecond)
 	}
-	fmt.Println("dumping catchup")
 	s.tm.AddCatchupTask(b)
 }
 
@@ -138,10 +136,12 @@ func (s *storage) loop() {
 		select {
 		case res := <-s.resultC:
 			s.log.Info().Uint64("block number", res.bn).Msg("writing explorer DB")
+			writeStart := time.Now()
 			fmt.Println("writing", res.bn)
 			if err := res.btc.Write(); err != nil {
 				s.log.Error().Err(err).Msg("explorer db failed to write")
 			}
+			fmt.Println("write", res.bn, time.Since(writeStart).String())
 
 		case <-s.closeC:
 			return
