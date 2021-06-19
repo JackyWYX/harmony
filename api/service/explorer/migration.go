@@ -184,6 +184,10 @@ func (m *migrationV100) migrateLegacyAddressToBatch(addr oneAddress, addrInfo *A
 	}
 	_ = writeAddressEntry(m.btc, addr)
 
+	if len(addrInfo.TXs)+len(addrInfo.StakingTXs) > 1000 {
+		fmt.Println("large address found:", addr, len(addrInfo.TXs)+len(addrInfo.StakingTXs))
+	}
+
 	for _, legTx := range addrInfo.TXs {
 		if err := m.migrateLegacyNormalTx(addr, legTx); err != nil {
 			return errors.Wrapf(err, "failed to migrate normal tx [%v]", legTx.Hash)
