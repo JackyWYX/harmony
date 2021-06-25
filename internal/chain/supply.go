@@ -1,6 +1,7 @@
 package chain
 
 import (
+	"fmt"
 	"math/big"
 	"time"
 
@@ -94,6 +95,7 @@ func getTotalCirculatingSupply(chain engine.ChainReader) (ret numeric.Dec, err e
 func getAllInaccessibleTokens(chain engine.ChainReader) (numeric.Dec, error) {
 	ais, err := getAllInaccessibleAddresses(chain)
 	if err != nil {
+		fmt.Println("getAllInaccessibleAddresses", err)
 		return numeric.Dec{}, err
 	}
 	total := numeric.NewDecFromBigIntWithPrec(big.NewInt(0), numeric.Precision)
@@ -106,6 +108,7 @@ func getAllInaccessibleTokens(chain engine.ChainReader) (numeric.Dec, error) {
 func getAllInaccessibleAddresses(chain engine.ChainReader) ([]*InaccessibleAddressInfo, error) {
 	state, err := chain.StateAt(chain.CurrentHeader().Root())
 	if err != nil {
+		fmt.Println("state at error", err)
 		return nil, err
 	}
 

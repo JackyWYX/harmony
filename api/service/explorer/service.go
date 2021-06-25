@@ -255,13 +255,13 @@ func (s *Service) GetTotalSupply(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		utils.Logger().Warn().Err(err).Msg("unable to fetch total supply")
 		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Println(err)
+		fmt.Println("total tokens error", err)
 	}
 	totalInaccessible, err := chain.GetInaccessibleTokens(s.blockchain)
 	if err != nil {
 		utils.Logger().Warn().Err(err).Msg("unable to fetch inaccessible tokens")
 		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Println(err)
+		fmt.Println("inaccessible error", err)
 	}
 	if err := json.NewEncoder(w).Encode(totalSupply.Sub(totalInaccessible)); err != nil {
 		utils.Logger().Warn().Msg("cannot JSON-encode total supply")
