@@ -18,6 +18,8 @@ var (
 	deadline = 5 * time.Minute // consider a filter inactive if it has not been polled for within deadline
 )
 
+const filterMaxCap = 1024 // The maximum block number for each GetLogs and GetFilterLogs request
+
 // filter is a helper struct that holds meta information over the filter type
 // and associated subscription in the event system.
 type filter struct {
@@ -374,6 +376,9 @@ func (api *PublicFilterAPI) GetLogs(ctx context.Context, crit FilterCriteria) ([
 		end := rpc.LatestBlockNumber.Int64()
 		if crit.ToBlock != nil {
 			end = crit.ToBlock.Int64()
+		}
+		if end-begin > filterMaxCap {
+			return nil, fmt.Errorf("logs query ranging over %v blocks is not supported", filterMaxCap)
 		}
 		// Construct the range filter
 		filter = NewRangeFilter(api.backend, begin, end, crit.Addresses, crit.Topics, api.isEth())
